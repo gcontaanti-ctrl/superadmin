@@ -81,19 +81,39 @@ function isApiRequest(request: Request): boolean {
 
 async function proxyApiRequest(request: Request, env: unknown): Promise<Response | undefined> {
   const apiBaseUrl = getApiBaseUrl(env);
-  if (!apiBaseUrl || !isApiRequest(request)) return undefined;
+  if (!isApiRequest(request)) return undefined;
+
+  if (!apiBaseUrl) {
+    return Response.json(
+      {
+        error: "API_BASE_URL nao configurado",
+        message: "Configure a URL publica da API Node nas variaveis do Worker.",
+      },
+      { status: 503 },
+    );
+  }
 
   const sourceUrl = new URL(request.url);
   const targetUrl = new URL(`${apiBaseUrl}${sourceUrl.pathname}${sourceUrl.search}`);
   const headers = new Headers(request.headers);
   headers.set("host", targetUrl.host);
 
-  return fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body: request.body,
-    redirect: "manual",
-  });
+  try {
+    return await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body: request.body,
+      redirect: "manual",
+    });
+  } catch {
+    return Response.json(
+      {
+        error: "API indisponivel",
+        message: "Nao foi possivel conectar na API Node configurada.",
+      },
+      { status: 502 },
+    );
+  }
 }
 
 export default {

@@ -4,9 +4,11 @@ const cors = require('cors');
 const ibmdb = require('ibm_db');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
-app.use(cors());
+app.set('trust proxy', 1);
+app.use(cors({ credentials: true }));
 app.use(express.json());
 
 function loadLocalEnvFile() {
@@ -37,6 +39,11 @@ const CONFIG_DIR = path.join(__dirname, '.runtime');
 const DB_CONFIG_PATH = process.env.DB_CONFIG_PATH || path.join(CONFIG_DIR, 'db-config.json');
 const SUPABASE_CONFIG_TABLE = process.env.SUPABASE_CONFIG_TABLE || 'erp_db_config';
 const SUPABASE_CONFIG_ID = process.env.SUPABASE_CONFIG_ID || 'default';
+const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME || 'superadmin_session';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const SESSION_SECRET = process.env.SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'dev-only-superadmin-secret';
+const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 1000 * 60 * 60 * 12);
 
 const DEFAULT_DB_CONFIG = {
   database: process.env.DB2_DATABASE || 'cisserp',
@@ -56,6 +63,97 @@ function ensureConfigDir() {
   if (!fs.existsSync(CONFIG_DIR)) {
     fs.mkdirSync(CONFIG_DIR, { recursive: true });
   }
+}
+
+function parseCookies(header = '') {
+  return Object.fromEntries(
+    String(header)
+      .split(';')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => {
+        const separator = part.indexOf('=');
+        if (separator === -1) return [part, ''];
+        return [part.slice(0, separator), decodeURIComponent(part.slice(separator + 1))];
+      }),
+  );
+}
+
+function signSession(payload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  return `${body}.${signature}`;
+}
+
+function verifySession(token) {
+  if (!token || !token.includes('.')) return null;
+
+  const [body, signature] = token.split('.');
+  const expected = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+
+  const signatureBuffer = Buffer.from(signature || '');
+  const expectedBuffer = Buffer.from(expected);
+  if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (!payload.expiresAt || Date.now() > payload.expiresAt) return null;
+    return payload;
+  } catch (_) {
+    return null;
+  }
+}
+
+function isSecureRequest(req) {
+  return req.secure || req.get('x-forwarded-proto') === 'https' || process.env.NODE_ENV === 'production';
+}
+
+function sessionCookieOptions(req) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isSecureRequest(req),
+    path: '/',
+    maxAge: SESSION_TTL_MS,
+  };
+}
+
+function getSession(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  return verifySession(cookies[SESSION_COOKIE_NAME]);
+}
+
+function requireAuth(req, res, next) {
+  if (!ADMIN_PASSWORD && process.env.NODE_ENV !== 'production') {
+    req.user = { username: ADMIN_USERNAME, devBypass: true };
+    return next();
+  }
+
+  const session = getSession(req);
+  if (!session) {
+    return res.status(401).json({ error: 'Acesso nao autenticado' });
+  }
+
+  req.user = session;
+  return next();
+}
+
+function validateLogin(username, password) {
+  if (!ADMIN_PASSWORD) return false;
+
+  const expectedUser = Buffer.from(ADMIN_USERNAME);
+  const receivedUser = Buffer.from(String(username || ''));
+  const expectedPassword = Buffer.from(ADMIN_PASSWORD);
+  const receivedPassword = Buffer.from(String(password || ''));
+
+  return (
+    expectedUser.length === receivedUser.length &&
+    expectedPassword.length === receivedPassword.length &&
+    crypto.timingSafeEqual(expectedUser, receivedUser) &&
+    crypto.timingSafeEqual(expectedPassword, receivedPassword)
+  );
 }
 
 function readStoredDbConfig() {
@@ -280,6 +378,66 @@ function queryDB(sql, params = []) {
     });
   });
 }
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    storage: hasSupabaseConfigStore() ? 'supabase' : 'local',
+  });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  if (!ADMIN_PASSWORD && process.env.NODE_ENV !== 'production') {
+    return res.json({
+      authenticated: true,
+      username: ADMIN_USERNAME,
+      devBypass: true,
+      requiresPassword: false,
+    });
+  }
+
+  const session = getSession(req);
+  if (!session) {
+    return res.status(401).json({
+      authenticated: false,
+      requiresPassword: Boolean(ADMIN_PASSWORD),
+    });
+  }
+
+  res.json({
+    authenticated: true,
+    username: session.username,
+    expiresAt: session.expiresAt,
+  });
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body || {};
+
+  if (!ADMIN_PASSWORD && process.env.NODE_ENV !== 'production') {
+    return res.json({ authenticated: true, username: ADMIN_USERNAME, devBypass: true });
+  }
+
+  if (!validateLogin(username, password)) {
+    return res.status(401).json({ error: 'Usuario ou senha invalidos' });
+  }
+
+  const session = {
+    username: ADMIN_USERNAME,
+    issuedAt: Date.now(),
+    expiresAt: Date.now() + SESSION_TTL_MS,
+  };
+
+  res.cookie(SESSION_COOKIE_NAME, signSession(session), sessionCookieOptions(req));
+  res.json({ authenticated: true, username: session.username, expiresAt: session.expiresAt });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie(SESSION_COOKIE_NAME, { path: '/' });
+  res.json({ authenticated: false });
+});
+
+app.use('/api', requireAuth);
 
 app.get('/api/config/db', async (req, res) => {
   await syncDbConfigFromSupabase();

@@ -5,7 +5,7 @@ services:
     plan: starter
     buildCommand: npm ci
     startCommand: npm run start:api
-    healthCheckPath: /api/config/db
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 22
@@ -17,6 +17,12 @@ services:
         value: erp_db_config
       - key: SUPABASE_CONFIG_ID
         value: default
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
       - key: DB2_DATABASE
         value: cisserp
       - key: DB2_HOSTNAME

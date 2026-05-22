@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/executive/Sidebar";
 import { KpiCards } from "@/components/executive/KpiCards";
@@ -15,7 +15,7 @@ import { PurchasesModule } from "@/components/executive/PurchasesModule";
 import { DatabaseSettings } from "@/components/executive/DatabaseSettings";
 import { Toaster, toast } from "sonner";
 import { 
-  Building2, Package, Database, Sparkles, Shield, Calendar
+  Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -23,6 +23,11 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("visao-geral");
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
@@ -32,6 +37,17 @@ function Dashboard() {
   const [dbEstoque, setDbEstoque] = useState<any[]>([]);
 
   useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => {
+        setAuthenticated(res.ok);
+      })
+      .catch(() => setAuthenticated(false))
+      .finally(() => setAuthChecked(true));
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) return;
+
     // Buscar lojas
     fetch('/api/empresas')
       .then(res => res.json())
@@ -43,7 +59,55 @@ function Dashboard() {
       .then(res => res.json())
       .then(data => { if (!data.error) setDbEstoque(data); })
       .catch(console.error);
-  }, []);
+  }, [authenticated]);
+
+  const login = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAuthLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.authenticated) {
+        throw new Error(data.error || "Falha ao entrar");
+      }
+
+      setPassword("");
+      setAuthenticated(true);
+      toast.success("Acesso liberado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao entrar");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    setAuthenticated(false);
+    setDbLojas([]);
+    setDbEstoque([]);
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 grid place-items-center">
+        <div className="flex items-center gap-3 text-sm text-slate-300">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          Verificando acesso
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return <LoginScreen username={username} setUsername={setUsername} password={password} setPassword={setPassword} loading={authLoading} onSubmit={login} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex p-4 gap-4 antialiased selection:bg-primary/20">
@@ -123,6 +187,10 @@ function Dashboard() {
             <Database className="w-3.5 h-3.5" />
             <span>Dados Reais (DB2)</span>
           </div>
+          <Button onClick={logout} variant="outline" className="border-white/15 bg-white/5 text-xs">
+            <LogOut className="w-3.5 h-3.5" />
+            Sair
+          </Button>
         </header>
 
         {/* KPI Cards passing selectedStore */}
@@ -293,6 +361,66 @@ function Dashboard() {
         )}
       </main>
 
+      <Toaster position="bottom-right" theme="dark" closeButton />
+    </div>
+  );
+}
+
+type LoginScreenProps = {
+  username: string;
+  setUsername: (value: string) => void;
+  password: string;
+  setPassword: (value: string) => void;
+  loading: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+};
+
+function LoginScreen({ username, setUsername, password, setPassword, loading, onSubmit }: LoginScreenProps) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-4 antialiased">
+      <form onSubmit={onSubmit} className="glass-strong w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-lg bg-primary/10 border border-primary/20 grid place-items-center">
+            <LockKeyhole className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-serif text-xl font-bold">ERP Executive AI</h1>
+            <p className="text-xs text-slate-400">Acesso administrativo</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="login-username" className="text-xs font-semibold text-slate-300">
+            Usuario
+          </label>
+          <input
+            id="login-username"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            autoComplete="username"
+            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-primary/60"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="login-password" className="text-xs font-semibold text-slate-300">
+            Senha
+          </label>
+          <input
+            id="login-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            autoComplete="current-password"
+            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-primary/60"
+          />
+        </div>
+
+        <Button type="submit" disabled={loading || !username || !password} className="w-full">
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+          Entrar
+        </Button>
+      </form>
       <Toaster position="bottom-right" theme="dark" closeButton />
     </div>
   );

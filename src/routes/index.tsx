@@ -13,6 +13,7 @@ import { FinancialModule } from "@/components/executive/FinancialModule";
 import { CommercialModule } from "@/components/executive/CommercialModule";
 import { PurchasesModule } from "@/components/executive/PurchasesModule";
 import { DatabaseSettings } from "@/components/executive/DatabaseSettings";
+import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
   Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut

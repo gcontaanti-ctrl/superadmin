@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: superadmin-api
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm run start:api
+    healthCheckPath: /api/config/db
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_CONFIG_TABLE
+        value: erp_db_config
+      - key: SUPABASE_CONFIG_ID
+        value: default
+      - key: DB2_DATABASE
+        value: cisserp
+      - key: DB2_HOSTNAME
+        sync: false
+      - key: DB2_PORT
+        value: 30231
+      - key: DB2_PROTOCOL
+        value: TCPIP
+      - key: DB2_UID
+        sync: false
+      - key: DB2_PWD
+        sync: false
+      - key: DB2_CONNECT_TIMEOUT
+        value: 30
+      - key: DB2_USE_EXTERNAL_HOST
+        value: true
+      - key: DB2_EXTERNAL_HOST
+        sync: false
+      - key: DB2_EXTERNAL_PORT
+        sync: false

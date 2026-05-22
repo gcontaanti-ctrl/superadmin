@@ -26,7 +26,7 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const [authChecked, setAuthChecked] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("cristiano");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("visao-geral");

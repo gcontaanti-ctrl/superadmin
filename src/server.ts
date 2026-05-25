@@ -11,6 +11,7 @@ type RuntimeEnv = {
   ADMIN_PASSWORD?: string;
   ADMIN_USERNAME?: string;
   API_BASE_URL?: string;
+  DB2_API_BASE_URL?: string;
   SESSION_SECRET?: string;
 };
 
@@ -73,9 +74,28 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
-function getApiBaseUrl(env: unknown): string | undefined {
-  const apiBaseUrl = (env as RuntimeEnv | undefined)?.API_BASE_URL;
-  return apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : undefined;
+function isLocalHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname.endsWith(".localhost");
+}
+
+function getConfiguredApiBaseUrl(env: unknown): string | undefined {
+  const runtimeEnv = env as RuntimeEnv | undefined;
+  const processEnv =
+    typeof process !== "undefined"
+      ? ((process as unknown as { env?: Partial<RuntimeEnv> }).env ?? {})
+      : {};
+
+  return runtimeEnv?.API_BASE_URL || runtimeEnv?.DB2_API_BASE_URL || processEnv.API_BASE_URL || processEnv.DB2_API_BASE_URL;
+}
+
+function getApiBaseUrl(env: unknown, request: Request): string | undefined {
+  const apiBaseUrl = getConfiguredApiBaseUrl(env);
+  if (apiBaseUrl) return apiBaseUrl.replace(/\/$/, "");
+
+  const { hostname } = new URL(request.url);
+  if (isLocalHostname(hostname)) return "http://127.0.0.1:3001";
+
+  return undefined;
 }
 
 function isApiRequest(request: Request): boolean {
@@ -203,7 +223,7 @@ async function handleFallbackAuth(request: Request, env: RuntimeEnv): Promise<Re
 }
 
 async function proxyApiRequest(request: Request, env: unknown): Promise<Response | undefined> {
-  const apiBaseUrl = getApiBaseUrl(env);
+  const apiBaseUrl = getApiBaseUrl(env, request);
   if (!isApiRequest(request)) return undefined;
 
   if (!apiBaseUrl) {

@@ -544,6 +544,10 @@ app.get('/api/vendas-lojas', async (req, res) => {
     const now = new Date();
     const targetYear = ano ? parseInt(ano) : now.getFullYear();
     const targetMonth = mes ? parseInt(mes) : (now.getMonth() + 1);
+    const monthText = String(targetMonth).padStart(2, '0');
+    const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+    const startDate = `${targetYear}-${monthText}-01`;
+    const endDate = `${targetYear}-${monthText}-${String(lastDay).padStart(2, '0')}`;
 
     const fatRes = await queryDB(
       `SELECT V.IDEMPRESA, E.NOMEFANTASIA,
@@ -585,16 +589,17 @@ app.get('/api/ranking-lojas', async (req, res) => {
     const targetMonth = mes ? parseInt(mes) : (now.getMonth() + 1);
 
     // Faturamento mensal por loja
-    const fatRes = await queryDB(
+    const vendasRes = await queryDB(
       `SELECT V.IDEMPRESA, E.NOMEFANTASIA,
-         SUM(V.VALTOTLIQUIDO) AS faturamento,
-         COUNT(DISTINCT V.NUMNOTA) AS num_notas
+         SUM(CAST(V.VALTOTLIQUIDO AS DECIMAL(15,2))) AS venda_liquida,
+         SUM(CAST(V.QTDPRODUTO AS DECIMAL(15,3))) AS quantidade_produtos,
+         COUNT(DISTINCT V.NUMNOTA) AS quantidade_vendas
        FROM DBA.VW_GEA_VENDAS_DIARIAS V
        LEFT JOIN DBA.VW_GEA_EMPRESA E ON V.IDEMPRESA = E.IDEMPRESA
-       WHERE YEAR(V.DTMOVIMENTO) = ? AND MONTH(V.DTMOVIMENTO) = ?
+       WHERE V.DTMOVIMENTO BETWEEN ? AND ?
        GROUP BY V.IDEMPRESA, E.NOMEFANTASIA
-       ORDER BY faturamento DESC WITH UR`,
-      [targetYear, targetMonth]
+       ORDER BY venda_liquida DESC WITH UR`,
+      [startDate, endDate]
     );
 
     // Custo mensal por loja (para calcular margem)

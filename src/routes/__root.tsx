@@ -9,6 +9,9 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { installApiFetchFallback } from "../lib/api-fetch-fallback";
+
+installApiFetchFallback();
 
 function NotFoundComponent() {
   return (

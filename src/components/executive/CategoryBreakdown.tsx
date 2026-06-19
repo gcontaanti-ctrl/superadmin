@@ -9,7 +9,7 @@ const demoData = [
   { name: "Outros", value: 10, color: "var(--chart-5)" },
 ];
 
-export function CategoryBreakdown({ mode }: { mode: "demo" | "real" }) {
+export function CategoryBreakdown({ mode, startDate, endDate }: { mode: "demo" | "real", startDate?: string, endDate?: string }) {
   if (mode === "real") {
     return (
       <div className="glass-strong rounded-2xl p-5 h-full flex flex-col justify-center items-center text-center min-h-[250px]">

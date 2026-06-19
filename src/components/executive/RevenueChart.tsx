@@ -12,17 +12,21 @@ const demoData = [
   { d: "Dom", vendas: 1740, meta: 1150 },
 ];
 
-export function RevenueChart({ mode, selectedStore }: { mode: "demo" | "real"; selectedStore: string }) {
+export function RevenueChart({ mode, selectedStore, startDate, endDate }: { mode: "demo" | "real"; selectedStore: string, startDate?: string, endDate?: string }) {
   const [realData, setRealData] = useState([]);
 
   useEffect(() => {
     if (mode === "real") {
-      fetch(`/api/vendas-curva?idEmpresa=${selectedStore}`)
+      let url = `/api/vendas-curva?idEmpresa=${selectedStore}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+      
+      fetch(url)
         .then(res => res.json())
         .then(data => { if (!data.error) setRealData(data); })
         .catch(console.error);
     }
-  }, [mode, selectedStore]);
+  }, [mode, selectedStore, startDate, endDate]);
 
   const activeData = mode === "real" ? realData : demoData;
 

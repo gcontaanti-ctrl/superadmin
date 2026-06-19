@@ -1,29 +1,38 @@
 
 import { useEffect, useState } from "react";
-import { Building2, Users, Package, DollarSign, Wallet, ArrowUpRight } from "lucide-react";
+import { DollarSign, CalendarDays, TrendingUp, PieChart, Receipt, ArrowUpRight } from "lucide-react";
 
-export function KpiCards({ selectedStore }: { selectedStore: string }) {
-  const [kpis, setKpis] = useState({
-    empresas: 0,
-    fornecedores: 0,
-    itens_estoque: 0,
-    faturamento: "R$ 0,00",
-    ticket_medio: "R$ 0,00"
-  });
+export function KpiCards({ selectedStore, startDate, endDate }: { selectedStore: string, startDate?: string, endDate?: string }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/kpis?idEmpresa=${selectedStore}`)
-      .then(res => res.json())
-      .then(data => { if (!data.error) setKpis(data); })
-      .catch(console.error);
-  }, [selectedStore]);
+    setLoading(true);
+    let url = `/api/dashboard-executivo?idEmpresa=${selectedStore}`;
+    if (startDate) url += `&startDate=${startDate}`;
+    if (endDate) url += `&endDate=${endDate}`;
 
-  const cards = [
-    { label: "Empresas Ativas", value: kpis.empresas, icon: Building2, desc: "Filiais selecionadas", status: "DB2" },
-    { label: "Fornecedores", value: kpis.fornecedores, icon: Users, desc: "Fabricantes vinculados", status: "DB2" },
-    { label: "Itens no Estoque", value: kpis.itens_estoque, icon: Package, desc: "Locais cadastrados", status: "DB2" },
-    { label: "Faturamento", value: kpis.faturamento, icon: DollarSign, desc: "Último dia operacional", status: "DB2" },
-    { label: "Ticket Médio", value: kpis.ticket_medio, icon: Wallet, desc: "Média por nota fiscal", status: "DB2" }
+    fetch(url)
+      .then(res => res.json())
+      .then(json => { if (!json.error) setData(json); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [selectedStore, startDate, endDate]);
+
+  const formatCurrency = (val: number) => val?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || "R$ 0,00";
+
+  const cards = data ? [
+    { label: "Faturamento Hoje", value: formatCurrency(data.faturamento_hoje), icon: DollarSign, desc: "Total em vendas hoje", status: "DB2" },
+    { label: "Faturamento Mês", value: formatCurrency(data.faturamento_mes), icon: CalendarDays, desc: "Acumulado do período", status: "DB2" },
+    { label: "Lucro Líquido", value: formatCurrency(data.lucro_liquido), icon: TrendingUp, desc: "No período selecionado", status: "DB2" },
+    { label: "Margem de Lucro", value: `${(data.margem_lucro || 0).toFixed(2)}%`, icon: PieChart, desc: "Rentabilidade média", status: "DB2" },
+    { label: "Ticket Médio", value: formatCurrency(data.ticket_medio), icon: Receipt, desc: "Média por nota fiscal", status: "DB2" }
+  ] : [
+    { label: "Faturamento Hoje", value: "Carregando...", icon: DollarSign, desc: "Total em vendas hoje", status: "DB2" },
+    { label: "Faturamento Mês", value: "Carregando...", icon: CalendarDays, desc: "Acumulado do período", status: "DB2" },
+    { label: "Lucro Líquido", value: "Carregando...", icon: TrendingUp, desc: "No período selecionado", status: "DB2" },
+    { label: "Margem de Lucro", value: "Carregando...", icon: PieChart, desc: "Rentabilidade média", status: "DB2" },
+    { label: "Ticket Médio", value: "Carregando...", icon: Receipt, desc: "Média por nota fiscal", status: "DB2" }
   ];
 
   return (

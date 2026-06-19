@@ -523,9 +523,9 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
                 onChange={(e) => setFornecedorId(e.target.value)}
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 focus:outline-none focus:border-primary text-slate-300 text-xs"
               >
-                <option value="">-- Todos os Fornecedores --</option>
+                <option value="" className="text-slate-100 bg-slate-950">-- Todos os Fornecedores --</option>
                 {fornecedores.map((f) => (
-                  <option key={f.IDCLIFOR} value={f.IDCLIFOR} className="text-slate-900">
+                  <option key={f.IDCLIFOR} value={f.IDCLIFOR} className="text-slate-100 bg-slate-950">
                     {f.NOME}
                   </option>
                 ))}

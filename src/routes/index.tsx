@@ -1,4 +1,3 @@
-
 import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/executive/Sidebar";
@@ -13,11 +12,19 @@ import { FinancialModule } from "@/components/executive/FinancialModule";
 import { CommercialModule } from "@/components/executive/CommercialModule";
 import { PurchasesModule } from "@/components/executive/PurchasesModule";
 import { DatabaseSettings } from "@/components/executive/DatabaseSettings";
+import { Estoque } from "@/components/executive/Estoque";
+import { GerencialModule } from "@/components/executive/GerencialModule";
+import { PromocoesModule } from "@/components/executive/PromocoesModule";
+import { SalesCampaignsModule } from "@/components/executive/SalesCampaignsModule";
+import { ValidadeCritica } from "@/components/executive/ValidadeCritica";
+import { XmlCompareModule } from "@/components/executive/XmlCompareModule";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
-  Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut
+  Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
+  Menu, X, Sparkles
 } from "lucide-react";
+import { nav } from "@/components/executive/Sidebar";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -36,6 +43,8 @@ function Dashboard() {
   const [endDate, setEndDate] = useState("2026-06-30");
   const [dbLojas, setDbLojas] = useState<any[]>([]);
   const [dbEstoque, setDbEstoque] = useState<any[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -111,18 +120,29 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex p-4 gap-4 antialiased selection:bg-primary/20">
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        selectedStore={selectedStore} 
-        setSelectedStore={setSelectedStore} 
-      />
+    <div className={`min-h-screen bg-slate-950 text-slate-100 flex gap-2 md:gap-4 antialiased selection:bg-primary/20 flex-col md:flex-row ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
+      {!isFullscreen && (
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          selectedStore={selectedStore} 
+          setSelectedStore={setSelectedStore} 
+        />
+      )}
       
-      <main className="flex-1 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-2rem)] pr-1">
+      <main className={`flex-1 flex flex-col gap-3 md:gap-4 overflow-y-auto ${isFullscreen ? 'max-h-screen h-screen p-2' : 'max-h-screen md:max-h-[calc(100vh-2rem)] pr-1'}`}>
         {/* Top Header */}
-        <header className="glass-strong rounded-2xl px-6 py-4 flex items-center justify-between">
+        {!isFullscreen && (
+          <header className="glass-strong rounded-2xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setIsMobileMenuOpen(true)}
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-slate-300 hover:text-white shrink-0 size-9"
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
             <h2 className="text-xl font-bold font-serif">ERP Executive AI</h2>
             <div className="h-5 w-px bg-white/10" />
             <div className="text-xs text-slate-400 flex items-center gap-1.5 mr-2">
@@ -193,6 +213,7 @@ function Dashboard() {
             Sair
           </Button>
         </header>
+        )}
 
         {/* KPI Cards passing selectedStore */}
         <KpiCards selectedStore={selectedStore} />
@@ -260,46 +281,7 @@ function Dashboard() {
 
         {/* Estoque Tab */}
         {activeTab === "estoque" && (
-          <div className="glass-strong rounded-2xl p-6 flex flex-col gap-4">
-            <div className="flex items-center gap-2 border-b border-white/10 pb-4">
-              <Package className="w-6 h-6 text-primary animate-pulse" />
-              <div>
-                <h3 className="font-serif font-bold text-lg">Locais de Estoque (Tabela ADM.ESTOQUE_LOCAL)</h3>
-                <p className="text-xs text-slate-400">Locais de armazenagem integrados do DB2</p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 font-semibold text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">ID Local</th>
-                    <th className="py-3 px-4">Descrição do Local</th>
-                    <th className="py-3 px-4 text-center">Separação</th>
-                    <th className="py-3 px-4 text-right">Troca</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dbEstoque.map((est: any) => (
-                    <tr key={est.IDLOCAL} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-3 px-4 font-mono font-medium tabular-nums">{est.IDLOCAL}</td>
-                      <td className="py-3 px-4 font-semibold text-slate-200 text-sm">{est.DESCRLOCAL || "Local Geral"}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400">
-                          ATIVO
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span className="px-2 py-1 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">
-                          SIM
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Estoque />
         )}
 
         {/* Financeiro Tab */}
@@ -314,6 +296,15 @@ function Dashboard() {
         {/* Comercial Tab */}
         {activeTab === "comercial" && (
           <CommercialModule 
+            selectedStore={selectedStore} 
+            globalStartDate={startDate} 
+            globalEndDate={endDate} 
+          />
+        )}
+
+        {/* Campanhas Tab */}
+        {activeTab === "campanhas" && (
+          <SalesCampaignsModule 
             selectedStore={selectedStore} 
             globalStartDate={startDate} 
             globalEndDate={endDate} 
@@ -350,8 +341,36 @@ function Dashboard() {
           <DatabaseSettings />
         )}
 
+        {/* Gerencial Tab */}
+        {activeTab === "gerencial" && (
+          <GerencialModule 
+            selectedStore={selectedStore} 
+            globalStartDate={startDate} 
+            globalEndDate={endDate} 
+          />
+        )}
+
+        {/* Promoções Tab */}
+        {activeTab === "promocoes" && (
+          <PromocoesModule 
+            selectedStore={selectedStore} 
+            globalStartDate={startDate} 
+            globalEndDate={endDate} 
+          />
+        )}
+
+        {/* Validade Crítica Tab */}
+        {activeTab === "validade-critica" && (
+          <ValidadeCritica selectedStore={selectedStore} />
+        )}
+
+        {/* Comparar XML Tab */}
+        {activeTab === "comparar-xml" && (
+          <XmlCompareModule isFullscreen={isFullscreen} setIsFullscreen={setIsFullscreen} />
+        )}
+
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "compras" && activeTab !== "ia-analytics" && activeTab !== "configuracoes" && (
+        {activeTab !== "visao-geral" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "ia-analytics" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>
@@ -363,6 +382,59 @@ function Dashboard() {
       </main>
 
       <Toaster position="bottom-right" theme="dark" closeButton />
+
+      {/* Mobile Navigation Drawer */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex lg:hidden bg-slate-950/80 backdrop-blur-sm transition-all" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <aside 
+            className="w-72 max-w-[85vw] bg-slate-900 border-r border-white/10 p-5 flex flex-col gap-3 h-full overflow-y-auto shadow-2xl animate-in slide-in-from-left duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 grid place-items-center">
+                  <Sparkles className="size-4 text-primary" />
+                </div>
+                <div>
+                  <div className="font-serif text-sm font-bold">IA Executiva</div>
+                  <div className="text-[9px] text-primary tracking-wider">ERP Dashboard</div>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" className="size-8 text-slate-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <nav className="flex-1 flex flex-col gap-1 py-2">
+              {nav.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-all text-left w-full ${
+                    activeTab === item.id
+                      ? "bg-primary/20 text-primary font-semibold border-l-2 border-primary"
+                      : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"
+                  }`}
+                >
+                  <item.icon className={`size-4 ${activeTab === item.id ? "text-primary" : "text-slate-400"}`} />
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-[9px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      )}
     </div>
   );
 }

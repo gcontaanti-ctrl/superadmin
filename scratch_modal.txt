@@ -1,0 +1,88 @@
+      {/* Modal de Boleto */}
+      {selectedBoleto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4" onClick={() => setSelectedBoleto(null)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center bg-slate-800 px-6 py-4 border-b border-slate-700">
+              <h3 className="text-lg font-serif font-bold text-slate-100 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                Detalhes do Boleto #{selectedBoleto.IDTITULO}
+              </h3>
+              <button onClick={() => setSelectedBoleto(null)} className="text-slate-400 hover:text-white transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4 text-sm text-slate-300">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Fornecedor</span>
+                  <span className="font-bold text-slate-200 mt-1">{selectedBoleto.FORNECEDOR || "Desconhecido"}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Filial</span>
+                  <span className="text-slate-200 mt-1">{selectedBoleto.LOJA || `Filial ID ${selectedBoleto.IDEMPRESA}`}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Emissão</span>
+                  <span className="font-mono text-slate-200 mt-1">{fmtDate(selectedBoleto.DTEMISSAO)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Vencimento</span>
+                  <span className="font-mono font-bold text-amber-400 mt-1">{fmtDate(selectedBoleto.DTVENCIMENTO)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Valor do Título</span>
+                  <span className="font-bold text-lg text-rose-400 mt-1">{fmtCurrency(selectedBoleto.VALTITULO)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Status</span>
+                  <div className="mt-1">
+                    {selectedBoleto.FLAGBAIXADA === 'T'
+                      ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">PAGO</span>
+                      : (!selectedBoleto.FLAGBAIXADA && new Date(selectedBoleto.DTVENCIMENTO) < new Date())
+                      ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400">ATRASADO</span>
+                      : <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400">ABERTO</span>}
+                  </div>
+                </div>
+              </div>
+
+              {selectedBoleto.TEMDESCONTO && (
+                <div className="mt-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-emerald-400" />
+                    <span className="text-emerald-300 font-semibold">Desconto por antecipação</span>
+                  </div>
+                  <span className="font-bold text-emerald-400">-{fmtCurrency(selectedBoleto.VALORDESCONTO)}</span>
+                </div>
+              )}
+
+              <div className="mt-2 flex flex-col gap-2">
+                <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Linha Digitável / Código de Barras</span>
+                {selectedBoleto.CODIGOBARRAS ? (
+                  <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-xl p-3">
+                    <span className="font-mono text-[11px] text-slate-300 break-all select-all">{selectedBoleto.CODIGOBARRAS}</span>
+                    <button
+                      onClick={() => copyToClipboard(selectedBoleto.CODIGOBARRAS, `modal-${selectedBoleto.IDTITULO}`)}
+                      className="flex-shrink-0 ml-4 p-2 bg-primary/20 hover:bg-primary/40 text-primary rounded-lg transition"
+                      title="Copiar"
+                    >
+                      {copiedId === `modal-${selectedBoleto.IDTITULO}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-slate-500 italic">Boleto sem código de barras cadastrado no sistema.</span>
+                )}
+              </div>
+            </div>
+            
+            {/* Ações */}
+            <div className="bg-slate-950 p-4 border-t border-slate-700 flex justify-end gap-3">
+              <button onClick={() => setSelectedBoleto(null)} className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-400 hover:text-white transition">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

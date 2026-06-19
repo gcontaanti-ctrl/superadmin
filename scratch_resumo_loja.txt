@@ -1,0 +1,144 @@
+            viewMode === "resumo_loja" ? (
+              <div className="overflow-x-auto">
+                {resumoPagarLoja.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm flex flex-col items-center gap-2">
+                    <FileText className="w-10 h-10 text-slate-500" />
+                    <span>Nenhum dado disponível.</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-4 gap-3 mb-4">
+                      {[
+                        { label: "Total Geral", val: resumoPagarLoja.reduce((s,r)=>s+r.total,0), color: "text-slate-200" },
+                        { label: "Pendente", val: resumoPagarLoja.reduce((s,r)=>s+r.pendente,0), color: "text-amber-300" },
+                        { label: "Atrasado", val: resumoPagarLoja.reduce((s,r)=>s+r.atrasado,0), color: "text-rose-300" },
+                        { label: "Pago", val: resumoPagarLoja.reduce((s,r)=>s+r.pago,0), color: "text-emerald-300" },
+                      ].map(kpi => (
+                        <div key={kpi.label} className="bg-black/30 rounded-xl p-3 border border-white/5 flex flex-col gap-1">
+                          <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{kpi.label}</span>
+                          <span className={`text-sm font-bold tabular-nums ${kpi.color}`}>{fmtCurrency(kpi.val)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 text-slate-400 font-semibold text-[10px] uppercase tracking-wider">
+                          <th className="py-3 px-4">Filial / Loja</th>
+                          <th className="py-3 px-4 text-center">Qtd Títulos</th>
+                          <th className="py-3 px-4 text-right">Total</th>
+                          <th className="py-3 px-4 text-right">Pendente</th>
+                          <th className="py-3 px-4 text-right">Atrasado</th>
+                          <th className="py-3 px-4 text-right">Pago</th>
+                          <th className="py-3 px-4"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resumoPagarLoja.map((r) => {
+                          return (
+                          <React.Fragment key={r.nome}>
+                          <tr
+                            className={`border-b border-white/5 hover:bg-primary/10 transition-colors cursor-pointer group ${
+                              lojaSelecionada === r.nome ? "bg-primary/10" : ""
+                            }`}
+                            onClick={() => setLojaSelecionada(lojaSelecionada === r.nome ? null : r.nome)}
+                          >
+                            <td className="py-3 px-4 font-bold text-primary max-w-[260px] truncate">
+                              <span className={`inline-block transition-transform mr-1 text-[9px] ${lojaSelecionada === r.nome ? "rotate-90" : ""}`}>▶</span>
+                              {r.nome}
+                            </td>
+                            <td className="py-3 px-4 text-center text-slate-400 font-mono">{r.qtd}</td>
+                            <td className="py-3 px-4 text-right font-bold text-slate-200 tabular-nums">{fmtCurrency(r.total)}</td>
+                            <td className="py-3 px-4 text-right tabular-nums">
+                              {r.pendente > 0 ? <span className="text-amber-300 font-semibold">{fmtCurrency(r.pendente)}</span> : <span className="text-slate-600">—</span>}
+                            </td>
+                            <td className="py-3 px-4 text-right tabular-nums">
+                              {r.atrasado > 0 ? <span className="text-rose-400 font-bold">{fmtCurrency(r.atrasado)}</span> : <span className="text-slate-600">—</span>}
+                            </td>
+                            <td className="py-3 px-4 text-right tabular-nums">
+                              {r.pago > 0 ? <span className="text-emerald-400 font-semibold">{fmtCurrency(r.pago)}</span> : <span className="text-slate-600">—</span>}
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 text-[10px] whitespace-nowrap">
+                              {lojaSelecionada === r.nome ? "▲ fechar" : "ver títulos →"}
+                            </td>
+                          </tr>
+                          {lojaSelecionada === r.nome && (() => {
+                            const titulos = contasPagarFiltradas.filter(cp => (cp.LOJA || "Desconhecido") === r.nome);
+                            return (
+                              <tr key={`det-${r.nome}`}>
+                                <td colSpan={7} className="p-0 bg-transparent">
+                                  <div className="mx-3 mb-3 bg-black/50 border border-primary/25 rounded-xl overflow-hidden">
+                                    <div className="flex items-center justify-between px-4 py-2 border-b border-primary/20 bg-primary/5">
+                                      <span className="text-xs font-bold text-primary flex items-center gap-2">
+                                        <FileText className="w-3.5 h-3.5" />
+                                        {r.nome} — {titulos.length} título(s)
+                                      </span>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setLojaSelecionada(null); }}
+                                        className="p-1 text-slate-400 hover:text-white hover:bg-white/10 rounded transition"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                    <table className="w-full text-left text-[11px] border-collapse">
+                                      <thead>
+                                        <tr className="border-b border-white/5 text-slate-500 font-semibold text-[10px] uppercase tracking-wider">
+                                          <th className="py-2 px-4">Cód.</th>
+                                          <th className="py-2 px-4">Fornecedor</th>
+                                          <th className="py-2 px-4">Emissão</th>
+                                          <th className="py-2 px-4">Vencimento</th>
+                                          <th className="py-2 px-4 text-right">Valor</th>
+                                          <th className="py-2 px-4 text-center">Status</th>
+                                          <th className="py-2 px-4">Cód. Barras</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {titulos.map(cp => {
+                                          const isVencido = !cp.FLAGBAIXADA && new Date(cp.DTVENCIMENTO) < new Date();
+                                          return (
+                                            <tr key={cp.IDTITULO} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setSelectedBoleto(cp)}>
+                                              <td className="py-2 px-4 font-mono text-slate-500">#{cp.IDTITULO}</td>
+                                              <td className="py-2 px-4 text-slate-400 max-w-[110px] truncate">{cp.FORNECEDOR || "Desconhecido"}</td>
+                                              <td className="py-2 px-4 text-slate-400 font-mono">{fmtDate(cp.DTEMISSAO)}</td>
+                                              <td className="py-2 px-4 font-mono font-semibold text-slate-300">{fmtDate(cp.DTVENCIMENTO)}</td>
+                                              <td className="py-2 px-4 text-right">
+                                                <div className="flex flex-col items-end gap-0.5">
+                                                  <span className="font-bold text-rose-300 tabular-nums">{fmtCurrency(cp.VALTITULO)}</span>
+                                                  {cp.TEMDESCONTO && <span className="text-[10px] text-emerald-400">desc. {fmtCurrency(cp.VALORDESCONTO)}</span>}
+                                                </div>
+                                              </td>
+                                              <td className="py-2 px-4 text-center">
+                                                {cp.FLAGBAIXADA === 'T'
+                                                  ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400">PAGO</span>
+                                                  : isVencido
+                                                  ? <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-400">ATRASADO</span>
+                                                  : <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">ABERTO</span>}
+                                              </td>
+                                              <td className="py-2 px-4">
+                                                {cp.CODIGOBARRAS ? (
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="font-mono text-[10px] text-slate-500 max-w-[110px] truncate">{cp.CODIGOBARRAS}</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); copyToClipboard(cp.CODIGOBARRAS, `cp-${cp.IDTITULO}`); }} className="p-0.5 hover:bg-white/10 rounded transition" title="Copiar">
+                                                      {copiedId === `cp-${cp.IDTITULO}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-400" />}
+                                                    </button>
+                                                  </div>
+                                                ) : <span className="text-slate-600 text-[10px] italic">Sem código</span>}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })()}
+                          </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+            ) : viewMode === "resumo" ? (

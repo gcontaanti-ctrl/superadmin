@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, ShoppingCart, Package, DollarSign, Calendar, User, FileText, Barcode, Check, ListFilter, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
-export function ProductTracking({ selectedStore }: { selectedStore: string }) {
+export function ProductTracking({ selectedStore, initialTrackingId }: { selectedStore: string, initialTrackingId?: string | null }) {
   const [activeTab, setActiveTab] = useState<"individual" | "geral">("individual");
 
   // --- Estados do Rastreamento Individual ---
@@ -12,6 +12,16 @@ export function ProductTracking({ selectedStore }: { selectedStore: string }) {
   const [compradorId, setCompradorId] = useState("");
   const [compradores, setCompradores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialTrackingId) {
+      setQuery(initialTrackingId);
+      setTimeout(() => {
+        const btn = document.getElementById('btn-search-tracking');
+        if (btn) btn.click();
+      }, 300);
+    }
+  }, [initialTrackingId]);
   const [searchResults, setSearchResults] = useState<any>(null);
   const [trackingData, setTrackingData] = useState<any>(null);
 
@@ -250,6 +260,7 @@ export function ProductTracking({ selectedStore }: { selectedStore: string }) {
               {/* Botão de Pesquisa */}
               <div className="flex items-end">
                 <button 
+                  id="btn-search-tracking"
                   onClick={handleSearch}
                   disabled={loading}
                   className="w-full bg-primary text-primary-foreground font-semibold py-2 rounded-xl transition hover:opacity-90 shadow-lg shadow-primary/20 disabled:opacity-50"
@@ -345,7 +356,7 @@ export function ProductTracking({ selectedStore }: { selectedStore: string }) {
                 </div>
                 <div className="glass-strong rounded-xl p-5 flex-1 hover:bg-white/[0.03] transition">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold font-serif text-blue-400">1. Pedido de Compra</h3>
+                    <h3 className="text-lg font-bold font-serif text-blue-400">2. Pedido de Compra</h3>
                     <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-1 rounded font-mono">
                       {trackingData.compra?.data ? fmtDate(trackingData.compra.data) : "Sem Data"}
                     </span>
@@ -382,7 +393,7 @@ export function ProductTracking({ selectedStore }: { selectedStore: string }) {
                 </div>
                 <div className="glass-strong rounded-xl p-5 flex-1 hover:bg-white/[0.03] transition">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold font-serif text-amber-400">2. Entradas por Loja (Nota Fiscal)</h3>
+                    <h3 className="text-lg font-bold font-serif text-amber-400">3. Entradas por Loja (Nota Fiscal)</h3>
                     <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded">
                       {trackingData.entradasPorLoja?.length || 0} Registradas
                     </span>
@@ -541,7 +552,7 @@ export function ProductTracking({ selectedStore }: { selectedStore: string }) {
                 </div>
                 <div className="glass-strong rounded-xl p-5 flex-1 hover:bg-white/[0.03] transition">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-lg font-bold font-serif text-emerald-400">3. Vendas Finais & Margem de Lucro</h3>
+                    <h3 className="text-lg font-bold font-serif text-emerald-400">1. Vendas Finais & Margem de Lucro</h3>
                     <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded">
                       Período Filtrado
                     </span>

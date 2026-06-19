@@ -1,11 +1,16 @@
 
-import { LayoutDashboard, TrendingUp, Package, ShoppingCart, Users, Wallet, Brain, Building2, Settings, Sparkles, Search } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Package, ShoppingCart, Users, Wallet, Brain, Building2, Settings, Sparkles, Search, BarChart3, Tag, AlertTriangle, FileCheck, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export const nav = [
   { icon: LayoutDashboard, label: "Visão Geral", id: "visao-geral" },
+  { icon: BarChart3, label: "Gerencial", id: "gerencial" },
+  { icon: Tag, label: "Promoções", id: "promocoes" },
+  { icon: AlertTriangle, label: "Validade Crítica", id: "validade-critica" },
+  { icon: FileCheck, label: "Notas Fiscais", id: "comparar-xml", badge: "XML" },
   { icon: TrendingUp, label: "Comercial", id: "comercial" },
+  { icon: Trophy, label: "Campanhas", id: "campanhas", badge: "SAAS" },
   { icon: Wallet, label: "Financeiro", id: "financeiro" },
   { icon: Package, label: "Estoque", id: "estoque" },
   { icon: ShoppingCart, label: "Compras", id: "compras" },

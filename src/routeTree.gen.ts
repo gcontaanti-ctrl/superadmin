@@ -9,38 +9,72 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MasterRouteImport } from './routes/master'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MasterIndexRouteImport } from './routes/master/index'
+import { Route as MasterUpdatesRouteImport } from './routes/master/updates'
 
+const MasterRoute = MasterRouteImport.update({
+  id: '/master',
+  path: '/master',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MasterIndexRoute = MasterIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterUpdatesRoute = MasterUpdatesRouteImport.update({
+  id: '/updates',
+  path: '/updates',
+  getParentRoute: () => MasterRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/master': typeof MasterRouteWithChildren
+  '/master/updates': typeof MasterUpdatesRoute
+  '/master/': typeof MasterIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/master/updates': typeof MasterUpdatesRoute
+  '/master': typeof MasterIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/master': typeof MasterRouteWithChildren
+  '/master/updates': typeof MasterUpdatesRoute
+  '/master/': typeof MasterIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/master' | '/master/updates' | '/master/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/master/updates' | '/master'
+  id: '__root__' | '/' | '/master' | '/master/updates' | '/master/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MasterRoute: typeof MasterRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/master': {
+      id: '/master'
+      path: '/master'
+      fullPath: '/master'
+      preLoaderRoute: typeof MasterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +82,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/master/': {
+      id: '/master/'
+      path: '/'
+      fullPath: '/master/'
+      preLoaderRoute: typeof MasterIndexRouteImport
+      parentRoute: typeof MasterRoute
+    }
+    '/master/updates': {
+      id: '/master/updates'
+      path: '/updates'
+      fullPath: '/master/updates'
+      preLoaderRoute: typeof MasterUpdatesRouteImport
+      parentRoute: typeof MasterRoute
+    }
   }
 }
 
+interface MasterRouteChildren {
+  MasterUpdatesRoute: typeof MasterUpdatesRoute
+  MasterIndexRoute: typeof MasterIndexRoute
+}
+
+const MasterRouteChildren: MasterRouteChildren = {
+  MasterUpdatesRoute: MasterUpdatesRoute,
+  MasterIndexRoute: MasterIndexRoute,
+}
+
+const MasterRouteWithChildren =
+  MasterRoute._addFileChildren(MasterRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MasterRoute: MasterRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

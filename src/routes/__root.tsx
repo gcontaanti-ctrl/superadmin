@@ -4,12 +4,10 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
 
-import appCss from "../styles.css?url";
 import { installApiFetchFallback } from "../lib/api-fetch-fallback";
+import "../styles.css";
 
 installApiFetchFallback();
 
@@ -71,49 +69,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Painel Executive AI" },
-      { name: "description", content: "Executive AI Nexus é um ERP SaaS multiempresa moderno com inteligência artificial integrada." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Painel Executive AI" },
-      { property: "og:description", content: "Executive AI Nexus é um ERP SaaS multiempresa moderno com inteligência artificial integrada." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Painel Executive AI" },
-      { name: "twitter:description", content: "Executive AI Nexus é um ERP SaaS multiempresa moderno com inteligência artificial integrada." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f5cb1184-22ee-4ac5-828a-b68ae694d547/id-preview-69a11c3b--8a52599c-3508-4740-962e-e94aab0cda14.lovable.app-1779118822425.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f5cb1184-22ee-4ac5-828a-b68ae694d547/id-preview-69a11c3b--8a52599c-3508-4740-962e-e94aab0cda14.lovable.app-1779118822425.png" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="pt-BR">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  );
-}
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -124,4 +83,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-

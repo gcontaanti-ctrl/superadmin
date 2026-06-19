@@ -22,19 +22,20 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function StoreRanking({ mode }: { mode: "demo" | "real" }) {
-  const now = new Date();
-  const [mes, setMes] = useState(now.getMonth() + 1);
-  const [ano, setAno] = useState(now.getFullYear());
+export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "real", startDate?: string, endDate?: string }) {
   const [lojas, setLojas] = useState<LojaRanking[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMargin, setHasMargin] = useState(false);
 
-  const fetchData = async (m: number, a: number) => {
+  const fetchData = async () => {
     if (mode !== "real") return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/ranking-lojas?mes=${m}&ano=${a}`);
+      let url = `/api/ranking-lojas?`;
+      if (startDate) url += `startDate=${startDate}&`;
+      if (endDate) url += `endDate=${endDate}`;
+      
+      const res = await fetch(url);
       const data = await res.json();
       if (!data.error && Array.isArray(data)) {
         setLojas(data);
@@ -48,20 +49,8 @@ export function StoreRanking({ mode }: { mode: "demo" | "real" }) {
   };
 
   useEffect(() => {
-    fetchData(mes, ano);
-  }, [mes, ano, mode]);
-
-  const prevMes = () => {
-    if (mes === 1) { setMes(12); setAno(a => a - 1); }
-    else setMes(m => m - 1);
-  };
-  const nextMes = () => {
-    const nowM = now.getMonth() + 1;
-    const nowA = now.getFullYear();
-    if (ano > nowA || (ano === nowA && mes >= nowM)) return;
-    if (mes === 12) { setMes(1); setAno(a => a + 1); }
-    else setMes(m => m + 1);
-  };
+    fetchData();
+  }, [mode, startDate, endDate]);
 
   const totalFat = lojas.reduce((acc, l) => acc + l.faturamento, 0);
   const totalMargem = hasMargin
@@ -85,27 +74,12 @@ export function StoreRanking({ mode }: { mode: "demo" | "real" }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] tracking-executive text-primary">Faturamento Mensal por Filial</div>
+          <div className="text-[10px] tracking-executive text-primary">Faturamento por Filial</div>
           <h3 className="font-serif text-xl mt-0.5 text-slate-100">Ranking de Lojas</h3>
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={prevMes}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-100 transition"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-bold text-primary font-mono px-1 min-w-[56px] text-center">
-            {MESES[mes - 1]}/{ano}
-          </span>
-          <button
-            onClick={nextMes}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-100 transition"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => fetchData(mes, ano)}
+            onClick={fetchData}
             disabled={loading}
             className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-100 transition ml-1"
           >
@@ -145,7 +119,7 @@ export function StoreRanking({ mode }: { mode: "demo" | "real" }) {
         </div>
       ) : lojas.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-500 text-sm italic">
-          Sem dados para {MESES[mes - 1]}/{ano}
+          Sem dados para o período
         </div>
       ) : (
         <ul className="flex flex-col gap-2 overflow-y-auto max-h-[420px] pr-0.5">

@@ -5,30 +5,43 @@ import { KpiCards } from "@/components/executive/KpiCards";
 import { RevenueChart } from "@/components/executive/RevenueChart";
 import { StoreRanking } from "@/components/executive/StoreRanking";
 import { CategoryBreakdown } from "@/components/executive/CategoryBreakdown";
-import { AiInsights } from "@/components/executive/AiInsights";
-import { AiChat } from "@/components/executive/AiChat";
 import { ProductTracking } from "@/components/executive/ProductTracking";
 import { FinancialModule } from "@/components/executive/FinancialModule";
 import { CommercialModule } from "@/components/executive/CommercialModule";
 import { PurchasesModule } from "@/components/executive/PurchasesModule";
 import { DatabaseSettings } from "@/components/executive/DatabaseSettings";
 import { Estoque } from "@/components/executive/Estoque";
+import { AccountingModule } from "@/components/executive/AccountingModule";
+import { AuditorFiscalModule } from "@/components/executive/AuditorFiscalModule";
 import { GerencialModule } from "@/components/executive/GerencialModule";
 import { PromocoesModule } from "@/components/executive/PromocoesModule";
 import { SalesCampaignsModule } from "@/components/executive/SalesCampaignsModule";
 import { ValidadeCritica } from "@/components/executive/ValidadeCritica";
 import { XmlCompareModule } from "@/components/executive/XmlCompareModule";
+import { CybertechAdminModule } from "@/components/executive/CybertechAdminModule";
+import { RupturasModule } from "@/components/executive/RupturasModule";
+import { EntradasModule } from "@/components/executive/EntradasModule";
+import { AiReportModule } from "@/components/executive/AiReportModule";
+import { SmartCatalogAuditor } from "@/components/executive/SmartCatalogAuditor";
+import { MetasGerenciaisModule } from "@/components/executive/MetasGerenciaisModule";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
   Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
-  Menu, X, Sparkles
+  Menu, X, Sparkles, Settings, Eye
 } from "lucide-react";
 import { nav } from "@/components/executive/Sidebar";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
+
+const getTodayStr = () => new Date().toISOString().split('T')[0];
+const get30DaysAgoStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().split('T')[0];
+};
 
 function Dashboard() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -39,12 +52,13 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("visao-geral");
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
-  const [startDate, setStartDate] = useState("2026-01-01");
-  const [endDate, setEndDate] = useState("2026-06-30");
+  const [startDate, setStartDate] = useState<string>(get30DaysAgoStr());
+  const [endDate, setEndDate] = useState<string>(getTodayStr());
   const [dbLojas, setDbLojas] = useState<any[]>([]);
   const [dbEstoque, setDbEstoque] = useState<any[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -58,17 +72,30 @@ function Dashboard() {
   useEffect(() => {
     if (!authenticated) return;
 
-    // Buscar lojas
-    fetch('/api/empresas')
-      .then(res => res.json())
-      .then(data => { if (!data.error) setDbLojas(data); })
-      .catch(console.error);
+    const performSync = () => {
+      Promise.all([
+        fetch('/api/empresas').then(res => res.json()).then(data => { if (!data.error) setDbLojas(data); }),
+        fetch('/api/estoque').then(res => res.json()).then(data => { if (!data.error) setDbEstoque(data); })
+      ]).then(() => {
+        const date = new Date();
+        const formatted = date.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        setLastSyncTime(formatted);
+      }).catch(err => {
+        console.error("Falha ao sincronizar com DB2:", err);
+        setLastSyncTime("Falha na Conexão");
+      });
+    };
 
-    // Buscar estoque
-    fetch('/api/estoque')
-      .then(res => res.json())
-      .then(data => { if (!data.error) setDbEstoque(data); })
-      .catch(console.error);
+    performSync(); // Run immediately
+    const interval = setInterval(performSync, 5 * 60 * 1000); // Sync every 5 minutes
+
+    return () => clearInterval(interval);
   }, [authenticated]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
@@ -76,6 +103,17 @@ function Dashboard() {
     setAuthLoading(true);
 
     try {
+      if (username.toLowerCase() === "cristiano") {
+        if (password !== "91126395") {
+          throw new Error("Senha de administrador incorreta.");
+        }
+        // Super Admin bypass
+        setPassword("");
+        setAuthenticated(true);
+        toast.success("Acesso liberado: Super Admin Cristiano");
+        return;
+      }
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -120,39 +158,69 @@ function Dashboard() {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 flex gap-2 md:gap-4 antialiased selection:bg-primary/20 flex-col md:flex-row ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
-      {!isFullscreen && (
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          selectedStore={selectedStore} 
-          setSelectedStore={setSelectedStore} 
-        />
+    <div 
+      className="relative min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat bg-fixed"
+      style={{ backgroundImage: "url('/bg-login.png')" }}
+    >
+      <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-[40px] pointer-events-none z-0"></div>
+      
+      <div className={`relative z-10 flex flex-col md:flex-row gap-2 md:gap-4 min-h-screen ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
+      {/* Static Sidebar removed to use Drawer format exclusively */}
+
+      {/* Universal Drawer Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          {/* Drawer */}
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-slate-950 border-r border-white/10 shadow-2xl p-2 flex flex-col transform transition-transform duration-300 ease-in-out z-50 overflow-hidden">
+            <div className="flex justify-end mb-2 px-2 pt-2">
+              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white rounded-full">
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+            <Sidebar 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              selectedStore={selectedStore} 
+              setSelectedStore={setSelectedStore} 
+              className="flex-1 w-full p-2 bg-transparent border-none rounded-none shadow-none mt-0 min-h-0"
+              onItemClick={() => setIsMobileMenuOpen(false)}
+            />
+          </div>
+        </div>
       )}
       
-      <main className={`flex-1 flex flex-col gap-3 md:gap-4 overflow-y-auto ${isFullscreen ? 'max-h-screen h-screen p-2' : 'max-h-screen md:max-h-[calc(100vh-2rem)] pr-1'}`}>
+      <main className={`flex-1 flex flex-col gap-3 md:gap-4 w-full overflow-hidden ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pr-1 lg:pr-4'}`}>
         {/* Top Header */}
         {!isFullscreen && (
-          <header className="glass-strong rounded-2xl px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <header className="glass-strong rounded-2xl px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
             <Button
               onClick={() => setIsMobileMenuOpen(true)}
               variant="ghost"
               size="icon"
-              className="lg:hidden text-slate-300 hover:text-white shrink-0 size-9"
+              className="text-slate-300 hover:text-white shrink-0 size-9"
+              title="Abrir Menu Lateral"
             >
               <Menu className="w-5 h-5" />
             </Button>
-            <h2 className="text-xl font-bold font-serif">ERP Executive AI</h2>
-            <div className="h-5 w-px bg-white/10" />
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 mr-2">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              Sincronizado DB2
+            <h2 className="hidden sm:flex items-center gap-2 text-xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 shrink-0">
+              HORUS <span className="font-sans font-light text-cyan-200 tracking-widest text-sm mt-1">ANALYTICS</span>
+            </h2>
+            <div className="hidden sm:block h-5 w-px bg-white/10 shrink-0" />
+            <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 mr-1 md:mr-2 shrink-0">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="hidden md:inline">Sincronizado DB2 {lastSyncTime ? `(${lastSyncTime})` : ""}</span>
+              <span className="md:hidden">DB2 OK</span>
             </div>
 
             {/* Global Store Selector in Top Header */}
-            <div className="hidden sm:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner">
-              <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+            <div className="flex items-center gap-2 bg-black/45 px-2 md:px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0 max-w-[120px] md:max-w-none">
+              <Building2 className="w-3.5 h-3.5 text-primary shrink-0 hidden md:block" />
               <select
                 value={selectedStore}
                 onChange={(e) => {
@@ -163,22 +231,19 @@ function Dashboard() {
                     : String(foundLoja?.DESCREMPRESA || "").trim() || `Filial ${e.target.value}`;
                   toast.success(`Filtrando painel por: ${lojaNome}`);
                 }}
-                className="bg-transparent text-xs font-semibold text-slate-200 focus:outline-none cursor-pointer pr-1"
+                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[10px] md:text-[11px] font-semibold truncate w-full"
               >
-                <option value="todas" className="text-slate-900 bg-slate-900 font-semibold">💎 Todas as Lojas (Consolidado)</option>
-                {dbLojas.map((loja: any) => {
-                  const label = String(loja.DESCREMPRESA || "").trim() || `Filial ${loja.IDEMPRESA}`;
-                  return (
-                    <option key={loja.IDEMPRESA} value={loja.IDEMPRESA} className="text-slate-900 bg-slate-900">
-                      🏢 {label}
-                    </option>
-                  );
-                })}
+                <option value="todas" className="bg-slate-900 text-slate-200">🏢 Todas as Lojas</option>
+                {dbLojas.map((loja: any) => (
+                  <option key={loja.IDEMPRESA} value={loja.IDEMPRESA} className="bg-slate-900 text-slate-200">
+                    {loja.IDEMPRESA} - {String(loja.DESCREMPRESA || "").trim()}
+                  </option>
+                ))}
               </select>
             </div>
 
             {/* Global Date Range Selector */}
-            <div className="hidden md:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner">
+            <div className="hidden lg:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0">
               <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
               <div className="flex items-center gap-1.5 text-xs text-slate-300">
                 <input 
@@ -215,68 +280,100 @@ function Dashboard() {
         </header>
         )}
 
-        {/* KPI Cards passing selectedStore */}
-        <KpiCards selectedStore={selectedStore} />
+        {/* Mobile Date Range Selector */}
+        {!isFullscreen && (
+          <div className="flex lg:hidden items-center justify-between gap-2 bg-black/45 px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full mb-1">
+            <div className="flex items-center gap-2 text-primary">
+              <Calendar className="w-4 h-4 shrink-0" />
+              <span className="text-xs font-semibold">Período:</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-slate-300">
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  toast.success(`Data inicial: ${e.target.value}`);
+                }}
+                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[100px]" 
+              />
+              <span className="text-slate-500">até</span>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  toast.success(`Data final: ${e.target.value}`);
+                }}
+                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[100px]" 
+              />
+            </div>
+          </div>
+        )}
 
         {/* Tab Contents */}
         {activeTab === "visao-geral" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 flex flex-col gap-4">
-              <RevenueChart mode={viewMode} selectedStore={selectedStore} />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <StoreRanking mode={viewMode} />
-                <CategoryBreakdown mode={viewMode} />
-              </div>
+          <div className="flex flex-col gap-4">
+            <KpiCards selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4">
+                <RevenueChart mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <StoreRanking mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+                  <CategoryBreakdown mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+                </div>
 
-              <div className="glass-strong rounded-2xl p-5 flex flex-col gap-4">
-                <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  <div>
-                    <h4 className="font-serif font-semibold text-sm">Empresas Cadastradas (View DBA.VW_GEA_EMPRESA)</h4>
-                    <p className="text-[10px] text-slate-400">Filiais carregadas dinamicamente com nomes comerciais corretos</p>
+                <div className="glass-strong rounded-2xl p-5 flex flex-col gap-4">
+                  <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                    <Building2 className="w-5 h-5 text-primary" />
+                    <div>
+                      <h4 className="font-serif font-semibold text-sm">Empresas Cadastradas (View DBA.VW_GEA_EMPRESA)</h4>
+                      <p className="text-[10px] text-slate-400">Filiais carregadas dinamicamente com nomes comerciais corretos</p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/5 text-slate-400 font-semibold">
+                          <th className="py-2 px-3">ID</th>
+                          <th className="py-2 px-3">Nome Comercial / Razão</th>
+                          <th className="py-2 px-3">CNPJ</th>
+                          <th className="py-2 px-3 text-center">Cidade</th>
+                          <th className="py-2 px-3 text-right">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dbLojas.map((loja: any) => (
+                          <tr 
+                            key={loja.IDEMPRESA} 
+                            onClick={() => { setSelectedStore(String(loja.IDEMPRESA)); toast.success(`Filtrando por: ${loja.DESCREMPRESA}`); }}
+                            className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${String(selectedStore) === String(loja.IDEMPRESA) ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
+                          >
+                            <td className="py-2.5 px-3 font-medium tabular-nums">{loja.IDEMPRESA}</td>
+                            <td className="py-2.5 px-3 font-semibold text-slate-200">{loja.DESCREMPRESA}</td>
+                            <td className="py-2.5 px-3 text-slate-300 font-mono">{loja.CNPJ || "Sem CNPJ"}</td>
+                            <td className="py-2.5 px-3 text-center text-slate-300 font-bold">{loja.UF || "MACEIO"}</td>
+                            <td className="py-2.5 px-3 text-right">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">
+                                Ativa
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-white/5 text-slate-400 font-semibold">
-                        <th className="py-2 px-3">ID</th>
-                        <th className="py-2 px-3">Nome Comercial / Razão</th>
-                        <th className="py-2 px-3">CNPJ</th>
-                        <th className="py-2 px-3 text-center">Cidade</th>
-                        <th className="py-2 px-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dbLojas.map((loja: any) => (
-                        <tr 
-                          key={loja.IDEMPRESA} 
-                          onClick={() => { setSelectedStore(String(loja.IDEMPRESA)); toast.success(`Filtrando por: ${loja.DESCREMPRESA}`); }}
-                          className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${String(selectedStore) === String(loja.IDEMPRESA) ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
-                        >
-                          <td className="py-2.5 px-3 font-medium tabular-nums">{loja.IDEMPRESA}</td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-200">{loja.DESCREMPRESA}</td>
-                          <td className="py-2.5 px-3 text-slate-300 font-mono">{loja.CNPJ || "Sem CNPJ"}</td>
-                          <td className="py-2.5 px-3 text-center text-slate-300 font-bold">{loja.UF || "MACEIO"}</td>
-                          <td className="py-2.5 px-3 text-right">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">
-                              Ativa
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              </div>
+
               </div>
             </div>
+        )}
 
-            <div className="flex flex-col gap-4">
-              <AiChat />
-              <AiInsights />
-            </div>
-          </div>
+        {/* Metas Gerenciais de Vendas Tab */}
+        {activeTab === "metas-vendas" && (
+          <MetasGerenciaisModule selectedStore={selectedStore} />
         )}
 
         {/* Estoque Tab */}
@@ -284,9 +381,23 @@ function Dashboard() {
           <Estoque />
         )}
 
+        {/* Prevenção de Rupturas Tab */}
+        {activeTab === "rupturas" && (
+          <RupturasModule />
+        )}
+
         {/* Financeiro Tab */}
         {activeTab === "financeiro" && (
           <FinancialModule 
+            selectedStore={selectedStore} 
+            globalStartDate={startDate} 
+            globalEndDate={endDate} 
+          />
+        )}
+
+        {/* Contabilidade Tab */}
+        {activeTab === "contabilidade" && (
+          <AccountingModule 
             selectedStore={selectedStore} 
             globalStartDate={startDate} 
             globalEndDate={endDate} 
@@ -325,20 +436,22 @@ function Dashboard() {
           <ProductTracking selectedStore={selectedStore} />
         )}
 
-        {/* IA Analytics Tab */}
-        {activeTab === "ia-analytics" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
-            <div className="lg:col-span-2 flex flex-col gap-6">
-              <AiInsights />
-            </div>
-            <div className="flex flex-col gap-6">
-              <AiChat />
-            </div>
-          </div>
-        )}
+
 
         {activeTab === "configuracoes" && (
-          <DatabaseSettings />
+          <div className="flex-1 overflow-auto h-full">
+            {username.toLowerCase() === "cristiano" ? (
+              <DatabaseSettings />
+            ) : (
+              <div className="glass-strong rounded-2xl p-6 h-full flex flex-col items-center justify-center text-center gap-4 border border-white/5">
+                <Shield className="w-12 h-12 text-rose-500/40" />
+                <div>
+                  <h3 className="text-lg font-semibold text-rose-400">Acesso Restrito</h3>
+                  <p className="text-sm mt-2 max-w-md text-slate-400">Apenas o administrador do sistema (<span className="text-white font-bold">cristiano</span>) tem autorização para alterar as configurações do banco de dados e credenciais de acesso ao datacenter do cliente.</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Gerencial Tab */}
@@ -369,8 +482,36 @@ function Dashboard() {
           <XmlCompareModule isFullscreen={isFullscreen} setIsFullscreen={setIsFullscreen} />
         )}
 
+        {activeTab === "cybertech-admin" && (
+          <CybertechAdminModule />
+        )}
+
+        {/* Auditor Fiscal Tab */}
+        {activeTab === "auditor-fiscal" && (
+          <AuditorFiscalModule
+            selectedStore={selectedStore}
+            globalStartDate={startDate}
+            globalEndDate={endDate}
+            dbLojas={dbLojas}
+          />
+        )}
+        
+        {activeTab === "entradas" && (
+          <EntradasModule storeId={selectedStore === 'todas' ? undefined : selectedStore} />
+        )}
+
+        {/* Gerador de Relatórios IA Tab */}
+        {activeTab === "ai-report" && (
+          <AiReportModule selectedStore={selectedStore} />
+        )}
+
+        {/* SmartCatalog AI Tab */}
+        {activeTab === "smartcatalog" && (
+          <SmartCatalogAuditor />
+        )}
+
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "ia-analytics" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && (
+        {activeTab !== "visao-geral" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>
@@ -382,60 +523,8 @@ function Dashboard() {
       </main>
 
       <Toaster position="bottom-right" theme="dark" closeButton />
-
-      {/* Mobile Navigation Drawer */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex lg:hidden bg-slate-950/80 backdrop-blur-sm transition-all" 
-          onClick={() => setIsMobileMenuOpen(false)}
-        >
-          <aside 
-            className="w-72 max-w-[85vw] bg-slate-900 border-r border-white/10 p-5 flex flex-col gap-3 h-full overflow-y-auto shadow-2xl animate-in slide-in-from-left duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 grid place-items-center">
-                  <Sparkles className="size-4 text-primary" />
-                </div>
-                <div>
-                  <div className="font-serif text-sm font-bold">IA Executiva</div>
-                  <div className="text-[9px] text-primary tracking-wider">ERP Dashboard</div>
-                </div>
-              </div>
-              <Button variant="ghost" size="icon" className="size-8 text-slate-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <nav className="flex-1 flex flex-col gap-1 py-2">
-              {nav.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm transition-all text-left w-full ${
-                    activeTab === item.id
-                      ? "bg-primary/20 text-primary font-semibold border-l-2 border-primary"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"
-                  }`}
-                >
-                  <item.icon className={`size-4 ${activeTab === item.id ? "text-primary" : "text-slate-400"}`} />
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="ml-auto text-[9px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase">
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </aside>
-        </div>
-      )}
     </div>
+  </div>
   );
 }
 
@@ -450,15 +539,22 @@ type LoginScreenProps = {
 
 function LoginScreen({ username, setUsername, password, setPassword, loading, onSubmit }: LoginScreenProps) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-4 antialiased">
-      <form onSubmit={onSubmit} className="glass-strong w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-lg bg-primary/10 border border-primary/20 grid place-items-center">
-            <LockKeyhole className="w-5 h-5 text-primary" />
+    <div 
+      className="relative min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-4 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat transition-all duration-1000"
+      style={{ backgroundImage: "url('/bg-login.png')" }}
+    >
+      {/* Overlay escuro para garantir que o formulário fique legível sobre a imagem */}
+      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"></div>
+
+      <form onSubmit={onSubmit} className="relative z-10 w-full max-w-sm rounded-[2rem] p-8 flex flex-col gap-6 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-slate-950/40 backdrop-blur-xl group overflow-hidden transition-all duration-500 hover:shadow-[0_0_100px_rgba(6,182,212,0.2)]">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+        <div className="flex flex-col items-center gap-3 text-center mb-2">
+          <div className="size-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 grid place-items-center shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-transform duration-500 group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]">
+            <Eye className="w-8 h-8 text-cyan-400" />
           </div>
           <div>
-            <h1 className="font-serif text-xl font-bold">ERP Executive AI</h1>
-            <p className="text-xs text-slate-400">Acesso administrativo</p>
+            <h1 className="font-serif text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">HORUS</h1>
+            <p className="text-[12px] uppercase tracking-[0.3em] text-cyan-200 mt-0.5">Analytics</p>
           </div>
         </div>
 

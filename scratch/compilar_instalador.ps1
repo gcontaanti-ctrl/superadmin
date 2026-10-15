@@ -8,12 +8,18 @@ if (-not (Test-Path $zip)) {
     exit 1
 }
 
+$clientExe = "$env:USERPROFILE\Desktop\Instalador_Cliente_Rede.exe"
+if (-not (Test-Path $clientExe)) {
+    & "$PSScriptRoot\compilar_cliente.ps1"
+}
+
 Write-Output "Compilando Instalador Executavel Unico (Setup.exe)..."
 $args = @(
     "/target:winexe",
     "/optimize+",
     "/out:$out",
     "/resource:$zip,PackageZip",
+    "/resource:$clientExe,ClientExe",
     "/r:System.dll",
     "/r:System.Windows.Forms.dll",
     "/r:System.Drawing.dll",

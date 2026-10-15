@@ -359,6 +359,29 @@ namespace SmartCybertechInstaller
                     File.WriteAllText(shortcutSim, "[InternetShortcut]\r\nURL=file:///" + simuladorHtml.Replace('\\', '/') + "\r\nIconIndex=0\r\n");
                 }
 
+                // 4. INSTALADOR PARA OUTRAS MÁQUINAS DA REDE (Executável Cliente)
+                Assembly asm = Assembly.GetExecutingAssembly();
+                using (Stream clientStream = asm.GetManifestResourceStream("ClientExe"))
+                {
+                    if (clientStream != null)
+                    {
+                        byte[] clientBytes = new byte[clientStream.Length];
+                        clientStream.Read(clientBytes, 0, clientBytes.Length);
+
+                        // Salva na Area de Trabalho do Servidor para copiar em pendrive
+                        string clientDesktopExe = Path.Combine(desktop, "🔗 Conectar Outros PCs da Rede.exe");
+                        File.WriteAllBytes(clientDesktopExe, clientBytes);
+
+                        // Salva tambem na pasta public para download via navegador
+                        string publicDir = Path.Combine(targetDir, "public");
+                        if (!Directory.Exists(publicDir)) Directory.CreateDirectory(publicDir);
+                        string publicClientExe = Path.Combine(publicDir, "Instalador_Cliente_Rede.exe");
+                        File.WriteAllBytes(publicClientExe, clientBytes);
+
+                        Log("Instalador Cliente disponibilizado na Area de Trabalho!");
+                    }
+                }
+
                 Log("Atalhos criados na Area de Trabalho.");
             }
             catch (Exception ex)

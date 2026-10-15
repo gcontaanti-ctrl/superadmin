@@ -43,12 +43,21 @@ if exist ".runtime" (
 copy /Y "cliente-config.env" "%TEMP_DIR%\" >nul 2>&1
 if exist "campanhas.json" copy /Y "campanhas.json" "%TEMP_DIR%\" >nul 2>&1
 if exist "metas_data.json" copy /Y "metas_data.json" "%TEMP_DIR%\" >nul 2>&1
+if exist "mobile_users.json" copy /Y "mobile_users.json" "%TEMP_DIR%\" >nul 2>&1
+
+:: 5. Pasta Public (App Mobile e Simulador)
+if exist "public" (
+    mkdir "%TEMP_DIR%\public" >nul 2>&1
+    xcopy /E /Y /I /Q "public" "%TEMP_DIR%\public\" >nul 2>&1
+)
 
 copy /Y "Configurar_DataCISS.bat" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "setup-dataciss.js" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "INSTALAR_SERVIDOR_REDE.bat" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "Instalar.bat" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "Ver_IP_e_Links_de_Acesso.bat" "%TEMP_DIR%\" >nul 2>&1
+copy /Y "Configurar_Dominio_Local.bat" "%TEMP_DIR%\" >nul 2>&1
+copy /Y "Instalar-Simulador-Smartphone.bat" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "Desinstalar_Servidor_Desta_Maquina.bat" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "2-Atualizar_Sistema.bat" "%TEMP_DIR%\" >nul 2>&1
 

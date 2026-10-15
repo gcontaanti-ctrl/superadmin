@@ -22,7 +22,7 @@ const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "real", startDate?: string, endDate?: string }) {
+export function StoreRanking({ mode, selectedStore, startDate, endDate }: { mode: "demo" | "real", selectedStore?: string, startDate?: string, endDate?: string }) {
   const [lojas, setLojas] = useState<LojaRanking[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMargin, setHasMargin] = useState(false);
@@ -32,6 +32,7 @@ export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "rea
     setLoading(true);
     try {
       let url = `/api/ranking-lojas?`;
+      if (selectedStore) url += `idEmpresa=${selectedStore}&`;
       if (startDate) url += `startDate=${startDate}&`;
       if (endDate) url += `endDate=${endDate}`;
       
@@ -70,12 +71,16 @@ export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "rea
   }
 
   return (
-    <div className="glass-strong rounded-2xl p-5 h-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className={`glass-strong rounded-2xl p-4 min-h-[220px] flex flex-col relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+      {loading && (
+        <div className="absolute top-4 right-4 flex items-center justify-center">
+           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      )}
+      <div className="flex items-center justify-between mb-3">
         <div>
           <div className="text-[10px] tracking-executive text-primary">Faturamento por Filial</div>
-          <h3 className="font-serif text-xl mt-0.5 text-slate-100">Ranking de Lojas</h3>
+          <h3 className="font-serif text-lg mt-0.5 text-slate-100">Ranking de Lojas</h3>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -90,23 +95,23 @@ export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "rea
 
       {/* Totais Consolidados */}
       {lojas.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-black/30 border border-white/5 rounded-xl p-3">
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="bg-black/30 border border-white/5 rounded-xl p-2.5">
             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Total Faturado</div>
-            <div className="text-base font-bold font-serif text-primary tabular-nums">{fmt(totalFat)}</div>
-            <div className="text-[10px] text-slate-500 mt-0.5">{lojas.length} filiais ativas</div>
+            <div className="text-sm font-bold font-serif text-primary tabular-nums">{fmt(totalFat)}</div>
+            <div className="text-[9px] text-slate-500 mt-0.5">{lojas.length} filiais ativas</div>
           </div>
           {margemGeral !== null && totalMargem !== null ? (
-            <div className="bg-black/30 border border-white/5 rounded-xl p-3">
+            <div className="bg-black/30 border border-white/5 rounded-xl p-2.5">
               <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">Margem Geral</div>
-              <div className={`text-base font-bold font-serif tabular-nums ${margemGeral >= 20 ? "text-emerald-400" : margemGeral >= 10 ? "text-amber-400" : "text-rose-400"}`}>
+              <div className={`text-sm font-bold font-serif tabular-nums ${margemGeral >= 20 ? "text-emerald-400" : margemGeral >= 10 ? "text-amber-400" : "text-rose-400"}`}>
                 {fmtPct(margemGeral)}
               </div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{fmt(totalMargem)} lucro bruto</div>
+              <div className="text-[9px] text-slate-500 mt-0.5">{fmt(totalMargem)} lucro bruto</div>
             </div>
           ) : (
-            <div className="bg-black/30 border border-white/5 rounded-xl p-3 flex items-center justify-center">
-              <span className="text-[10px] text-slate-500 italic text-center">Custo indisponível<br />na view DB2</span>
+            <div className="bg-black/30 border border-white/5 rounded-xl p-2.5 flex items-center justify-center">
+              <span className="text-[9px] text-slate-500 italic text-center">Custo indisponível na view DB2</span>
             </div>
           )}
         </div>
@@ -114,17 +119,17 @@ export function StoreRanking({ mode, startDate, endDate }: { mode: "demo" | "rea
 
       {/* Lista de Lojas */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center py-8">
-          <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="flex-1 flex items-center justify-center py-6">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : lojas.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-slate-500 text-sm italic">
+        <div className="flex-1 flex items-center justify-center text-slate-500 text-xs italic py-4">
           Sem dados para o período
         </div>
       ) : (
-        <ul className="flex flex-col gap-2 overflow-y-auto max-h-[420px] pr-0.5">
+        <ul className="flex flex-col gap-1.5 pr-0.5">
           {lojas.map((loja, i) => (
-            <li key={loja.idEmpresa ?? i} className="group bg-black/20 border border-white/[0.04] hover:border-primary/20 rounded-xl px-4 py-3 transition-all duration-200">
+            <li key={loja.idEmpresa ?? i} className="group bg-black/20 border border-white/[0.04] hover:border-primary/20 rounded-xl px-3 py-2 transition-all duration-200">
               <div className="flex items-center justify-between gap-3">
                 {/* Rank + Nome */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">

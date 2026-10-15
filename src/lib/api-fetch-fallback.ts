@@ -1,6 +1,6 @@
 const FALLBACK_INSTALLED_KEY = "__superadminApiFetchFallbackInstalled";
 const FALLBACK_API_STORAGE_KEYS = ["superadminApiBaseUrl", "superadmin.apiBaseUrl"];
-const DEFAULT_LOCAL_API_BASE_URL = "http://127.0.0.1:3001";
+const DEFAULT_LOCAL_API_BASE_URL = "http://localhost:3001";
 
 type WindowWithApiFallback = Window &
   typeof globalThis & {

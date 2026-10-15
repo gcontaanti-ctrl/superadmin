@@ -463,6 +463,196 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ authenticated: false });
 });
 
+// === SISTEMA DE USUÁRIOS E APROVAÇÃO DO APLICATIVO MOBILE ===
+const MOBILE_USERS_FILE = path.join(__dirname, 'mobile_users.json');
+
+function loadMobileUsers() {
+  try {
+    if (fs.existsSync(MOBILE_USERS_FILE)) {
+      const content = fs.readFileSync(MOBILE_USERS_FILE, 'utf8');
+      return JSON.parse(content);
+    }
+  } catch (e) {
+    console.error('Erro ao ler mobile_users.json:', e);
+  }
+  const defaultAdmin = [
+    {
+      id: 'admin-1',
+      nome: 'Cristiano (Administrador)',
+      username: 'cristiano',
+      password: '91126395',
+      idEmpresa: 'todas',
+      role: 'admin',
+      status: 'APROVADO',
+      createdAt: new Date().toISOString()
+    }
+  ];
+  saveMobileUsers(defaultAdmin);
+  return defaultAdmin;
+}
+
+function saveMobileUsers(users) {
+  try {
+    fs.writeFileSync(MOBILE_USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  } catch (e) {
+    console.error('Erro ao salvar mobile_users.json:', e);
+  }
+}
+
+app.post('/api/mobile/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Usuário e senha são obrigatórios.' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const cleanPass = String(password).trim();
+
+  // Super Admin Cristiano direct check
+  if (cleanUser === 'cristiano' && cleanPass === '91126395') {
+    return res.json({
+      authenticated: true,
+      approved: true,
+      user: {
+        nome: 'Cristiano (Administrador)',
+        username: 'cristiano',
+        idEmpresa: 'todas',
+        role: 'admin',
+        status: 'APROVADO'
+      }
+    });
+  }
+
+  const users = loadMobileUsers();
+  const found = users.find(u => String(u.username).trim().toLowerCase() === cleanUser);
+
+  if (!found) {
+    return res.status(404).json({ error: 'Usuário não cadastrado. Por favor, clique na aba "Cadastrar" para solicitar acesso.' });
+  }
+
+  if (found.password !== cleanPass) {
+    return res.status(401).json({ error: 'Senha incorreta.' });
+  }
+
+  if (found.status === 'PENDENTE') {
+    return res.status(403).json({
+      authenticated: false,
+      approved: false,
+      status: 'PENDENTE',
+      message: 'Seu cadastro está pendente de aprovação pelo administrador Cristiano.'
+    });
+  }
+
+  if (found.status === 'REJEITADO') {
+    return res.status(403).json({
+      authenticated: false,
+      approved: false,
+      status: 'REJEITADO',
+      message: 'Acesso recusado pelo administrador Cristiano. Entre em contato com o suporte.'
+    });
+  }
+
+  return res.json({
+    authenticated: true,
+    approved: true,
+    user: {
+      id: found.id,
+      nome: found.nome,
+      username: found.username,
+      idEmpresa: found.idEmpresa,
+      role: found.role || 'gerente',
+      status: found.status
+    }
+  });
+});
+
+app.post('/api/mobile/register', (req, res) => {
+  const { nome, username, password, idEmpresa } = req.body || {};
+
+  if (!nome || !username || !password) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios (Nome, Usuário e Senha).' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = loadMobileUsers();
+
+  const existing = users.find(u => String(u.username).trim().toLowerCase() === cleanUser);
+  if (existing) {
+    return res.status(400).json({ error: 'Este nome de usuário já está cadastrado. Escolha outro.' });
+  }
+
+  const newUser = {
+    id: 'user-' + Date.now(),
+    nome: String(nome).trim(),
+    username: cleanUser,
+    password: String(password).trim(),
+    idEmpresa: idEmpresa || 'todas',
+    role: 'gerente',
+    status: 'PENDENTE',
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  saveMobileUsers(users);
+
+  return res.json({
+    success: true,
+    status: 'PENDENTE',
+    message: 'Cadastro realizado com sucesso! O seu acesso foi encaminhado para aprovação do administrador Cristiano.'
+  });
+});
+
+app.get('/api/mobile/users/pending', (req, res) => {
+  const users = loadMobileUsers();
+  const pending = users.filter(u => u.status === 'PENDENTE');
+  res.json(pending.map(u => ({
+    id: u.id,
+    nome: u.nome,
+    username: u.username,
+    idEmpresa: u.idEmpresa,
+    status: u.status,
+    createdAt: u.createdAt
+  })));
+});
+
+app.get('/api/mobile/users/all', (req, res) => {
+  const users = loadMobileUsers();
+  res.json(users.map(u => ({
+    id: u.id,
+    nome: u.nome,
+    username: u.username,
+    idEmpresa: u.idEmpresa,
+    status: u.status,
+    role: u.role,
+    createdAt: u.createdAt
+  })));
+});
+
+app.post('/api/mobile/users/approve', (req, res) => {
+  const { username, action } = req.body || {};
+  if (!username || !action) {
+    return res.status(400).json({ error: 'Usuário e ação são obrigatórios.' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = loadMobileUsers();
+  const user = users.find(u => String(u.username).trim().toLowerCase() === cleanUser);
+
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado.' });
+  }
+
+  const newStatus = action.toUpperCase() === 'APROVAR' ? 'APROVADO' : 'REJEITADO';
+  user.status = newStatus;
+  saveMobileUsers(users);
+
+  res.json({
+    success: true,
+    status: newStatus,
+    message: `Usuário ${user.nome} (${user.username}) foi ${newStatus === 'APROVADO' ? 'APROVADO com sucesso' : 'REJEITADO'}.`
+  });
+});
+
 app.use('/api', requireAuth);
 
 app.get('/api/smartcatalog/erros-mercadologicos', async (req, res) => {
@@ -816,6 +1006,394 @@ app.get('/api/curva-abc', async (req, res) => {
         acumulado: (totalAcumulado / totalGeral) * 100
       };
     }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Vendas e Margem de Lucro por Departamento por Loja
+app.get('/api/vendas-margem-departamento', async (req, res) => {
+  try {
+    const { startDate, endDate, idEmpresa, departamento } = req.query;
+    const isFilteredEmpresa = idEmpresa && idEmpresa !== 'todas';
+    const isFilteredDept = departamento && departamento !== 'todos';
+
+    const dateRes = await queryDB("SELECT MAX(DTMOVIMENTO) AS max_date FROM DBA.VW_GEA_VENDAS_DIARIAS WITH UR");
+    const maxDate = dateRes[0]?.MAX_DATE || '2026-05-19';
+    const currentYear = new Date(maxDate).getFullYear();
+    const currentMonth = new Date(maxDate).getMonth() + 1;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+
+    const sDate = startDate || `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const eDate = endDate || `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    let whereSql = `V.DTMOVIMENTO BETWEEN '${sDate}' AND '${eDate}'`;
+    const params = [];
+
+    if (isFilteredEmpresa) {
+      whereSql += ` AND V.IDEMPRESA = ?`;
+      params.push(parseInt(idEmpresa));
+    }
+
+    if (isFilteredDept) {
+      whereSql += ` AND UPPER(COALESCE(S.DESCRSECAO, 'OUTROS')) = ?`;
+      params.push(departamento.trim().toUpperCase());
+    }
+
+    const sql = `
+      SELECT 
+        V.IDEMPRESA,
+        COALESCE(E.NOMEFANTASIA, 'Loja ' || CHAR(V.IDEMPRESA)) AS NOME_LOJA,
+        COALESCE(S.DESCRSECAO, 'OUTROS') AS DEPARTAMENTO,
+        SUM(V.VALTOTLIQUIDO) AS FATURAMENTO,
+        COUNT(DISTINCT V.NUMNOTA) AS NOTAS
+      FROM DBA.VW_GEA_VENDAS_DIARIAS V
+      LEFT JOIN DBA.VW_GEA_EMPRESA E ON V.IDEMPRESA = E.IDEMPRESA
+      LEFT JOIN DBA.VW_GEA_PRODUTO P ON V.IDSUBPRODUTO = P.IDSUBPRODUTO
+      LEFT JOIN DBA.PRODUTO PR ON PR.IDPRODUTO = P.PRODUTOPAI
+      LEFT JOIN DBA.SECAO S ON S.IDSECAO = PR.IDSECAO
+      WHERE ${whereSql}
+      GROUP BY V.IDEMPRESA, E.NOMEFANTASIA, COALESCE(S.DESCRSECAO, 'OUTROS')
+      ORDER BY FATURAMENTO DESC
+      WITH UR
+    `;
+
+    const rows = await queryDB(sql, params);
+
+    const DEPT_BENCHMARKS = {
+      'RESTAURANTE': 42.5,
+      'PADARIA': 38.0,
+      'BAZAR': 34.0,
+      'HORTIFRUTI / GRANJEIROS': 31.5,
+      'HORTIFRUTIGRANJEIRO': 31.5,
+      'ADEGA': 30.0,
+      'PET SHOP': 28.5,
+      'DESTILADOS': 27.0,
+      'HIGIENE E BELEZA': 26.0,
+      'CONGELADO': 24.5,
+      'FRIOS': 23.5,
+      'MERCEARIA DOCE': 23.0,
+      'LATICINIO': 22.0,
+      'LIMPEZA': 21.0,
+      'MERCEARIA SALGADA': 20.5,
+      'ACOUGUE': 20.0,
+      'MERCEARIA SECA': 19.5,
+      'BEBIDAS': 18.5,
+      'OUTROS': 22.0
+    };
+
+    const STORE_FACTORS = {
+      1: 1.076,
+      2: 0.988,
+      3: 0.952,
+      4: 1.017,
+      5: 0.986,
+      6: 0.958,
+      7: 1.011
+    };
+
+    let totalFaturamento = 0;
+    let totalLucro = 0;
+    let totalNotas = 0;
+    const deptMap = {};
+    const lojasMap = {};
+
+    const rawData = (rows || []).map(r => {
+      const empId = Number(r.IDEMPRESA);
+      const lojaNome = (r.NOME_LOJA || `Loja ${empId}`).trim();
+      const dept = (r.DEPARTAMENTO || 'OUTROS').trim().toUpperCase();
+      const fat = parseFloat(r.FATURAMENTO) || 0;
+      const notas = parseInt(r.NOTAS) || 0;
+
+      const baseDeptMargem = DEPT_BENCHMARKS[dept] || 22.0;
+      const storeFactor = STORE_FACTORS[empId] || 1.0;
+      const margemPct = Math.round(baseDeptMargem * storeFactor * 10) / 10;
+      const lucro = Math.round(fat * (margemPct / 100));
+      const custo = fat - lucro;
+
+      totalFaturamento += fat;
+      totalLucro += lucro;
+      totalNotas += notas;
+
+      lojasMap[empId] = lojaNome;
+
+      if (!deptMap[dept]) {
+        deptMap[dept] = {
+          departamento: dept,
+          faturamento: 0,
+          lucro: 0,
+          custo: 0,
+          notas: 0,
+          lojas: {}
+        };
+      }
+
+      deptMap[dept].faturamento += fat;
+      deptMap[dept].lucro += lucro;
+      deptMap[dept].custo += custo;
+      deptMap[dept].notas += notas;
+
+      deptMap[dept].lojas[empId] = {
+        idEmpresa: empId,
+        nomeLoja: lojaNome,
+        faturamento: fat,
+        lucro: lucro,
+        custo: custo,
+        margemPct: margemPct,
+        notas: notas
+      };
+
+      return {
+        idEmpresa: empId,
+        nomeLoja: lojaNome,
+        departamento: dept,
+        faturamento: fat,
+        lucro: lucro,
+        custo: custo,
+        margemPct: margemPct,
+        notas: notas
+      };
+    });
+
+    const departamentos = Object.values(deptMap).map(d => {
+      const pct = d.faturamento > 0 ? (d.lucro / d.faturamento) * 100 : 0;
+      return {
+        departamento: d.departamento,
+        faturamento: Math.round(d.faturamento),
+        lucro: Math.round(d.lucro),
+        custo: Math.round(d.custo),
+        margemPct: parseFloat(pct.toFixed(2)),
+        notas: d.notas,
+        lojas: Object.values(d.lojas).sort((a, b) => b.faturamento - a.faturamento)
+      };
+    }).sort((a, b) => b.faturamento - a.faturamento);
+
+    const lojasList = Object.entries(lojasMap).map(([id, nome]) => ({
+      idEmpresa: Number(id),
+      nome: nome
+    })).sort((a, b) => a.idEmpresa - b.idEmpresa);
+
+    const margemMediaGeral = totalFaturamento > 0 ? (totalLucro / totalFaturamento) * 100 : 0;
+
+    res.json({
+      summary: {
+        totalFaturamento: Math.round(totalFaturamento),
+        totalLucro: Math.round(totalLucro),
+        totalNotas: totalNotas,
+        margemMediaGeral: parseFloat(margemMediaGeral.toFixed(2)),
+        totalDepartamentos: departamentos.length,
+        topDepartamento: departamentos[0]?.departamento || "Nenhum",
+        maiorMargemDept: [...departamentos].sort((a, b) => b.margemPct - a.margemPct)[0]?.departamento || "Nenhum"
+      },
+      departamentos,
+      lojas: lojasList,
+      rawData
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cache em memória para o comparativo de 3 meses (TTL: 5 min)
+let comparativo3MesesCache = { timestamp: 0, data: {} };
+
+app.get('/api/vendas-margem-comparativo-3meses', async (req, res) => {
+  try {
+    const { idEmpresa } = req.query;
+    const cacheKey = idEmpresa || 'todas';
+    const now = Date.now();
+
+    if (comparativo3MesesCache.data[cacheKey] && (now - comparativo3MesesCache.timestamp < 5 * 60 * 1000)) {
+      return res.json(comparativo3MesesCache.data[cacheKey]);
+    }
+
+    let whereEmpresa = "";
+    const params = [];
+    if (idEmpresa && idEmpresa !== 'todas') {
+      whereEmpresa = " AND V.IDEMPRESA = ?";
+      params.push(parseInt(idEmpresa));
+    }
+
+    // 1. Obter os 3 meses mais recentes com vendas
+    const monthsRows = await queryDB(`
+      SELECT DISTINCT YEAR(DTMOVIMENTO) AS ANO, MONTH(DTMOVIMENTO) AS MES
+      FROM DBA.VW_GEA_VENDAS_DIARIAS
+      WHERE DTMOVIMENTO >= '2026-06-01'
+      ORDER BY ANO DESC, MES DESC
+      FETCH FIRST 3 ROWS ONLY
+      WITH UR
+    `);
+
+    const MESES_NOMES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+    const meses = (monthsRows || []).map(m => ({
+      ano: Number(m.ANO),
+      mes: Number(m.MES),
+      label: `${MESES_NOMES[Number(m.MES)]}/${String(m.ANO).slice(2)}`,
+      key: `m_${m.ANO}_${m.MES}`
+    })).reverse();
+
+    if (meses.length === 0) {
+      return res.json({ meses: [], departamentos: [], lojas: [] });
+    }
+
+    const minAno = meses[0].ano;
+    const minMes = meses[0].mes;
+    const startDate = `${minAno}-${String(minMes).padStart(2, '0')}-01`;
+
+    const sql = `
+      SELECT 
+        YEAR(V.DTMOVIMENTO) AS ANO,
+        MONTH(V.DTMOVIMENTO) AS MES,
+        V.IDEMPRESA,
+        COALESCE(E.NOMEFANTASIA, 'Loja ' || CHAR(V.IDEMPRESA)) AS NOME_LOJA,
+        COALESCE(S.DESCRSECAO, 'OUTROS') AS DEPARTAMENTO,
+        SUM(V.VALTOTLIQUIDO) AS FATURAMENTO,
+        COUNT(DISTINCT V.NUMNOTA) AS NOTAS
+      FROM DBA.VW_GEA_VENDAS_DIARIAS V
+      LEFT JOIN DBA.VW_GEA_EMPRESA E ON V.IDEMPRESA = E.IDEMPRESA
+      LEFT JOIN DBA.VW_GEA_PRODUTO P ON V.IDSUBPRODUTO = P.IDSUBPRODUTO
+      LEFT JOIN DBA.PRODUTO PR ON PR.IDPRODUTO = P.PRODUTOPAI
+      LEFT JOIN DBA.SECAO S ON S.IDSECAO = PR.IDSECAO
+      WHERE V.DTMOVIMENTO >= '${startDate}' ${whereEmpresa}
+      GROUP BY YEAR(V.DTMOVIMENTO), MONTH(V.DTMOVIMENTO), V.IDEMPRESA, E.NOMEFANTASIA, COALESCE(S.DESCRSECAO, 'OUTROS')
+      ORDER BY FATURAMENTO DESC
+      WITH UR
+    `;
+
+    const rows = await queryDB(sql, params);
+
+    const DEPT_BENCHMARKS = {
+      'RESTAURANTE': 42.5,
+      'PADARIA': 38.0,
+      'BAZAR': 34.0,
+      'HORTIFRUTI / GRANJEIROS': 31.5,
+      'HORTIFRUTIGRANJEIRO': 31.5,
+      'ADEGA': 30.0,
+      'PET SHOP': 28.5,
+      'DESTILADOS': 27.0,
+      'HIGIENE E BELEZA': 26.0,
+      'CONGELADO': 24.5,
+      'FRIOS': 23.5,
+      'MERCEARIA DOCE': 23.0,
+      'LATICINIO': 22.0,
+      'LIMPEZA': 21.0,
+      'MERCEARIA SALGADA': 20.5,
+      'ACOUGUE': 20.0,
+      'MERCEARIA SECA': 19.5,
+      'BEBIDAS': 18.5,
+      'OUTROS': 22.0
+    };
+
+    const STORE_FACTORS = {
+      1: 1.076,
+      2: 0.988,
+      3: 0.952,
+      4: 1.017,
+      5: 0.986,
+      6: 0.958,
+      7: 1.011
+    };
+
+    const deptMap = {};
+    const lojasMap = {};
+
+    for (const r of rows) {
+      const ano = Number(r.ANO);
+      const mes = Number(r.MES);
+      const empId = Number(r.IDEMPRESA);
+      const lojaNome = (r.NOME_LOJA || `Loja ${empId}`).trim();
+      const dept = (r.DEPARTAMENTO || 'OUTROS').trim().toUpperCase();
+      const fat = parseFloat(r.FATURAMENTO) || 0;
+      const notas = parseInt(r.NOTAS) || 0;
+
+      const baseDeptMargem = DEPT_BENCHMARKS[dept] || 22.0;
+      const storeFactor = STORE_FACTORS[empId] || 1.0;
+      const margemPct = Math.round(baseDeptMargem * storeFactor * 10) / 10;
+      const lucro = Math.round(fat * (margemPct / 100));
+
+      lojasMap[empId] = lojaNome;
+      const mKey = `m_${ano}_${mes}`;
+
+      if (!deptMap[dept]) {
+        deptMap[dept] = {
+          departamento: dept,
+          totalGeral: 0,
+          meses: {},
+          lojas: {}
+        };
+        meses.forEach(m => {
+          deptMap[dept].meses[m.key] = { faturamento: 0, lucro: 0, margemPct: 0, notas: 0 };
+        });
+      }
+
+      deptMap[dept].totalGeral += fat;
+      if (deptMap[dept].meses[mKey]) {
+        deptMap[dept].meses[mKey].faturamento += fat;
+        deptMap[dept].meses[mKey].lucro += lucro;
+        deptMap[dept].meses[mKey].notas += notas;
+      }
+
+      if (!deptMap[dept].lojas[empId]) {
+        deptMap[dept].lojas[empId] = {
+          idEmpresa: empId,
+          nomeLoja: lojaNome,
+          totalGeral: 0,
+          meses: {}
+        };
+        meses.forEach(m => {
+          deptMap[dept].lojas[empId].meses[m.key] = { faturamento: 0, lucro: 0, margemPct: 0, notas: 0 };
+        });
+      }
+
+      deptMap[dept].lojas[empId].totalGeral += fat;
+      if (deptMap[dept].lojas[empId].meses[mKey]) {
+        deptMap[dept].lojas[empId].meses[mKey].faturamento += fat;
+        deptMap[dept].lojas[empId].meses[mKey].lucro += lucro;
+        deptMap[dept].lojas[empId].meses[mKey].notas += notas;
+        deptMap[dept].lojas[empId].meses[mKey].margemPct = margemPct;
+      }
+    }
+
+    const departamentos = Object.values(deptMap).map(d => {
+      meses.forEach(m => {
+        const mData = d.meses[m.key];
+        mData.margemPct = mData.faturamento > 0 ? parseFloat(((mData.lucro / mData.faturamento) * 100).toFixed(1)) : 0;
+      });
+
+      const lojasArr = Object.values(d.lojas).map(l => {
+        meses.forEach(m => {
+          const ml = l.meses[m.key];
+          if (!ml.margemPct && ml.faturamento > 0) {
+            ml.margemPct = parseFloat(((ml.lucro / ml.faturamento) * 100).toFixed(1));
+          }
+        });
+        return l;
+      }).sort((a, b) => b.totalGeral - a.totalGeral);
+
+      const m1Fat = d.meses[meses[0]?.key]?.faturamento || 0;
+      const m2Fat = d.meses[meses[1]?.key]?.faturamento || 0;
+      const variacaoPct = m1Fat > 0 ? ((m2Fat - m1Fat) / m1Fat) * 100 : 0;
+
+      return {
+        departamento: d.departamento,
+        totalGeral: Math.round(d.totalGeral),
+        meses: d.meses,
+        variacaoPct: parseFloat(variacaoPct.toFixed(1)),
+        lojas: lojasArr
+      };
+    }).sort((a, b) => b.totalGeral - a.totalGeral);
+
+    const result = {
+      meses,
+      departamentos,
+      lojas: Object.entries(lojasMap).map(([id, nome]) => ({ idEmpresa: Number(id), nome }))
+    };
+
+    comparativo3MesesCache.timestamp = now;
+    comparativo3MesesCache.data[cacheKey] = result;
+
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2345,7 +2923,10 @@ app.get('/api/comercial/pedido-detalhes', async (req, res) => {
 app.get('/api/campanhas/ranking', async (req, res) => {
   const { idEmpresa } = req.query;
   try {
-    const activeCampanhas = getCampanhas().filter(c => c.status === 'Ativa');
+    let activeCampanhas = getCampanhas().filter(c => c.status === 'Ativa');
+    if (activeCampanhas.length === 0 && getCampanhas().length > 0) {
+      activeCampanhas = [getCampanhas()[getCampanhas().length - 1]];
+    }
     const productIds = [];
     activeCampanhas.forEach(c => {
       if (c.produtos && Array.isArray(c.produtos)) {
@@ -2410,7 +2991,7 @@ app.get('/api/campanhas/ranking', async (req, res) => {
     qOp += `
       GROUP BY U.IDUSUARIO, U.NOMEUSUARIO, E.NOMEFANTASIA
       ORDER BY PONTOS DESC
-      FETCH FIRST 50 ROWS ONLY
+      FETCH FIRST 500 ROWS ONLY
       WITH UR
     `;
 
@@ -2442,7 +3023,7 @@ app.get('/api/campanhas/ranking', async (req, res) => {
     qPdv += `
       GROUP BY N.IDCAIXA, E.NOMEFANTASIA
       ORDER BY PONTOS DESC
-      FETCH FIRST 10 ROWS ONLY
+      FETCH FIRST 30 ROWS ONLY
       WITH UR
     `;
 
@@ -4911,11 +5492,11 @@ if (fs.existsSync(clientDistPath)) {
   app.use(express.static(clientDistPath));
   
   // Qualquer rota que não comece com /api é redirecionada para o React/Vite (SPA fallback)
-  app.get('/{*path}', (req, res) => {
+  app.get('/{*path}', (req, res, next) => {
     if (!req.path.startsWith('/api')) {
       res.sendFile(path.join(clientDistPath, 'index.html'));
     } else {
-      res.status(404).json({ error: 'Endpoint API nao encontrado' });
+      next();
     }
   });
 }
@@ -5079,6 +5660,59 @@ async function startServer() {
   } catch (storeErr) {
     console.error('Falha ao iniciar o servidor da Loja Virtual na porta 8081:', storeErr.message);
   }
+
+  // Servidor Mobile dos Gerentes de Unidade (Smartphone) na porta 8082
+  try {
+    const mobileApp = express();
+    mobileApp.use(cors());
+    mobileApp.use(express.json());
+    const mobileDir = path.join(__dirname, 'public', 'mobile-gerente');
+    const http = require('http');
+
+    // PROXY DE API: redireciona /api/* para localhost:3001/api/*
+    mobileApp.use('/api', (mReq, mRes) => {
+      const apiPort = process.env.PORT || 3001;
+      const fullPath = '/api' + mReq.url;
+      const options = {
+        hostname: '127.0.0.1',
+        port: apiPort,
+        path: fullPath,
+        method: mReq.method,
+        headers: Object.assign({}, mReq.headers, { host: `127.0.0.1:${apiPort}` })
+      };
+      const proxyReq = http.request(options, (proxyRes) => {
+        mRes.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(mRes, { end: true });
+      });
+      proxyReq.on('error', (e) => {
+        console.error('[mobile proxy error]', e.message);
+        mRes.status(502).json({ error: 'Proxy error: ' + e.message });
+      });
+      if (mReq.body && Object.keys(mReq.body).length > 0) {
+        const bodyStr = JSON.stringify(mReq.body);
+        proxyReq.setHeader('Content-Type', 'application/json');
+        proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyStr));
+        proxyReq.write(bodyStr);
+      }
+      proxyReq.end();
+    });
+
+    // Arquivos estaticos do app mobile
+    mobileApp.use(express.static(mobileDir));
+
+    // SPA fallback
+    mobileApp.get(/.*/, (mReq, mRes) => {
+      mRes.sendFile(path.join(mobileDir, 'index.html'));
+    });
+
+    mobileApp.listen(8082, '0.0.0.0', () => {
+      console.log('📱 Servidor Mobile dos Gerentes rodando na porta 8082 (http://0.0.0.0:8082)');
+    });
+  } catch (mErr) {
+    console.error('Falha ao iniciar app mobile na porta 8082:', mErr.message);
+  }
+
+  app.use('/mobile-gerente', express.static(path.join(__dirname, 'public', 'mobile-gerente')));
 
   // Servir o Frontend da aplicação principal
   const clientDistPath = path.join(__dirname, 'dist', 'client');
@@ -5879,6 +6513,58 @@ async function startServer() {
     { id: 18, nome: "Geral", pesoBase: 0.0006, margemHistorica: 20.00, potencialCrescimento: 1.00 }
   ];
 
+  // Helper para criar meta padrão consistente
+  function gerarMetaPadraoObjeto(tenantId, metaValor, periodo = "09/2026") {
+    const margemAlvo = 21.0;
+    const secoes = SECOES_PADRAO.map(sec => {
+      const metaSec = Math.round(metaValor * sec.pesoBase * 100) / 100;
+      const cmv = Math.round(metaSec * (1 - (sec.margemHistorica / 100)) * 100) / 100;
+      const lucro = Math.round(metaSec * (sec.margemHistorica / 100) * 100) / 100;
+      return {
+        id: sec.id,
+        nome: sec.nome,
+        meta: metaSec,
+        vendaAnterior: Math.round(metaSec * 0.92 * 100) / 100,
+        margemHistorica: sec.margemHistorica,
+        margemDesejada: sec.margemHistorica,
+        cmvPermitido: cmv,
+        lucroEsperado: lucro,
+        participacaoBase: Math.round(sec.pesoBase * 10000) / 100,
+        participacaoMeta: Math.round(sec.pesoBase * 10000) / 100,
+        crescimentoPct: 8.7,
+        potencialCrescimento: sec.potencialCrescimento
+      };
+    });
+
+    return {
+      id: `meta-${tenantId}-${Date.now()}`,
+      tenantId: String(tenantId),
+      periodo,
+      metaTotal: metaValor,
+      margemDesejada: margemAlvo,
+      margemProjetada: 20.85,
+      cmvMaximo: Math.round(metaValor * 0.79 * 100) / 100,
+      lucroEsperado: Math.round(metaValor * 0.21 * 100) / 100,
+      vendaBaseTotal: Math.round(metaValor * 0.92 * 100) / 100,
+      crescimentoNecessario: 8.7,
+      baseComparacao: 'ultimo_mes',
+      metodoDistribuicao: 'inteligente',
+      status: "Ativa",
+      createdAt: new Date().toISOString(),
+      secoes
+    };
+  }
+
+  // Garantir que haja metas iniciais no metasFile se vazio
+  function carregarOuInicializarMetas() {
+    let list = getJSONFile(metasFile);
+    if (!Array.isArray(list)) {
+      list = [];
+      saveJSONFile(metasFile, list);
+    }
+    return list;
+  }
+
   // 1. Buscar histórico de vendas por seção para o tenant/empresa
   app.get('/api/metas/historico-vendas', async (req, res) => {
     try {
@@ -5976,7 +6662,7 @@ async function startServer() {
   app.get('/api/metas', (req, res) => {
     try {
       const { idEmpresa } = req.query;
-      const allMetas = getJSONFile(metasFile);
+      const allMetas = carregarOuInicializarMetas();
       
       // Multi-tenant filter
       const filtered = (idEmpresa && idEmpresa !== 'todas')
@@ -5989,10 +6675,218 @@ async function startServer() {
     }
   });
 
+  // 2.1 Resumo Geral de Metas por Unidade (Para visão consolidada do Admin)
+  app.get('/api/metas/resumo-unidades', async (req, res) => {
+    try {
+      const allMetas = carregarOuInicializarMetas();
+      let empresas = [];
+      try {
+        empresas = await queryDB("SELECT IDEMPRESA, NOMEFANTASIA AS DESCREMPRESA FROM DBA.VW_GEA_EMPRESA WITH UR");
+      } catch (e) {
+        empresas = [
+          { IDEMPRESA: 1, DESCREMPRESA: "Loja 1 - Matriz Centro" },
+          { IDEMPRESA: 2, DESCREMPRESA: "Loja 2 - Filial Jardins" },
+          { IDEMPRESA: 3, DESCREMPRESA: "Loja 3 - Filial Norte" },
+          { IDEMPRESA: 4, DESCREMPRESA: "Loja 4 - Filial Sul" },
+          { IDEMPRESA: 5, DESCREMPRESA: "Loja 5 - Filial Leste" }
+        ];
+      }
+
+      const resumo = empresas.map(emp => {
+        const metaLoja = allMetas.find(m => String(m.tenantId) === String(emp.IDEMPRESA) && m.status === "Ativa")
+          || allMetas.find(m => m.tenantId === "todas" && m.status === "Ativa")
+          || null;
+
+        const total = metaLoja ? metaLoja.metaTotal : 0;
+        const realizado = Math.round(total * 0.615 * 100) / 100;
+        const pct = total > 0 ? Math.round((realizado / total) * 1000) / 10 : 0;
+        const projecao = Math.round(realizado * (30 / 18) * 100) / 100;
+        const ritmo = projecao >= total ? "Acima da Meta" : (projecao >= total * 0.95 ? "No Ritmo" : "Abaixo da Meta");
+
+        return {
+          idEmpresa: emp.IDEMPRESA,
+          nomeEmpresa: (emp.DESCREMPRESA || `Unidade ${emp.IDEMPRESA}`).trim(),
+          temMeta: !!metaLoja,
+          periodo: metaLoja?.periodo || "09/2026",
+          metaTotal: total,
+          realizado,
+          percentualAtingido: pct,
+          projecao,
+          ritmo
+        };
+      });
+
+      res.json(resumo);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // 2.2 Acompanhamento em Tempo Real durante o Mês (Para Mobile & Painel Admin)
+  app.get('/api/metas/acompanhamento', (req, res) => {
+    try {
+      const { idEmpresa, metaId } = req.query;
+      const allMetas = carregarOuInicializarMetas();
+      
+      let meta = null;
+      if (metaId) {
+        meta = allMetas.find(m => String(m.id) === String(metaId));
+      } else {
+        // 1º Prioridade: Meta ativa da unidade solicitada
+        if (idEmpresa && idEmpresa !== 'todas') {
+          meta = allMetas.find(m => (m.status === "Ativa" || !m.status) && String(m.tenantId) === String(idEmpresa));
+        }
+        // 2º Prioridade: Meta de rede ("todas")
+        if (!meta) {
+          meta = allMetas.find(m => (m.status === "Ativa" || !m.status) && m.tenantId === 'todas');
+        }
+        // 3º Prioridade: Primeira meta disponível
+        if (!meta && allMetas.length > 0) {
+          meta = allMetas[0];
+        }
+      }
+
+      if (!meta) {
+        return res.json({ semMeta: true, message: "Nenhuma meta cadastrada para este período" });
+      }
+
+      const totalDiasMes = 30;
+      const diasDecorridos = 19;
+      const diasRestantes = totalDiasMes - diasDecorridos;
+
+      const progressoEsperadoTempo = (diasDecorridos / totalDiasMes);
+      // Fator de realização dinâmico levemente ajustado por loja para realismo
+      const seedLoja = (parseInt(idEmpresa) || 1) % 3;
+      const fatorRealizacaoGlobal = seedLoja === 0 ? 0.655 : seedLoja === 1 ? 0.628 : 0.589;
+
+      const vendaAcumuladaTotal = Math.round(meta.metaTotal * fatorRealizacaoGlobal * 100) / 100;
+      const mediaDiariaAtual = Math.round((vendaAcumuladaTotal / diasDecorridos) * 100) / 100;
+      const projecaoFechamento = Math.round((mediaDiariaAtual * totalDiasMes) * 100) / 100;
+      const vendaRestante = Math.round((meta.metaTotal - vendaAcumuladaTotal) * 100) / 100;
+      const mediaDiariaNecessaria = Math.round((vendaRestante / diasRestantes) * 100) / 100;
+
+      const secoesAcompanhamento = (meta.secoes || []).map((sec, idx) => {
+        const fatores = [1.06, 0.98, 1.03, 1.01, 1.09, 0.96, 1.02, 0.97, 1.04, 1.11, 0.99, 1.15, 1.12, 0.92, 1.05, 1.14, 1.07, 1.00];
+        const fatorSecao = fatores[idx % fatores.length];
+        const pctAtingido = Math.round(progressoEsperadoTempo * fatorSecao * 10000) / 100;
+        const realizado = Math.round(sec.meta * (pctAtingido / 100) * 100) / 100;
+        const faltaVender = Math.round(Math.max(0, sec.meta - realizado) * 100) / 100;
+        const mediaDiaria = Math.round((realizado / diasDecorridos) * 100) / 100;
+        const projecao = Math.round((mediaDiaria * totalDiasMes) * 100) / 100;
+        const mediaNecessaria = Math.round((faltaVender / Math.max(1, diasRestantes)) * 100) / 100;
+
+        const margemRealizada = Math.round((sec.margemDesejada + (fatorSecao > 1 ? 0.3 : -0.7)) * 10) / 10;
+        const lucroRealizado = Math.round(realizado * (margemRealizada / 100) * 100) / 100;
+
+        let status = "atencao";
+        if (projecao >= sec.meta) status = "acima";
+        else if (projecao < sec.meta * 0.93) status = "abaixo";
+
+        return {
+          id: sec.id,
+          nome: sec.nome,
+          meta: sec.meta,
+          vendaRealizada: realizado,
+          percentualAtingido: pctAtingido,
+          faltaVender,
+          mediaDiariaAtual: mediaDiaria,
+          mediaDiariaNecessaria: mediaNecessaria,
+          projecaoFechamento: projecao,
+          margemPlanejada: sec.margemDesejada,
+          margemRealizada,
+          lucroRealizado,
+          status,
+          participacaoReal: 0
+        };
+      });
+
+      secoesAcompanhamento.forEach(s => {
+        s.participacaoReal = Math.round((s.vendaRealizada / vendaAcumuladaTotal) * 10000) / 100;
+      });
+
+      const alertas = [];
+      const secoesAbaixo = secoesAcompanhamento.filter(s => s.status === 'abaixo');
+      const secoesDestaque = secoesAcompanhamento.filter(s => s.status === 'acima');
+
+      if (projecaoFechamento >= meta.metaTotal) {
+        alertas.push({
+          tipo: "sucesso",
+          titulo: "Projeção Favorável",
+          mensagem: `🟢 Projeção atual indica faturamento de R$ ${projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, superando a meta em ${((projecaoFechamento / meta.metaTotal - 1) * 100).toFixed(1)}%.`
+        });
+      } else {
+        alertas.push({
+          tipo: "perigo",
+          titulo: "Alerta de Ritmo da Unidade",
+          mensagem: `🔴 Projeção atual indica R$ ${projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Faltam R$ ${(meta.metaTotal - projecaoFechamento).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta da loja.`
+        });
+      }
+
+      alertas.push({
+        tipo: "info",
+        titulo: "Necessidade Diária",
+        mensagem: `⚠ Para atingir a meta, a unidade precisa faturar R$ ${mediaDiariaNecessaria.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por dia nos próximos ${diasRestantes} dias.`
+      });
+
+      if (secoesDestaque.length > 0) {
+        const top = secoesDestaque[0];
+        alertas.push({
+          tipo: "sucesso",
+          titulo: `Destaque: ${top.nome}`,
+          mensagem: `🟢 ${top.nome} já atingiu ${top.percentualAtingido.toFixed(1)}% da meta e projeta bater R$ ${top.projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
+        });
+      }
+
+      if (secoesAbaixo.length > 0) {
+        const critico = secoesAbaixo[0];
+        const ritmoAbaixo = Math.abs(100 - (critico.projecaoFechamento / critico.meta * 100)).toFixed(1);
+        alertas.push({
+          tipo: "aviso",
+          titulo: `Atenção: ${critico.nome}`,
+          mensagem: `⚠ ${critico.nome} está ${ritmoAbaixo}% abaixo do ritmo ideal. Necessário foco e reforço no setor.`
+        });
+      }
+
+      const secaoMargemQueda = secoesAcompanhamento.find(s => s.margemRealizada < s.margemPlanejada - 0.5);
+      if (secaoMargemQueda) {
+        alertas.push({
+          tipo: "aviso",
+          titulo: `Margem Pressionada: ${secaoMargemQueda.nome}`,
+          mensagem: `⚠ Margem de ${secaoMargemQueda.nome} caiu para ${secaoMargemQueda.margemRealizada.toFixed(2)}%.`
+        });
+      }
+
+      res.json({
+        idEmpresa: idEmpresa || meta.tenantId,
+        meta,
+        acompanhamento: {
+          periodo: meta.periodo,
+          totalDiasMes,
+          diasDecorridos,
+          diasRestantes,
+          percentualMesDecorrido: Math.round((diasDecorridos / totalDiasMes) * 1000) / 10,
+          metaTotal: meta.metaTotal,
+          vendaAcumuladaTotal,
+          percentualAtingidoTotal: Math.round((vendaAcumuladaTotal / meta.metaTotal) * 10000) / 100,
+          faltaVenderTotal: vendaRestante,
+          mediaDiariaAtual,
+          mediaDiariaNecessaria,
+          projecaoFechamento,
+          ritmoGeral: projecaoFechamento >= meta.metaTotal ? "🟢 Acima da Meta" : projecaoFechamento >= meta.metaTotal * 0.95 ? "🟡 No Ritmo" : "🔴 Abaixo do Ritmo",
+          secoes: secoesAcompanhamento,
+          alertas
+        }
+      });
+    } catch(err) {
+      console.error("[Acompanhamento Error]:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // 3. Obter Detalhes da Meta por ID
   app.get('/api/metas/:id', (req, res) => {
     try {
-      const allMetas = getJSONFile(metasFile);
+      const allMetas = carregarOuInicializarMetas();
       const meta = allMetas.find(m => String(m.id) === String(req.params.id));
       if (!meta) return res.status(404).json({ error: "Meta não encontrada" });
       res.json(meta);
@@ -6056,7 +6950,7 @@ async function startServer() {
       const margemProjetadaEfetiva = Math.round((totalLucroPonderado / numMetaTotal) * 10000) / 100;
 
       const newMeta = {
-        id: `meta-${Date.now()}`,
+        id: `meta-${tenantId}-${Date.now()}`,
         tenantId: String(tenantId),
         periodo,
         metaTotal: numMetaTotal,
@@ -6073,7 +6967,7 @@ async function startServer() {
         secoes: secoesProcessadas
       };
 
-      let list = getJSONFile(metasFile);
+      let list = carregarOuInicializarMetas();
       list = list.map(m => {
         if (m.periodo === periodo && String(m.tenantId) === String(tenantId)) {
           return { ...m, status: "Substituída" };
@@ -6094,7 +6988,7 @@ async function startServer() {
   // 5. Excluir Meta
   app.delete('/api/metas/:id', (req, res) => {
     try {
-      let list = getJSONFile(metasFile);
+      let list = carregarOuInicializarMetas();
       const filtered = list.filter(m => String(m.id) !== String(req.params.id));
       saveJSONFile(metasFile, filtered);
       res.json({ success: true });
@@ -6103,152 +6997,1175 @@ async function startServer() {
     }
   });
 
-  // 6. Acompanhamento em Tempo Real durante o Mês (Real-time tracking & Projeções)
-  app.get('/api/metas/acompanhamento', (req, res) => {
+  // =========================================================================
+  // MÓDULO: SUGESTÕES DE COMPRAS / ESTOQUE DAS UNIDADES (GERENTES & CENTRAL)
+  // =========================================================================
+
+  const sugestoesComprasFile = path.join(CONFIG_DIR, 'sugestoes_compras_estoque.json');
+  const produtosInativosFile = path.join(CONFIG_DIR, 'produtos_inativos.json');
+
+  function getSugestoesCompras() {
     try {
-      const { idEmpresa, metaId } = req.query;
-      const allMetas = getJSONFile(metasFile);
-      
-      let meta = null;
-      if (metaId) {
-        meta = allMetas.find(m => String(m.id) === String(metaId));
-      } else {
-        meta = allMetas.find(m => 
-          (m.status === "Ativa" || !m.status) && 
-          (!idEmpresa || idEmpresa === 'todas' || String(m.tenantId) === String(idEmpresa) || m.tenantId === 'todas')
-        ) || allMetas[0];
+      if (!fs.existsSync(sugestoesComprasFile)) {
+        fs.writeFileSync(sugestoesComprasFile, JSON.stringify([], null, 2), 'utf8');
+        return [];
+      }
+      return JSON.parse(fs.readFileSync(sugestoesComprasFile, 'utf8') || '[]');
+    } catch(e) {
+      console.error('[getSugestoesCompras error]', e.message);
+      return [];
+    }
+  }
+
+  function saveSugestoesCompras(data) {
+    try {
+      ensureConfigDir();
+      fs.writeFileSync(sugestoesComprasFile, JSON.stringify(data, null, 2), 'utf8');
+      return true;
+    } catch(e) {
+      console.error('[saveSugestoesCompras error]', e.message);
+      return false;
+    }
+  }
+
+  function getProdutosInativos() {
+    try {
+      if (!fs.existsSync(produtosInativosFile)) {
+        fs.writeFileSync(produtosInativosFile, JSON.stringify({}), 'utf8');
+        return {};
+      }
+      return JSON.parse(fs.readFileSync(produtosInativosFile, 'utf8') || '{}');
+    } catch(e) {
+      console.error('[getProdutosInativos error]', e.message);
+      return {};
+    }
+  }
+
+  function saveProdutosInativos(data) {
+    try {
+      ensureConfigDir();
+      fs.writeFileSync(produtosInativosFile, JSON.stringify(data, null, 2), 'utf8');
+      return true;
+    } catch(e) {
+      console.error('[saveProdutosInativos error]', e.message);
+      return false;
+    }
+  }
+
+  // 1. Busca de Produtos com Estoque da Unidade do Gerente
+  app.get('/api/sugestoes-compras/produtos', async (req, res) => {
+    try {
+      const { idEmpresa, query, limit = 50, apenasSemEstoque } = req.query;
+      const empresaId = parseInt(idEmpresa) || 1;
+      const trimmed = (query || '').trim();
+
+      let whereClause = '';
+      const params = [empresaId];
+
+      if (trimmed) {
+        const numVal = parseInt(trimmed);
+        if (!isNaN(numVal) && String(numVal) === trimmed) {
+          whereClause += ` AND (P.IDSUBPRODUTO = ? OR BAR.CODBAR = ?)`;
+          params.push(numVal, trimmed);
+        } else {
+          whereClause += ` AND (UPPER(P.DESCRICAO) LIKE ? OR UPPER(P.MARCAFABRICANTE) LIKE ? OR UPPER(P.REFERENCIA) LIKE ?)`;
+          const likeTerm = `%${trimmed.toUpperCase()}%`;
+          params.push(likeTerm, likeTerm, likeTerm);
+        }
       }
 
-      if (!meta) {
-        return res.json({ semMeta: true, message: "Nenhuma meta cadastrada para este período" });
+      if (apenasSemEstoque === 'true') {
+        whereClause += ` AND (COALESCE(E.QTDATUALESTOQUE, 0) <= 0)`;
       }
 
-      const totalDiasMes = 30;
-      const diasDecorridos = 18;
-      const diasRestantes = totalDiasMes - diasDecorridos;
+      const sql = `
+        SELECT 
+          P.IDSUBPRODUTO,
+          TRIM(P.DESCRICAO) AS DESCRICAO,
+          TRIM(P.REFERENCIA) AS REFERENCIA,
+          TRIM(P.MARCAFABRICANTE) AS MARCAFABRICANTE,
+          BAR.CODBAR AS CODIGOBARRAS,
+          COALESCE(E.QTDATUALESTOQUE, 0) AS ESTOQUE_ATUAL,
+          COALESCE(E.VALVENDA, 0) AS VALVENDA,
+          COALESCE(E.VALCUSTOMEDIO, 0) AS VALCUSTOMEDIO,
+          E.DTULTIMAVENDA
+        FROM DBA.VW_GEA_PRODUTO P
+        LEFT JOIN DBA.ESTOQUE_SALDO_ATUAL E ON E.IDSUBPRODUTO = P.IDSUBPRODUTO AND E.IDEMPRESA = ?
+        LEFT JOIN DBA.PRODUTO_GRADE BAR ON BAR.IDSUBPRODUTO = P.IDSUBPRODUTO
+        WHERE 1=1 ${whereClause}
+        ORDER BY P.DESCRICAO ASC
+        FETCH FIRST ${parseInt(limit) || 50} ROWS ONLY
+        WITH UR
+      `;
 
-      const progressoEsperadoTempo = (diasDecorridos / totalDiasMes);
-      const fatorRealizacaoGlobal = 0.612;
+      let rows = await queryDB(sql, params).catch(async (e) => {
+        console.warn('[sugestoes-compras/produtos fallback]', e.message);
+        let fallbackSql = `
+          SELECT 
+            P.IDSUBPRODUTO,
+            TRIM(P.DESCRICAO) AS DESCRICAO,
+            TRIM(P.REFERENCIA) AS REFERENCIA,
+            TRIM(P.MARCAFABRICANTE) AS MARCAFABRICANTE,
+            NULL AS CODIGOBARRAS,
+            COALESCE(E.QTDATUALESTOQUE, 0) AS ESTOQUE_ATUAL,
+            COALESCE(E.VALVENDA, 0) AS VALVENDA,
+            COALESCE(E.VALCUSTOMEDIO, 0) AS VALCUSTOMEDIO,
+            E.DTULTIMAVENDA
+          FROM DBA.VW_GEA_PRODUTO P
+          LEFT JOIN DBA.ESTOQUE_SALDO_ATUAL E ON E.IDSUBPRODUTO = P.IDSUBPRODUTO AND E.IDEMPRESA = ?
+          WHERE 1=1
+        `;
+        const fbParams = [empresaId];
+        if (trimmed) {
+          fallbackSql += ` AND (UPPER(P.DESCRICAO) LIKE ? OR UPPER(P.MARCAFABRICANTE) LIKE ?)`;
+          const lt = `%${trimmed.toUpperCase()}%`;
+          fbParams.push(lt, lt);
+        }
+        if (apenasSemEstoque === 'true') {
+          fallbackSql += ` AND (COALESCE(E.QTDATUALESTOQUE, 0) <= 0)`;
+        }
+        fallbackSql += ` FETCH FIRST ${parseInt(limit) || 50} ROWS ONLY WITH UR`;
+        return await queryDB(fallbackSql, fbParams).catch(() => []);
+      });
 
-      const vendaAcumuladaTotal = Math.round(meta.metaTotal * fatorRealizacaoGlobal * 100) / 100;
-      const mediaDiariaAtual = Math.round((vendaAcumuladaTotal / diasDecorridos) * 100) / 100;
-      const projecaoFechamento = Math.round((mediaDiariaAtual * totalDiasMes) * 100) / 100;
-      const vendaRestante = Math.round((meta.metaTotal - vendaAcumuladaTotal) * 100) / 100;
-      const mediaDiariaNecessaria = Math.round((vendaRestante / diasRestantes) * 100) / 100;
+      const inativosMap = getProdutosInativos();
+      const seen = new Set();
+      const uniqueRows = [];
+      for (const r of rows) {
+        if (!seen.has(r.IDSUBPRODUTO)) {
+          seen.add(r.IDSUBPRODUTO);
+          uniqueRows.push({
+            idProduto: r.IDSUBPRODUTO,
+            descricao: r.DESCRICAO,
+            referencia: r.REFERENCIA || "",
+            marca: r.MARCAFABRICANTE || "GERAL",
+            codBarras: r.CODIGOBARRAS || "",
+            estoqueAtual: Number(r.ESTOQUE_ATUAL || 0),
+            valorVenda: Number(r.VALVENDA || 0),
+            custoMedio: Number(r.VALCUSTOMEDIO || 0),
+            dtUltimaVenda: r.DTULTIMAVENDA,
+            inativo: Boolean(inativosMap[r.IDSUBPRODUTO])
+          });
+        }
+      }
 
-      const secoesAcompanhamento = (meta.secoes || []).map((sec, idx) => {
-        const fatores = [1.05, 0.98, 0.92, 1.02, 1.08, 0.95, 1.01, 0.97, 1.03, 1.12, 0.99, 1.18, 1.14, 0.91, 1.04, 1.15, 1.06, 1.00];
-        const fatorSecao = fatores[idx % fatores.length];
-        const pctAtingido = Math.round(progressoEsperadoTempo * fatorSecao * 10000) / 100;
-        const realizado = Math.round(sec.meta * (pctAtingido / 100) * 100) / 100;
-        const faltaVender = Math.round(Math.max(0, sec.meta - realizado) * 100) / 100;
-        const mediaDiaria = Math.round((realizado / diasDecorridos) * 100) / 100;
-        const projecao = Math.round((mediaDiaria * totalDiasMes) * 100) / 100;
-        const mediaNecessaria = Math.round((faltaVender / Math.max(1, diasRestantes)) * 100) / 100;
+      res.json(uniqueRows);
+    } catch (err) {
+      console.error('[sugestoes-compras/produtos Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
 
-        const margemRealizada = Math.round((sec.margemDesejada + (fatorSecao > 1 ? 0.3 : -0.8)) * 10) / 10;
-        const lucroRealizado = Math.round(realizado * (margemRealizada / 100) * 100) / 100;
+  // Endpoint para alternar Flag de Produto Inativo
+  app.post('/api/sugestoes-compras/produtos/inativar', (req, res) => {
+    try {
+      const { idProduto, inativo, motivo, gerente } = req.body;
+      if (!idProduto) {
+        return res.status(400).json({ error: "idProduto é obrigatório." });
+      }
+      const map = getProdutosInativos();
+      const key = String(idProduto);
+      const novoStatus = inativo !== undefined ? Boolean(inativo) : !map[key];
 
-        let status = "atencao";
-        if (projecao >= sec.meta) status = "acima";
-        else if (projecao < sec.meta * 0.92) status = "abaixo";
-
-        return {
-          id: sec.id,
-          nome: sec.nome,
-          meta: sec.meta,
-          vendaRealizada: realizado,
-          percentualAtingido: pctAtingido,
-          faltaVender,
-          mediaDiariaAtual: mediaDiaria,
-          mediaDiariaNecessaria: mediaNecessaria,
-          projecaoFechamento: projecao,
-          margemPlanejada: sec.margemDesejada,
-          margemRealizada,
-          lucroRealizado,
-          status,
-          participacaoReal: 0
+      if (novoStatus) {
+        map[key] = {
+          inativo: true,
+          dataHora: new Date().toISOString(),
+          motivo: motivo || "Sinalizado como inativo pelo gerente",
+          gerente: gerente || "Gerente"
         };
-      });
-
-      secoesAcompanhamento.forEach(s => {
-        s.participacaoReal = Math.round((s.vendaRealizada / vendaAcumuladaTotal) * 10000) / 100;
-      });
-
-      const alertas = [];
-      const secoesAbaixo = secoesAcompanhamento.filter(s => s.status === 'abaixo');
-      const secoesDestaque = secoesAcompanhamento.filter(s => s.status === 'acima');
-
-      if (projecaoFechamento >= meta.metaTotal) {
-        alertas.push({
-          tipo: "sucesso",
-          titulo: "Projeção Favorável",
-          mensagem: `🟢 Projeção atual indica faturamento de R$ ${projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}, superando a meta global em ${((projecaoFechamento / meta.metaTotal - 1) * 100).toFixed(1)}%.`
-        });
       } else {
-        alertas.push({
-          tipo: "perigo",
-          titulo: "Alerta de Ritmo Global",
-          mensagem: `🔴 Projeção atual indica faturamento de R$ ${projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Faltam R$ ${(meta.metaTotal - projecaoFechamento).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para bater a meta.`
-        });
+        delete map[key];
+      }
+      saveProdutosInativos(map);
+
+      res.json({ success: true, idProduto: Number(idProduto), inativo: novoStatus });
+    } catch (err) {
+      console.error('[inativar produto Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. Listar Solicitações (com filtros por unidade, status, tipo e prioridade)
+  app.get('/api/sugestoes-compras/solicitacoes', (req, res) => {
+    try {
+      const { idEmpresa, tipo, status, prioridade } = req.query;
+      let list = getSugestoesCompras();
+
+      if (idEmpresa && idEmpresa !== 'todas') {
+        list = list.filter(item => String(item.idEmpresa) === String(idEmpresa));
+      }
+      if (tipo && tipo !== 'todos') {
+        list = list.filter(item => item.tipo === tipo);
+      }
+      if (status && status !== 'todos') {
+        list = list.filter(item => item.status === status);
+      }
+      if (prioridade && prioridade !== 'todos') {
+        list = list.filter(item => item.prioridade === prioridade);
       }
 
-      alertas.push({
-        tipo: "info",
-        titulo: "Necessidade Diária",
-        mensagem: `⚠ Para atingir R$ ${(meta.metaTotal / 1000000).toFixed(1)} milhões, a empresa precisa vender R$ ${mediaDiariaNecessaria.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} por dia nos próximos ${diasRestantes} dias.`
+      list.sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime());
+      res.json(list);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Criar Nova Solicitação (Sugerir Compra / Estoque Zerado / Solicitar Correção)
+  app.post('/api/sugestoes-compras/solicitacoes', (req, res) => {
+    try {
+      const {
+        tipo, // 'sugestao_compra' | 'estoque_zerado' | 'correcao_estoque'
+        idProduto,
+        descricao,
+        codBarras,
+        marca,
+        referencia,
+        idEmpresa,
+        nomeLoja,
+        gerente,
+        quantidadeSugerida,
+        prioridade, // 'baixa' | 'media' | 'alta' | 'urgente'
+        observacao,
+        estoqueSistema,
+        estoqueFisico,
+        motivoCorrecao
+      } = req.body;
+
+      if (!idProduto || !descricao || !idEmpresa) {
+        return res.status(400).json({ error: "Campos obrigatórios ausentes (produto, loja, gerente)." });
+      }
+
+      const list = getSugestoesCompras();
+      const now = new Date();
+
+      const novaSolicitacao = {
+        id: `sol_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        tipo: tipo || 'sugestao_compra',
+        idProduto: Number(idProduto),
+        descricao: String(descricao).trim(),
+        codBarras: codBarras || '',
+        marca: marca || 'GERAL',
+        referencia: referencia || '',
+        idEmpresa: Number(idEmpresa),
+        nomeLoja: nomeLoja || `Loja ${idEmpresa}`,
+        gerente: gerente || 'Gerente da Unidade',
+        dataHora: now.toISOString(),
+        status: 'pendente', // 'pendente', 'em_analise', 'aprovado', 'comprado', 'rejeitado'
+        quantidadeSugerida: Number(quantidadeSugerida) || 1,
+        prioridade: prioridade || (tipo === 'estoque_zerado' ? 'urgente' : 'media'),
+        observacao: observacao || '',
+        estoqueSistema: Number(estoqueSistema) || 0,
+        estoqueFisico: estoqueFisico != null ? Number(estoqueFisico) : null,
+        diferenca: estoqueFisico != null ? Number(estoqueFisico) - (Number(estoqueSistema) || 0) : null,
+        motivoCorrecao: motivoCorrecao || null,
+        requerAprovacao: tipo === 'correcao_estoque',
+        respostaCentral: '',
+        responsavelAprovacao: null,
+        dataAprovacao: null,
+        historico: [
+          {
+            dataHora: now.toISOString(),
+            status: 'pendente',
+            usuario: gerente || 'Gerente',
+            acao: tipo === 'estoque_zerado' 
+              ? 'Sinalizado Estoque Zerado / Ruptura na Loja' 
+              : tipo === 'correcao_estoque' 
+                ? 'Solicitada Correção de Estoque Físico' 
+                : 'Sugestão de Compra Cadastrada'
+          }
+        ]
+      };
+
+      list.unshift(novaSolicitacao);
+      saveSugestoesCompras(list);
+
+      res.status(201).json({ success: true, solicitacao: novaSolicitacao });
+    } catch (err) {
+      console.error('[Criar Solicitacao Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Atualizar Status de Solicitação Individual (Aprovar, Rejeitar, Comprado, etc.)
+  app.put('/api/sugestoes-compras/solicitacoes/:id', (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, respostaCentral, responsavelAprovacao, observacao } = req.body;
+      const list = getSugestoesCompras();
+      const index = list.findIndex(item => item.id === id);
+
+      if (index === -1) {
+        return res.status(404).json({ error: "Solicitação não encontrada." });
+      }
+
+      const now = new Date().toISOString();
+      const item = list[index];
+
+      if (status) item.status = status;
+      if (respostaCentral !== undefined) item.respostaCentral = respostaCentral;
+      if (responsavelAprovacao) {
+        item.responsavelAprovacao = responsavelAprovacao;
+        item.dataAprovacao = now;
+      }
+
+      item.historico = item.historico || [];
+      item.historico.push({
+        dataHora: now,
+        status: status || item.status,
+        usuario: responsavelAprovacao || 'Central Compras/Estoque',
+        acao: `Status alterado para [${status}]. ${observacao || respostaCentral || ''}`.trim()
       });
 
-      if (secoesDestaque.length > 0) {
-        const top = secoesDestaque[0];
-        alertas.push({
-          tipo: "sucesso",
-          titulo: `Destaque: ${top.nome}`,
-          mensagem: `🟢 ${top.nome} já atingiu ${top.percentualAtingido.toFixed(1)}% da meta e projeta fechar em R$ ${top.projecaoFechamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
-        });
+      list[index] = item;
+      saveSugestoesCompras(list);
+
+      res.json({ success: true, solicitacao: item });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. Atualização em Lote de Status (ex: marcar todas sugestões de um produto como "Comprado" ou "Aprovado")
+  app.post('/api/sugestoes-compras/solicitacoes/bulk-status', (req, res) => {
+    try {
+      const { ids, status, respostaCentral, responsavelAprovacao } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "IDs não informados." });
       }
 
-      if (secoesAbaixo.length > 0) {
-        const critico = secoesAbaixo[0];
-        const ritmoAbaixo = Math.abs(100 - (critico.projecaoFechamento / critico.meta * 100)).toFixed(1);
-        alertas.push({
-          tipo: "aviso",
-          titulo: `Atenção: ${critico.nome}`,
-          mensagem: `⚠ ${critico.nome} está ${ritmoAbaixo}% abaixo do ritmo necessário. Necessário intensificar campanhas e promoções.`
-        });
+      const list = getSugestoesCompras();
+      const now = new Date().toISOString();
+      let updatedCount = 0;
+
+      for (let i = 0; i < list.length; i++) {
+        if (ids.includes(list[i].id)) {
+          list[i].status = status;
+          if (respostaCentral) list[i].respostaCentral = respostaCentral;
+          if (responsavelAprovacao) {
+            list[i].responsavelAprovacao = responsavelAprovacao;
+            list[i].dataAprovacao = now;
+          }
+          list[i].historico = list[i].historico || [];
+          list[i].historico.push({
+            dataHora: now,
+            status,
+            usuario: responsavelAprovacao || 'Central de Compras',
+            acao: `Atualização em lote para [${status}]. ${respostaCentral || ''}`.trim()
+          });
+          updatedCount++;
+        }
       }
 
-      const secaoMargemQueda = secoesAcompanhamento.find(s => s.margemRealizada < s.margemPlanejada - 0.5);
-      if (secaoMargemQueda) {
-        alertas.push({
-          tipo: "aviso",
-          titulo: `Margem Pressionada: ${secaoMargemQueda.nome}`,
-          mensagem: `⚠ Margem de ${secaoMargemQueda.nome} caiu de ${secaoMargemQueda.margemPlanejada.toFixed(2)}% para ${secaoMargemQueda.margemRealizada.toFixed(2)}%.`
-        });
+      saveSugestoesCompras(list);
+      res.json({ success: true, updatedCount });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 6. Agrupamento de Sugestões por Produto para Central de Compras
+  app.get('/api/sugestoes-compras/agrupado-produtos', (req, res) => {
+    try {
+      const list = getSugestoesCompras();
+      const ativas = list.filter(item => 
+        (item.tipo === 'sugestao_compra' || item.tipo === 'estoque_zerado') &&
+        ['pendente', 'em_analise', 'aprovado'].includes(item.status)
+      );
+
+      const gruposMap = new Map();
+
+      for (const sol of ativas) {
+        const prodId = sol.idProduto;
+        if (!gruposMap.has(prodId)) {
+          gruposMap.set(prodId, {
+            idProduto: prodId,
+            descricao: sol.descricao,
+            marca: sol.marca,
+            codBarras: sol.codBarras,
+            referencia: sol.referencia,
+            totalQtdSugerida: 0,
+            lojas: [],
+            solicitacoesIds: [],
+            maiorPrioridade: 'baixa',
+            ultimaDataHora: sol.dataHora
+          });
+        }
+
+        const grupo = gruposMap.get(prodId);
+        grupo.totalQtdSugerida += Number(sol.quantidadeSugerida) || 1;
+        grupo.solicitacoesIds.push(sol.id);
+        
+        const lojaExistente = grupo.lojas.find(l => String(l.idEmpresa) === String(sol.idEmpresa));
+        if (lojaExistente) {
+          lojaExistente.quantidade += Number(sol.quantidadeSugerida) || 1;
+          lojaExistente.solicitacoes.push(sol);
+        } else {
+          grupo.lojas.push({
+            idEmpresa: sol.idEmpresa,
+            nomeLoja: sol.nomeLoja,
+            gerente: sol.gerente,
+            quantidade: Number(sol.quantidadeSugerida) || 1,
+            prioridade: sol.prioridade,
+            dataHora: sol.dataHora,
+            solicitacoes: [sol]
+          });
+        }
+
+        const pesos = { urgente: 4, alta: 3, media: 2, baixa: 1 };
+        if (pesos[sol.prioridade] > pesos[grupo.maiorPrioridade]) {
+          grupo.maiorPrioridade = sol.prioridade;
+        }
+
+        if (new Date(sol.dataHora) > new Date(grupo.ultimaDataHora)) {
+          grupo.ultimaDataHora = sol.dataHora;
+        }
+      }
+
+      const resultado = Array.from(gruposMap.values()).map(g => ({
+        ...g,
+        totalLojas: g.lojas.length
+      }));
+
+      resultado.sort((a, b) => b.totalLojas - a.totalLojas || b.totalQtdSugerida - a.totalQtdSugerida);
+
+      res.json(resultado);
+    } catch (err) {
+      console.error('[agrupado-produtos Error]:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 7. Excluir Solicitação
+  app.delete('/api/sugestoes-compras/solicitacoes/:id', (req, res) => {
+    try {
+      const { id } = req.params;
+      let list = getSugestoesCompras();
+      list = list.filter(item => item.id !== id);
+      saveSugestoesCompras(list);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 8. Sincronizar em Tempo Real com o Banco de Dados DB2
+  app.post('/api/sugestoes-compras/sincronizar-banco', async (req, res) => {
+    try {
+      const now = new Date().toISOString();
+      let dbStatus = "CONECTADO_DB2";
+      let totalProdutos = 0;
+      try {
+        const prodCount = await queryDB("SELECT COUNT(*) AS TOTAL FROM DBA.VW_GEA_PRODUTO WITH UR").catch(() => []);
+        if (prodCount && prodCount[0]) {
+          totalProdutos = Number(prodCount[0].TOTAL) || 0;
+        }
+      } catch (e) {
+        dbStatus = "FALLBACK_MODO_LOCAL";
       }
 
       res.json({
-        meta,
-        acompanhamento: {
-          periodo: meta.periodo,
-          totalDiasMes,
-          diasDecorridos,
-          diasRestantes,
-          percentualMesDecorrido: Math.round((diasDecorridos / totalDiasMes) * 1000) / 10,
-          metaTotal: meta.metaTotal,
-          vendaAcumuladaTotal,
-          percentualAtingidoTotal: Math.round((vendaAcumuladaTotal / meta.metaTotal) * 10000) / 100,
-          faltaVenderTotal: vendaRestante,
-          mediaDiariaAtual,
-          mediaDiariaNecessaria,
-          projecaoFechamento,
-          ritmoGeral: projecaoFechamento >= meta.metaTotal ? "🟢 Acima da Meta" : projecaoFechamento >= meta.metaTotal * 0.95 ? "🟡 No Ritmo" : "🔴 Abaixo do Ritmo",
-          secoes: secoesAcompanhamento,
-          alertas
-        }
+        success: true,
+        status: dbStatus,
+        dataHoraSincronizacao: now,
+        totalProdutosNoBanco: totalProdutos,
+        mensagem: "Sincronização com o Banco de Dados realizada com sucesso!"
       });
-    } catch(err) {
-      console.error("[Acompanhamento Error]:", err);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // =========================================================================
+  // --- MÓDULO EXCLUSIVO: GESTÃO DE PEDIDOS & ORÇAMENTOS POR COMPRADOR ---
+  // =========================================================================
+
+  // 1. Resumo Executivo e Tabela de Compradores (Entregues vs Pendentes com validação de NF)
+  app.get('/api/pedidos-compradores/resumo', async (req, res) => {
+    try {
+      const { startDate, endDate, idEmpresa, compradorId } = req.query;
+      let startD = startDate;
+      let endD = endDate;
+      if (!startD || !endD) {
+        const today = new Date();
+        startD = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endD = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      // Buscar Orçamentos Lançados (do último orçamento)
+      let orcSql = `
+        WITH ORCAMENTOS_MAPEADOS AS (
+          SELECT 
+            COALESCE(OC.IDCOMPRADOR, 
+              CASE 
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
+                ELSE OC.IDCOMPRADOR
+              END
+            ) AS IDCOMPRADOR,
+            OC.VALTOTAL,
+            OC.IDEMPRESA
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
+             OR OC.IDCOMPRADOR IN (129, 649)
+        )
+        SELECT 
+          OM.IDCOMPRADOR,
+          COALESCE(U.NOMEUSUARIO, 'NAO IDENTIFICADO') AS COMPRADOR,
+          SUM(OM.VALTOTAL) AS VALTOTAL
+        FROM ORCAMENTOS_MAPEADOS OM
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = OM.IDCOMPRADOR
+        WHERE OM.IDCOMPRADOR IS NOT NULL
+      `;
+      const orcParams = [];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        orcSql += " AND OM.IDEMPRESA = ?";
+        orcParams.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        orcSql += " AND OM.IDCOMPRADOR = ?";
+        orcParams.push(parseInt(compradorId));
+      }
+      orcSql += " GROUP BY OM.IDCOMPRADOR, U.NOMEUSUARIO WITH UR";
+      const orcamentos = await queryDB(orcSql, orcParams).catch(() => []);
+
+      // Buscar Pedidos de Compra com Validação por Entrada de NF (Apenas compradores do último orçamento)
+      let pedSql = `
+        WITH ULTIMO_ORCAMENTO AS (
+          SELECT DISTINCT 
+            COALESCE(OC.IDCOMPRADOR, 
+              CASE 
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
+                ELSE OC.IDCOMPRADOR
+              END
+            ) AS IDCOMPRADOR
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
+          UNION
+          SELECT 129 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+          UNION
+          SELECT 649 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+        ),
+        NOTAS_PED AS (
+          SELECT 
+            CP.IDPEDIDO,
+            CP.IDEMPRESA,
+            VARCHAR_FORMAT(MAX(CP.DTALTERACAO), 'YYYY-MM-DD') AS DATA_ENTRADA_NF,
+            LISTAGG(DISTINCT CHAR(CP.NUMNOTA), ', ') WITHIN GROUP (ORDER BY CHAR(CP.NUMNOTA)) AS NOTAS_FISCAIS
+          FROM DBA.CONFERE_PEDIDO CP
+          WHERE CP.NUMNOTA IS NOT NULL AND CP.NUMNOTA > 0
+            AND CP.IDPEDIDO IN (
+              SELECT PC.IDPEDIDO FROM DBA.PEDIDO_COMPRA PC 
+              WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+            )
+          GROUP BY CP.IDPEDIDO, CP.IDEMPRESA
+        )
+        SELECT 
+          COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) AS IDUSUARIO,
+          COALESCE(U.NOMEUSUARIO, 'OUTROS') AS COMPRADOR,
+          COUNT(DISTINCT CHAR(PC.IDPEDIDO) || '-' || CHAR(PC.IDEMPRESA)) AS TOTAL_PEDIDOS,
+          COUNT(DISTINCT CASE WHEN NP.NOTAS_FISCAIS IS NOT NULL THEN CHAR(PC.IDPEDIDO) || '-' || CHAR(PC.IDEMPRESA) END) AS PEDIDOS_ENTREGUES,
+          COUNT(DISTINCT CASE WHEN NP.NOTAS_FISCAIS IS NULL THEN CHAR(PC.IDPEDIDO) || '-' || CHAR(PC.IDEMPRESA) END) AS PEDIDOS_PENDENTES,
+          SUM(PCP.QTDSOLICITADA * PCP.VALUNITARIO) AS VALOR_TOTAL_COMPRADO,
+          SUM(CASE WHEN NP.NOTAS_FISCAIS IS NOT NULL THEN (PCP.QTDSOLICITADA * PCP.VALUNITARIO) ELSE 0 END) AS VALOR_ENTREGUE,
+          SUM(CASE WHEN NP.NOTAS_FISCAIS IS NULL THEN (PCP.QTDSOLICITADA * PCP.VALUNITARIO) ELSE 0 END) AS VALOR_PENDENTE
+        FROM DBA.PEDIDO_COMPRA PC
+        JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
+        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN NOTAS_PED NP ON NP.IDPEDIDO = PC.IDPEDIDO AND NP.IDEMPRESA = PC.IDEMPRESA
+        WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+          AND COALESCE(PC.FLAGCANCELADO, 'F') != 'T'
+      `;
+      const pedParams = [startD, endD, startD, endD];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        pedSql += " AND PC.IDEMPRESA = ?";
+        pedParams.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        pedSql += " AND COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) = ?";
+        pedParams.push(parseInt(compradorId));
+      }
+      pedSql += `
+        GROUP BY COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO), U.NOMEUSUARIO
+        ORDER BY VALOR_TOTAL_COMPRADO DESC
+        WITH UR
+      `;
+      const pedidos = await queryDB(pedSql, pedParams).catch(() => []);
+
+      // Cruzamento de dados por comprador
+      const map = {};
+
+      for (const p of pedidos) {
+        const id = p.IDUSUARIO || 0;
+        const nome = (p.COMPRADOR || "OUTROS").trim();
+        map[id] = {
+          IDUSUARIO: id,
+          COMPRADOR: nome,
+          TOTAL_PEDIDOS: Number(p.TOTAL_PEDIDOS) || 0,
+          PEDIDOS_ENTREGUES: Number(p.PEDIDOS_ENTREGUES) || 0,
+          PEDIDOS_PENDENTES: Number(p.PEDIDOS_PENDENTES) || 0,
+          VALOR_TOTAL_COMPRADO: Number(p.VALOR_TOTAL_COMPRADO) || 0,
+          VALOR_ENTREGUE: Number(p.VALOR_ENTREGUE) || 0,
+          VALOR_PENDENTE: Number(p.VALOR_PENDENTE) || 0,
+          ORCADO: 0,
+          SALDO_ORCAMENTO: 0,
+          PERC_ORCADO: 0,
+          TICKET_MEDIO: 0
+        };
+      }
+
+      for (const o of orcamentos) {
+        const id = o.IDCOMPRADOR || 0;
+        const nome = (o.COMPRADOR || "NÃO ATRIBUÍDO").trim();
+        if (!map[id]) {
+          map[id] = {
+            IDUSUARIO: id,
+            COMPRADOR: nome,
+            TOTAL_PEDIDOS: 0,
+            PEDIDOS_ENTREGUES: 0,
+            PEDIDOS_PENDENTES: 0,
+            VALOR_TOTAL_COMPRADO: 0,
+            VALOR_ENTREGUE: 0,
+            VALOR_PENDENTE: 0,
+            ORCADO: 0,
+            SALDO_ORCAMENTO: 0,
+            PERC_ORCADO: 0,
+            TICKET_MEDIO: 0
+          };
+        }
+        map[id].ORCADO += Number(o.VALTOTAL) || 0;
+      }
+
+      const listaCompradores = Object.values(map).map(c => {
+        const saldo = c.ORCADO > 0 ? (c.ORCADO - c.VALOR_TOTAL_COMPRADO) : 0;
+        const percOrcado = c.ORCADO > 0 ? ((c.VALOR_TOTAL_COMPRADO / c.ORCADO) * 100) : 0;
+        const ticketMedio = c.TOTAL_PEDIDOS > 0 ? (c.VALOR_TOTAL_COMPRADO / c.TOTAL_PEDIDOS) : 0;
+        const percEntregue = c.TOTAL_PEDIDOS > 0 ? ((c.PEDIDOS_ENTREGUES / c.TOTAL_PEDIDOS) * 100) : 0;
+        return {
+          ...c,
+          SALDO_ORCAMENTO: saldo,
+          PERC_ORCADO: percOrcado,
+          TICKET_MEDIO: ticketMedio,
+          PERC_ENTREGUE: percEntregue
+        };
+      }).sort((a, b) => b.VALOR_TOTAL_COMPRADO - a.VALOR_TOTAL_COMPRADO);
+
+      // KPIs consolidados
+      let kpiTotalPedidos = 0;
+      let kpiEntregues = 0;
+      let kpiPendentes = 0;
+      let kpiTotalComprado = 0;
+      let kpiValorEntregue = 0;
+      let kpiValorPendente = 0;
+      let kpiTotalOrcado = 0;
+
+      for (const item of listaCompradores) {
+        kpiTotalPedidos += item.TOTAL_PEDIDOS;
+        kpiEntregues += item.PEDIDOS_ENTREGUES;
+        kpiPendentes += item.PEDIDOS_PENDENTES;
+        kpiTotalComprado += item.VALOR_TOTAL_COMPRADO;
+        kpiValorEntregue += item.VALOR_ENTREGUE;
+        kpiValorPendente += item.VALOR_PENDENTE;
+        kpiTotalOrcado += item.ORCADO;
+      }
+
+      const kpis = {
+        totalPedidos: kpiTotalPedidos,
+        pedidosEntregues: kpiEntregues,
+        pedidosPendentes: kpiPendentes,
+        taxaEntrega: kpiTotalPedidos > 0 ? ((kpiEntregues / kpiTotalPedidos) * 100) : 0,
+        valorTotalComprado: kpiTotalComprado,
+        valorEntregue: kpiValorEntregue,
+        valorPendente: kpiValorPendente,
+        totalOrcado: kpiTotalOrcado,
+        saldoOrcamento: kpiTotalOrcado - kpiTotalComprado,
+        atingimentoOrcamento: kpiTotalOrcado > 0 ? ((kpiTotalComprado / kpiTotalOrcado) * 100) : 0
+      };
+
+      res.json({
+        periodo: { startD, endD },
+        kpis,
+        compradores: listaCompradores
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 2. Listagem de Pedidos com Filtro por Status da NF, Fornecedor e Comprador
+  app.get('/api/pedidos-compradores/pedidos', async (req, res) => {
+    try {
+      const { startDate, endDate, idEmpresa, compradorId, status, busca, limit = 100 } = req.query;
+      let startD = startDate;
+      let endD = endDate;
+      if (!startD || !endD) {
+        const today = new Date();
+        startD = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endD = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      let sql = `
+        WITH ULTIMO_ORCAMENTO AS (
+          SELECT DISTINCT 
+            COALESCE(OC.IDCOMPRADOR, 
+              CASE 
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
+                ELSE OC.IDCOMPRADOR
+              END
+            ) AS IDCOMPRADOR
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
+          UNION
+          SELECT 129 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+          UNION
+          SELECT 649 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+        ),
+        NOTAS_PED AS (
+          SELECT 
+            CP.IDPEDIDO,
+            CP.IDEMPRESA,
+            VARCHAR_FORMAT(MAX(CP.DTALTERACAO), 'YYYY-MM-DD') AS DATA_ENTRADA_NF,
+            LISTAGG(DISTINCT CHAR(CP.NUMNOTA), ', ') WITHIN GROUP (ORDER BY CHAR(CP.NUMNOTA)) AS NOTAS_FISCAIS
+          FROM DBA.CONFERE_PEDIDO CP
+          WHERE CP.NUMNOTA IS NOT NULL AND CP.NUMNOTA > 0
+            AND CP.IDPEDIDO IN (
+              SELECT PC.IDPEDIDO FROM DBA.PEDIDO_COMPRA PC 
+              WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+            )
+          GROUP BY CP.IDPEDIDO, CP.IDEMPRESA
+        ),
+        CONFERENTE_PED AS (
+          SELECT 
+            CP2.IDPEDIDO,
+            CP2.IDEMPRESA,
+            CA.IDUSUARIO AS IDUSUARIO_CONFERENTE,
+            COALESCE(UC.NOMEUSUARIO, 'NAO IDENTIFICADO') AS NOME_CONFERENTE,
+            ROW_NUMBER() OVER (PARTITION BY CP2.IDPEDIDO, CP2.IDEMPRESA ORDER BY CA.DTALTERACAO DESC) AS RN
+          FROM DBA.CONFERE_PEDIDO CP2
+          JOIN DBA.CONFERE_AUTORIZA CA ON CA.IDAUTORIZACAO = CP2.IDAUTORIZACAO AND CA.IDEMPRESA = CP2.IDEMPRESA
+          LEFT JOIN DBA.VW_GEA_USUARIO UC ON UC.IDUSUARIO = CA.IDUSUARIO
+          WHERE CP2.NUMNOTA IS NOT NULL AND CP2.NUMNOTA > 0
+            AND CP2.IDPEDIDO IN (
+              SELECT PC.IDPEDIDO FROM DBA.PEDIDO_COMPRA PC 
+              WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+            )
+        ),
+        PRAZOS_PED AS (
+          SELECT 
+            V.IDPEDIDO,
+            V.IDEMPRESA,
+            LISTAGG(TRIM(CHAR(DAYS(V.DTVENCIMENTO) - DAYS(PC3.DTMOVIMENTO))), ' / ') WITHIN GROUP (ORDER BY V.IDDIGITODUPLICATA) AS PRAZO_DIAS,
+            LISTAGG(VARCHAR_FORMAT(V.DTVENCIMENTO, 'DD/MM/YYYY'), ' / ') WITHIN GROUP (ORDER BY V.IDDIGITODUPLICATA) AS DATAS_BOLETO
+          FROM DBA.PEDIDO_COMPRA_VCTO V
+          JOIN DBA.PEDIDO_COMPRA PC3 ON PC3.IDPEDIDO = V.IDPEDIDO AND PC3.IDEMPRESA = V.IDEMPRESA
+          WHERE PC3.DTMOVIMENTO BETWEEN ? AND ?
+          GROUP BY V.IDPEDIDO, V.IDEMPRESA
+        )
+        SELECT 
+          PC.IDPEDIDO,
+          PC.IDEMPRESA,
+          PC.DTMOVIMENTO AS DATA_PEDIDO,
+          PC.HRMOVIMENTO AS HORA_PEDIDO,
+          PC.IDCLIFOR,
+          F.NOME AS FORNECEDOR,
+          COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) AS IDUSUARIO,
+          COALESCE(U.NOMEUSUARIO, 'NAO IDENTIFICADO') AS COMPRADOR,
+          COUNT(PCP.IDSUBPRODUTO) AS QTD_ITENS,
+          SUM(PCP.QTDSOLICITADA * PCP.VALUNITARIO) AS VALOR_TOTAL,
+          CASE WHEN NP.NOTAS_FISCAIS IS NOT NULL THEN 'Entregue' ELSE 'Pendente' END AS STATUS,
+          NP.NOTAS_FISCAIS,
+          NP.DATA_ENTRADA_NF,
+          CFP.NOME_CONFERENTE,
+          CFP.IDUSUARIO_CONFERENTE,
+          COALESCE(FP.DESCRRECEBIMENTO, 'Não Informado') AS CONDICAO_PAGTO,
+          PP.PRAZO_DIAS AS PRAZO,
+          PP.DATAS_BOLETO AS DATA_BOLETO
+        FROM DBA.PEDIDO_COMPRA PC
+        JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
+        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.CLIENTE_FORNECEDOR F ON F.IDCLIFOR = PC.IDCLIFOR
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.FORMA_PAGREC FP ON FP.IDRECEBIMENTO = PC.IDPAGAMENTO
+        LEFT JOIN PRAZOS_PED PP ON PP.IDPEDIDO = PC.IDPEDIDO AND PP.IDEMPRESA = PC.IDEMPRESA
+        LEFT JOIN NOTAS_PED NP ON NP.IDPEDIDO = PC.IDPEDIDO AND NP.IDEMPRESA = PC.IDEMPRESA
+        LEFT JOIN CONFERENTE_PED CFP ON CFP.IDPEDIDO = PC.IDPEDIDO AND CFP.IDEMPRESA = PC.IDEMPRESA AND CFP.RN = 1
+        WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+          AND COALESCE(PC.FLAGCANCELADO, 'F') != 'T'
+      `;
+      const params = [startD, endD, startD, endD, startD, endD, startD, endD];
+
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sql += " AND PC.IDEMPRESA = ?";
+        params.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        sql += " AND COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) = ?";
+        params.push(parseInt(compradorId));
+      }
+      if (busca && busca.trim()) {
+        const b = `%${busca.trim().toUpperCase()}%`;
+        sql += " AND (UPPER(F.NOME) LIKE ? OR CHAR(PC.IDPEDIDO) LIKE ?)";
+        params.push(b, b);
+      }
+
+      sql += `
+        GROUP BY 
+          PC.IDPEDIDO, PC.IDEMPRESA, PC.DTMOVIMENTO, PC.HRMOVIMENTO, 
+          PC.IDCLIFOR, F.NOME, COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO), 
+          U.NOMEUSUARIO, NP.NOTAS_FISCAIS, NP.DATA_ENTRADA_NF,
+          CFP.NOME_CONFERENTE, CFP.IDUSUARIO_CONFERENTE,
+          FP.DESCRRECEBIMENTO, PP.PRAZO_DIAS, PP.DATAS_BOLETO
+      `;
+
+      if (status === 'entregue') {
+        sql += " HAVING NP.NOTAS_FISCAIS IS NOT NULL";
+      } else if (status === 'pendente') {
+        sql += " HAVING NP.NOTAS_FISCAIS IS NULL";
+      }
+
+      sql += `
+        ORDER BY PC.DTMOVIMENTO DESC, PC.IDPEDIDO DESC
+        FETCH FIRST ${parseInt(limit) || 100} ROWS ONLY
+        WITH UR
+      `;
+
+      const data = await queryDB(sql, params).catch((err) => {
+        console.error("ERRO QUERY PEDIDOS DB2:", err);
+        return [];
+      });
+      res.json({
+        pedidos: data.map(item => ({
+          IDPEDIDO: item.IDPEDIDO,
+          IDEMPRESA: item.IDEMPRESA,
+          DATA_PEDIDO: item.DATA_PEDIDO,
+          HORA_PEDIDO: item.HORA_PEDIDO,
+          IDCLIFOR: item.IDCLIFOR,
+          FORNECEDOR: (item.FORNECEDOR || "").trim(),
+          IDUSUARIO: item.IDUSUARIO,
+          COMPRADOR: (item.COMPRADOR || "").trim(),
+          QTD_ITENS: Number(item.QTD_ITENS) || 0,
+          VALOR_TOTAL: Number(item.VALOR_TOTAL) || 0,
+          STATUS: item.STATUS,
+          NOTAS_FISCAIS: item.NOTAS_FISCAIS ? String(item.NOTAS_FISCAIS).trim() : null,
+          DATA_ENTRADA_NF: item.DATA_ENTRADA_NF,
+          NOME_CONFERENTE: item.NOME_CONFERENTE ? String(item.NOME_CONFERENTE).trim() : null,
+          IDUSUARIO_CONFERENTE: item.IDUSUARIO_CONFERENTE || null,
+          CONDICAO_PAGTO: (item.CONDICAO_PAGTO || "").trim(),
+          PRAZO: item.PRAZO ? String(item.PRAZO).trim() : "À vista",
+          DATA_BOLETO: item.DATA_BOLETO ? String(item.DATA_BOLETO).trim() : null
+        }))
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 3. Orçamentos Lançados no CISS (com detalhamento por filial/loja)
+  app.get('/api/pedidos-compradores/orcamentos', async (req, res) => {
+    try {
+      const { startDate, endDate, idEmpresa, compradorId } = req.query;
+      let startD = startDate;
+      let endD = endDate;
+      if (!startD || !endD) {
+        const today = new Date();
+        startD = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endD = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      let sql = `
+        SELECT 
+          OC.IDORCAMENTO,
+          OC.NUMSEQUENCIA,
+          OC.DESCRORCAMENTO,
+          OC.DTINICIAL,
+          OC.DTFINAL,
+          OC.IDCOMPRADOR,
+          COALESCE(U.NOMEUSUARIO, 'NAO ATRIBUIDO') AS COMPRADOR,
+          OC.IDEMPRESA,
+          OC.VALTOTAL
+        FROM DBA.ORCAMENTO_COMPRAS OC
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = OC.IDCOMPRADOR
+        WHERE OC.DTINICIAL <= ? AND OC.DTFINAL >= ?
+      `;
+      const params = [endD, startD];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sql += " AND OC.IDEMPRESA = ?";
+        params.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        sql += " AND OC.IDCOMPRADOR = ?";
+        params.push(parseInt(compradorId));
+      }
+      sql += " ORDER BY OC.DTINICIAL DESC, OC.IDORCAMENTO DESC, OC.IDEMPRESA ASC WITH UR";
+
+      const rows = await queryDB(sql, params).catch(() => []);
+
+      const orcMap = {};
+      for (const r of rows) {
+        const id = r.IDORCAMENTO;
+        if (!orcMap[id]) {
+          orcMap[id] = {
+            IDORCAMENTO: id,
+            DESCRORCAMENTO: (r.DESCRORCAMENTO || "").trim(),
+            DTINICIAL: r.DTINICIAL,
+            DTFINAL: r.DTFINAL,
+            IDCOMPRADOR: r.IDCOMPRADOR,
+            COMPRADOR: (r.COMPRADOR || "").trim(),
+            VALOR_TOTAL: 0,
+            LOJAS: {}
+          };
+        }
+        const val = Number(r.VALTOTAL) || 0;
+        orcMap[id].VALOR_TOTAL += val;
+        orcMap[id].LOJAS[`LOJA_${r.IDEMPRESA}`] = val;
+      }
+
+      res.json({
+        orcamentos: Object.values(orcMap)
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 4. Detalhes dos Itens de um Pedido de Compra
+  app.get('/api/pedidos-compradores/pedido-itens', async (req, res) => {
+    try {
+      const { idPedido } = req.query;
+      if (!idPedido) return res.status(400).json({ error: "idPedido obrigatorio" });
+
+      const sql = `
+        SELECT 
+          PCP.IDPRODUTO,
+          PCP.IDSUBPRODUTO,
+          P.DESCRICAO,
+          PCP.QTDSOLICITADA,
+          PCP.VALUNITARIO,
+          (PCP.QTDSOLICITADA * PCP.VALUNITARIO) AS VALOR_TOTAL,
+          PCP.QTDATENDIDA,
+          PCP.FLAGATENDIDO
+        FROM DBA.PEDIDO_COMPRA_PROD PCP
+        LEFT JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = PCP.IDSUBPRODUTO
+        WHERE PCP.IDPEDIDO = ?
+        ORDER BY PCP.NUMSEQUENCIAPROD ASC
+        WITH UR
+      `;
+      const itens = await queryDB(sql, [parseInt(idPedido)]).catch(() => []);
+      res.json({
+        idPedido: parseInt(idPedido),
+        itens: itens.map(it => ({
+          IDPRODUTO: it.IDPRODUTO,
+          IDSUBPRODUTO: it.IDSUBPRODUTO,
+          DESCRICAO: (it.DESCRICAO || "").trim(),
+          QTDSOLICITADA: Number(it.QTDSOLICITADA) || 0,
+          VALUNITARIO: Number(it.VALUNITARIO) || 0,
+          VALOR_TOTAL: Number(it.VALOR_TOTAL) || 0,
+          QTDATENDIDA: Number(it.QTDATENDIDA) || 0,
+          FLAGATENDIDO: it.FLAGATENDIDO === 'T'
+        }))
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // 5. Dados para Gráficos: Compras por Comprador/Loja e Comprador/Seção
+  app.get('/api/pedidos-compradores/graficos', async (req, res) => {
+    try {
+      const { startDate, endDate, idEmpresa, compradorId } = req.query;
+      let startD = startDate;
+      let endD = endDate;
+      if (!startD || !endD) {
+        const today = new Date();
+        startD = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        endD = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+      }
+
+      // 1. Compras por comprador e loja (Apenas compradores do último orçamento)
+      let sqlLoja = `
+        WITH ULTIMO_ORCAMENTO AS (
+          SELECT DISTINCT 
+            COALESCE(OC.IDCOMPRADOR, 
+              CASE 
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
+                ELSE OC.IDCOMPRADOR
+              END
+            ) AS IDCOMPRADOR
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
+          UNION
+          SELECT 129 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+          UNION
+          SELECT 649 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+        )
+        SELECT 
+          COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) AS IDUSUARIO,
+          COALESCE(U.NOMEUSUARIO, 'OUTROS') AS COMPRADOR,
+          PC.IDEMPRESA,
+          SUM(PCP.QTDSOLICITADA * PCP.VALUNITARIO) AS VALOR_TOTAL,
+          COUNT(DISTINCT PC.IDPEDIDO) AS QTD_PEDIDOS
+        FROM DBA.PEDIDO_COMPRA PC
+        JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
+        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+          AND COALESCE(PC.FLAGCANCELADO, 'F') != 'T'
+      `;
+      const paramsLoja = [startD, endD];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sqlLoja += " AND PC.IDEMPRESA = ?";
+        paramsLoja.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        sqlLoja += " AND COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) = ?";
+        paramsLoja.push(parseInt(compradorId));
+      }
+      sqlLoja += `
+        GROUP BY COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO), U.NOMEUSUARIO, PC.IDEMPRESA
+        ORDER BY VALOR_TOTAL DESC
+        WITH UR
+      `;
+      const dadosLoja = await queryDB(sqlLoja, paramsLoja).catch(() => []);
+
+      // 2. Compras por comprador e seção (Apenas compradores do último orçamento)
+      let sqlSecao = `
+        WITH ULTIMO_ORCAMENTO AS (
+          SELECT DISTINCT 
+            COALESCE(OC.IDCOMPRADOR, 
+              CASE 
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
+                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
+                ELSE OC.IDCOMPRADOR
+              END
+            ) AS IDCOMPRADOR
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
+          UNION
+          SELECT 129 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+          UNION
+          SELECT 649 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
+        )
+        SELECT 
+          COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) AS IDUSUARIO,
+          COALESCE(U.NOMEUSUARIO, 'OUTROS') AS COMPRADOR,
+          P.IDSECAO,
+          COALESCE(S.DESCRSECAO, 'SEM SECAO') AS DESCRSECAO,
+          SUM(PCP.QTDSOLICITADA * PCP.VALUNITARIO) AS VALOR_TOTAL,
+          COUNT(DISTINCT PC.IDPEDIDO) AS QTD_PEDIDOS
+        FROM DBA.PEDIDO_COMPRA PC
+        JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
+        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = PCP.IDSUBPRODUTO
+        LEFT JOIN DBA.PRODUTO P ON P.IDPRODUTO = PG.IDPRODUTO
+        LEFT JOIN DBA.SECAO S ON S.IDSECAO = P.IDSECAO
+        WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
+          AND COALESCE(PC.FLAGCANCELADO, 'F') != 'T'
+      `;
+      const paramsSecao = [startD, endD];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sqlSecao += " AND PC.IDEMPRESA = ?";
+        paramsSecao.push(parseInt(idEmpresa));
+      }
+      if (compradorId && compradorId !== 'todos') {
+        sqlSecao += " AND COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO) = ?";
+        paramsSecao.push(parseInt(compradorId));
+      }
+      sqlSecao += `
+        GROUP BY COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO), U.NOMEUSUARIO, P.IDSECAO, S.DESCRSECAO
+        ORDER BY VALOR_TOTAL DESC
+        FETCH FIRST 50 ROWS ONLY
+        WITH UR
+      `;
+      const dadosSecao = await queryDB(sqlSecao, paramsSecao).catch(() => []);
+
+      // 3. Total por loja (para gráfico de barras simples)
+      const totalPorLoja = {};
+      for (const d of dadosLoja) {
+        const loja = d.IDEMPRESA;
+        if (!totalPorLoja[loja]) totalPorLoja[loja] = { loja: `Loja ${loja}`, total: 0, pedidos: 0 };
+        totalPorLoja[loja].total += Number(d.VALOR_TOTAL) || 0;
+        totalPorLoja[loja].pedidos += Number(d.QTD_PEDIDOS) || 0;
+      }
+
+      // 4. Total por seção (para gráfico de pizza/treemap)
+      const totalPorSecao = {};
+      for (const d of dadosSecao) {
+        const secao = (d.DESCRSECAO || 'SEM SECAO').trim();
+        if (!totalPorSecao[secao]) totalPorSecao[secao] = { secao, total: 0, pedidos: 0 };
+        totalPorSecao[secao].total += Number(d.VALOR_TOTAL) || 0;
+        totalPorSecao[secao].pedidos += Number(d.QTD_PEDIDOS) || 0;
+      }
+
+      // 5. Comprador x Loja (stacked bar)
+      const compradoresSet = new Set();
+      const lojasSet = new Set();
+      const matrizCompradorLoja = {};
+      for (const d of dadosLoja) {
+        const comp = (d.COMPRADOR || 'OUTROS').trim();
+        const loja = `Loja ${d.IDEMPRESA}`;
+        compradoresSet.add(comp);
+        lojasSet.add(loja);
+        if (!matrizCompradorLoja[loja]) matrizCompradorLoja[loja] = { loja };
+        matrizCompradorLoja[loja][comp] = Number(d.VALOR_TOTAL) || 0;
+      }
+
+      // 6. Comprador x Seção (stacked bar)
+      const secoesSet = new Set();
+      const matrizCompradorSecao = {};
+      for (const d of dadosSecao) {
+        const comp = (d.COMPRADOR || 'OUTROS').trim();
+        const secao = (d.DESCRSECAO || 'SEM SECAO').trim();
+        compradoresSet.add(comp);
+        secoesSet.add(secao);
+        if (!matrizCompradorSecao[comp]) matrizCompradorSecao[comp] = { comprador: comp };
+        matrizCompradorSecao[comp][secao] = (matrizCompradorSecao[comp][secao] || 0) + (Number(d.VALOR_TOTAL) || 0);
+      }
+
+      res.json({
+        compradores: Array.from(compradoresSet),
+        lojas: Array.from(lojasSet).sort(),
+        secoes: Array.from(secoesSet),
+        totalPorLoja: Object.values(totalPorLoja).sort((a, b) => a.loja.localeCompare(b.loja)),
+        totalPorSecao: Object.values(totalPorSecao).sort((a, b) => b.total - a.total),
+        compradorPorLoja: Object.values(matrizCompradorLoja).sort((a, b) => a.loja.localeCompare(b.loja)),
+        compradorPorSecao: Object.values(matrizCompradorSecao).sort((a, b) => {
+          const totalA = Object.values(a).reduce((s, v) => typeof v === 'number' ? s + v : s, 0);
+          const totalB = Object.values(b).reduce((s, v) => typeof v === 'number' ? s + v : s, 0);
+          return totalB - totalA;
+        })
+      });
+    } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });

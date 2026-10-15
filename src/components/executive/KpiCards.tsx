@@ -22,13 +22,13 @@ export function KpiCards({ selectedStore, startDate, endDate }: { selectedStore:
   const formatCurrency = (val: number) => val?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || "R$ 0,00";
 
   const cards = data ? [
-    { label: "Faturamento Hoje", value: formatCurrency(data.faturamento_hoje), icon: DollarSign, desc: "Total em vendas hoje", status: "DB2" },
+    { label: "Faturamento Ontem", value: formatCurrency(data.faturamento_hoje), icon: DollarSign, desc: "Total em vendas ontem", status: "DB2" },
     { label: "Faturamento Mês", value: formatCurrency(data.faturamento_mes), icon: CalendarDays, desc: "Acumulado do período", status: "DB2" },
     { label: "Lucro Líquido", value: formatCurrency(data.lucro_liquido), icon: TrendingUp, desc: "No período selecionado", status: "DB2" },
     { label: "Margem de Lucro", value: `${(data.margem_lucro || 0).toFixed(2)}%`, icon: PieChart, desc: "Rentabilidade média", status: "DB2" },
     { label: "Ticket Médio", value: formatCurrency(data.ticket_medio), icon: Receipt, desc: "Média por nota fiscal", status: "DB2" }
   ] : [
-    { label: "Faturamento Hoje", value: "Carregando...", icon: DollarSign, desc: "Total em vendas hoje", status: "DB2" },
+    { label: "Faturamento Ontem", value: "Carregando...", icon: DollarSign, desc: "Total em vendas ontem", status: "DB2" },
     { label: "Faturamento Mês", value: "Carregando...", icon: CalendarDays, desc: "Acumulado do período", status: "DB2" },
     { label: "Lucro Líquido", value: "Carregando...", icon: TrendingUp, desc: "No período selecionado", status: "DB2" },
     { label: "Margem de Lucro", value: "Carregando...", icon: PieChart, desc: "Rentabilidade média", status: "DB2" },
@@ -36,9 +36,14 @@ export function KpiCards({ selectedStore, startDate, endDate }: { selectedStore:
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className={`grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
       {cards.map((c) => (
         <div key={c.label} className="glass-strong rounded-2xl p-5 hover:bg-white/[0.03] transition relative overflow-hidden group">
+          {loading && (
+             <div className="absolute top-2 right-2 flex items-center justify-center">
+                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+             </div>
+          )}
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] tracking-executive text-muted-foreground uppercase font-bold">{c.label}</span>
             <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded flex items-center gap-1">

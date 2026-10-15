@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as MasterRouteImport } from './routes/master'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MasterIndexRouteImport } from './routes/master/index'
+import { Route as MasterUsersRouteImport } from './routes/master/users'
 import { Route as MasterUpdatesRouteImport } from './routes/master/updates'
+import { Route as MasterSettingsRouteImport } from './routes/master/settings'
 
 const MasterRoute = MasterRouteImport.update({
   id: '/master',
@@ -29,36 +31,65 @@ const MasterIndexRoute = MasterIndexRouteImport.update({
   path: '/',
   getParentRoute: () => MasterRoute,
 } as any)
+const MasterUsersRoute = MasterUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => MasterRoute,
+} as any)
 const MasterUpdatesRoute = MasterUpdatesRouteImport.update({
   id: '/updates',
   path: '/updates',
+  getParentRoute: () => MasterRoute,
+} as any)
+const MasterSettingsRoute = MasterSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => MasterRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/master': typeof MasterRouteWithChildren
+  '/master/settings': typeof MasterSettingsRoute
   '/master/updates': typeof MasterUpdatesRoute
+  '/master/users': typeof MasterUsersRoute
   '/master/': typeof MasterIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/master/settings': typeof MasterSettingsRoute
   '/master/updates': typeof MasterUpdatesRoute
+  '/master/users': typeof MasterUsersRoute
   '/master': typeof MasterIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/master': typeof MasterRouteWithChildren
+  '/master/settings': typeof MasterSettingsRoute
   '/master/updates': typeof MasterUpdatesRoute
+  '/master/users': typeof MasterUsersRoute
   '/master/': typeof MasterIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/master' | '/master/updates' | '/master/'
+  fullPaths:
+    | '/'
+    | '/master'
+    | '/master/settings'
+    | '/master/updates'
+    | '/master/users'
+    | '/master/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/master/updates' | '/master'
-  id: '__root__' | '/' | '/master' | '/master/updates' | '/master/'
+  to: '/' | '/master/settings' | '/master/updates' | '/master/users' | '/master'
+  id:
+    | '__root__'
+    | '/'
+    | '/master'
+    | '/master/settings'
+    | '/master/updates'
+    | '/master/users'
+    | '/master/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -89,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterIndexRouteImport
       parentRoute: typeof MasterRoute
     }
+    '/master/users': {
+      id: '/master/users'
+      path: '/users'
+      fullPath: '/master/users'
+      preLoaderRoute: typeof MasterUsersRouteImport
+      parentRoute: typeof MasterRoute
+    }
     '/master/updates': {
       id: '/master/updates'
       path: '/updates'
@@ -96,16 +134,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MasterUpdatesRouteImport
       parentRoute: typeof MasterRoute
     }
+    '/master/settings': {
+      id: '/master/settings'
+      path: '/settings'
+      fullPath: '/master/settings'
+      preLoaderRoute: typeof MasterSettingsRouteImport
+      parentRoute: typeof MasterRoute
+    }
   }
 }
 
 interface MasterRouteChildren {
+  MasterSettingsRoute: typeof MasterSettingsRoute
   MasterUpdatesRoute: typeof MasterUpdatesRoute
+  MasterUsersRoute: typeof MasterUsersRoute
   MasterIndexRoute: typeof MasterIndexRoute
 }
 
 const MasterRouteChildren: MasterRouteChildren = {
+  MasterSettingsRoute: MasterSettingsRoute,
   MasterUpdatesRoute: MasterUpdatesRoute,
+  MasterUsersRoute: MasterUsersRoute,
   MasterIndexRoute: MasterIndexRoute,
 }
 

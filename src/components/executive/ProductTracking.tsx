@@ -7,8 +7,12 @@ export function ProductTracking({ selectedStore, initialTrackingId }: { selected
 
   // --- Estados do Rastreamento Individual ---
   const [query, setQuery] = useState("506095");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [compradorId, setCompradorId] = useState("");
   const [compradores, setCompradores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,8 +43,12 @@ export function ProductTracking({ selectedStore, initialTrackingId }: { selected
   const [filterSecao, setFilterSecao] = useState("");
   const [filterGrupo, setFilterGrupo] = useState("");
   const [filterSubgrupo, setFilterSubgrupo] = useState("");
-  const [filterStart, setFilterStart] = useState("");
-  const [filterEnd, setFilterEnd] = useState("");
+  const [filterStart, setFilterStart] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [filterEnd, setFilterEnd] = useState(() => new Date().toISOString().split('T')[0]);
 
   const [pedidosItens, setPedidosItens] = useState<any[]>([]);
   const [loadingGeral, setLoadingGeral] = useState(false);

@@ -93,7 +93,7 @@ function getApiBaseUrl(env: unknown, request: Request): string | undefined {
   if (apiBaseUrl) return apiBaseUrl.replace(/\/$/, "");
 
   const { hostname } = new URL(request.url);
-  if (isLocalHostname(hostname)) return "http://127.0.0.1:3001";
+  if (isLocalHostname(hostname)) return "http://localhost:3001";
 
   return undefined;
 }

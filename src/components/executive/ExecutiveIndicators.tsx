@@ -61,7 +61,7 @@ export function ExecutiveIndicators({ selectedStore, startDate, endDate }: { sel
   const formatNumber = (val: number) => val.toLocaleString('pt-BR');
 
   const indicators = [
-    { label: "Faturamento Hoje", value: formatCurrency(data.faturamento_hoje), icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+    { label: "Faturamento Ontem", value: formatCurrency(data.faturamento_hoje), icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
     { label: "Faturamento Mês", value: formatCurrency(data.faturamento_mes), icon: CalendarDays, color: "text-blue-400", bg: "bg-blue-500/10" },
     { label: "Lucro Líquido", value: formatCurrency(data.lucro_liquido), icon: TrendingUp, color: data.lucro_liquido >= 0 ? "text-emerald-400" : "text-rose-400", bg: data.lucro_liquido >= 0 ? "bg-emerald-500/10" : "bg-rose-500/10" },
     { label: "Margem de Lucro", value: `${data.margem_lucro.toFixed(2)}%`, icon: PieChart, color: "text-violet-400", bg: "bg-violet-500/10" },

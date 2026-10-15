@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  smartcatalog-db:
+    image: postgres:16-alpine
+    container_name: smartcatalog-db
+    environment:
+      POSTGRES_DB: smartcatalog_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_postgresql.sql:/docker-entrypoint-initdb.d/init_postgresql.sql
+    restart: always
+
+volumes:
+  postgres_data:

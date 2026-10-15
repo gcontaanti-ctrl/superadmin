@@ -1,1 +1,2184 @@
-[]
+[
+  {
+    "id": 1790792623212,
+    "nome": "chocolate e ipanema ",
+    "inicio": "2026-08-21",
+    "fim": "2026-10-31",
+    "obj": "Campanha de Vendas Ipanema e Chocolates",
+    "status": "Ativa",
+    "produtos": [
+      {
+        "id": 489220,
+        "nome": "IPANEMA BOLD 26/27",
+        "ean": "7909510882171",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489247,
+        "nome": "IPANEMA BOLD 28",
+        "ean": "7909510882188",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489263,
+        "nome": "IPANEMA BOLD 29",
+        "ean": "7909510882195",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489271,
+        "nome": "IPANEMA BOLD 30",
+        "ean": "7909510882201",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489050,
+        "nome": "IPANEMA BOLD 33/34",
+        "ean": "7909510826854",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489166,
+        "nome": "IPANEMA BOLD 33/4",
+        "ean": "7909510826915",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489077,
+        "nome": "IPANEMA BOLD 35",
+        "ean": "7909510826861",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489107,
+        "nome": "IPANEMA BOLD 36",
+        "ean": "7909510826878",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489115,
+        "nome": "IPANEMA BOLD 37",
+        "ean": "7909510826885",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489131,
+        "nome": "IPANEMA BOLD 38",
+        "ean": "7909510826892",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513644,
+        "nome": "IPANEMA BOLD 39/0",
+        "ean": "7909510827141",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489158,
+        "nome": "IPANEMA BOLD 39/40",
+        "ean": "7909510826908",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489182,
+        "nome": "IPANEMA BOLD AD 35",
+        "ean": "7909510826922",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489190,
+        "nome": "IPANEMA BOLD AD 36",
+        "ean": "7909510826939",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489204,
+        "nome": "IPANEMA BOLD AD 37",
+        "ean": "7909510826946",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489212,
+        "nome": "IPANEMA BOLD AD 38",
+        "ean": "7909510826953",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20241,
+        "nome": "IPANEMA CLASS AZUL/ESCURA 41/42",
+        "ean": "7890244991775",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554677,
+        "nome": "IPANEMA CLASS EASY 36",
+        "ean": "7890875766179",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554707,
+        "nome": "IPANEMA CLASS EASY 37",
+        "ean": "7890875768395",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554731,
+        "nome": "IPANEMA CLASS EASY 37",
+        "ean": "7890875768456",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554740,
+        "nome": "IPANEMA CLASS EASY 38",
+        "ean": "7890875768463",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554723,
+        "nome": "IPANEMA CLASS EASY 39/40",
+        "ean": "7890875768418",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554669,
+        "nome": "IPANEMA CLASS EASY AD 35",
+        "ean": "7890875766124",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554685,
+        "nome": "IPANEMA CLASS EASY AD 37",
+        "ean": "7890875766186",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554693,
+        "nome": "IPANEMA CLASS EASY AD 38",
+        "ean": "7890875768340",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554715,
+        "nome": "IPANEMA CLASS EASY AD 38",
+        "ean": "7890875768401",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554758,
+        "nome": "IPANEMA CLASS EASY AD 39/40",
+        "ean": "7890875768470",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 558940,
+        "nome": "IPANEMA CLASS MASC.PRETO/VERDE 39/40",
+        "ean": "7890244579799",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20205,
+        "nome": "IPANEMA CLASS PRETO/PRETO 43/44",
+        "ean": "7891261849025",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 21510,
+        "nome": "IPANEMA CLASSICA  BP039 39/0",
+        "ean": "7900204450034",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 21509,
+        "nome": "IPANEMA CLASSICA  BP040 33/4",
+        "ean": "7900204450027",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554375,
+        "nome": "IPANEMA CLASSICA 25/26",
+        "ean": "7891261792437",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553956,
+        "nome": "IPANEMA CLASSICA ANAT 36",
+        "ean": "7909510759251",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553980,
+        "nome": "IPANEMA CLASSICA ANAT 36",
+        "ean": "7909510759282",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553964,
+        "nome": "IPANEMA CLASSICA ANAT 37",
+        "ean": "7909510759268",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554006,
+        "nome": "IPANEMA CLASSICA ANAT 37",
+        "ean": "7909510759336",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554022,
+        "nome": "IPANEMA CLASSICA ANAT 38",
+        "ean": "7909510759480",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554030,
+        "nome": "IPANEMA CLASSICA ANAT 39/40",
+        "ean": "7909510759497",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553999,
+        "nome": "IPANEMA CLASSICA ANT 36",
+        "ean": "7909510759329",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553972,
+        "nome": "IPANEMA CLASSICA ANT 38",
+        "ean": "7909510759275",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554014,
+        "nome": "IPANEMA CLASSICA ANT 38",
+        "ean": "7909510759343",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553638,
+        "nome": "IPANEMA CLASSICA BEGE OURO  37/38",
+        "ean": "7909006243325",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553670,
+        "nome": "IPANEMA CLASSICA BEGE OURO 39/40",
+        "ean": "7909006243332",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553875,
+        "nome": "IPANEMA CLASSICA BRANCA  37/38",
+        "ean": "7909510489448",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553883,
+        "nome": "IPANEMA CLASSICA BRANCA  39/40",
+        "ean": "7909510489455",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553840,
+        "nome": "IPANEMA CLASSICA BRANCA 33/34",
+        "ean": "7909510489417",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553859,
+        "nome": "IPANEMA CLASSICA BRANCA 35",
+        "ean": "7909510489424",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553867,
+        "nome": "IPANEMA CLASSICA BRANCA 36",
+        "ean": "7909510489431",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553530,
+        "nome": "IPANEMA CLASSICA INF 23/24",
+        "ean": "7890244992734",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554383,
+        "nome": "IPANEMA CLASSICA INF 23/24",
+        "ean": "7891261792758",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554367,
+        "nome": "IPANEMA CLASSICA INF 23/24",
+        "ean": "7891261792352",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553549,
+        "nome": "IPANEMA CLASSICA INF 25/26",
+        "ean": "7890244992741",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554413,
+        "nome": "IPANEMA CLASSICA INF 25/26",
+        "ean": "7891261793236",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554391,
+        "nome": "IPANEMA CLASSICA INF 25/26",
+        "ean": "7891261792833",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553557,
+        "nome": "IPANEMA CLASSICA INF 27/28",
+        "ean": "7909171339274",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554448,
+        "nome": "IPANEMA CLASSICA INF 27/28",
+        "ean": "7891261793717",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554405,
+        "nome": "IPANEMA CLASSICA INF 27/28",
+        "ean": "7891261792918",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553514,
+        "nome": "IPANEMA CLASSICA INF 29/30",
+        "ean": "7891261121244",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554456,
+        "nome": "IPANEMA CLASSICA INF 29/30",
+        "ean": "7891261793793",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554421,
+        "nome": "IPANEMA CLASSICA INF 29/30",
+        "ean": "7891261793397",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553581,
+        "nome": "IPANEMA CLASSICA INF 29/30",
+        "ean": "7909171339229",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553565,
+        "nome": "IPANEMA CLASSICA INF 29/30",
+        "ean": "7909171339281",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553522,
+        "nome": "IPANEMA CLASSICA INF 31/32",
+        "ean": "7891261121251",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554464,
+        "nome": "IPANEMA CLASSICA INF 31/32",
+        "ean": "7891261793878",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554430,
+        "nome": "IPANEMA CLASSICA INF 31/32",
+        "ean": "7891261793472",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553590,
+        "nome": "IPANEMA CLASSICA INF 31/32",
+        "ean": "7909171339236",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553573,
+        "nome": "IPANEMA CLASSICA INF 31/32",
+        "ean": "7909171339298",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 558958,
+        "nome": "IPANEMA CLASSICA INFANTIL 31/32",
+        "ean": "7890244992772",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553468,
+        "nome": "IPANEMA CLASSICA MAS 37/38",
+        "ean": "7909006061004",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553425,
+        "nome": "IPANEMA CLASSICA MAS 39/40",
+        "ean": "7891261849001",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554260,
+        "nome": "IPANEMA CLASSICA MASC 33/34",
+        "ean": "7891261523079",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554278,
+        "nome": "IPANEMA CLASSICA MASC 35",
+        "ean": "7890244579720",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553450,
+        "nome": "IPANEMA CLASSICA MASC 36",
+        "ean": "7909006060991",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554286,
+        "nome": "IPANEMA CLASSICA MASC 36",
+        "ean": "7890244579737",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553476,
+        "nome": "IPANEMA CLASSICA MASC 36",
+        "ean": "7890875227304",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553484,
+        "nome": "IPANEMA CLASSICA MASC 37/38",
+        "ean": "7890875227311",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554332,
+        "nome": "IPANEMA CLASSICA MASC 37/38",
+        "ean": "7890244580979",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554294,
+        "nome": "IPANEMA CLASSICA MASC 37/38",
+        "ean": "7890244579782",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553492,
+        "nome": "IPANEMA CLASSICA MASC 39/40",
+        "ean": "7890875227328",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554340,
+        "nome": "IPANEMA CLASSICA MASC 39/40",
+        "ean": "7890244580986",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554308,
+        "nome": "IPANEMA CLASSICA MASC 39/40",
+        "ean": "7890244580917",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553433,
+        "nome": "IPANEMA CLASSICA MASC 41/42",
+        "ean": "7891261849018",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554359,
+        "nome": "IPANEMA CLASSICA MASC 41/42",
+        "ean": "7890244588265",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554316,
+        "nome": "IPANEMA CLASSICA MASC 41/42",
+        "ean": "7890244580924",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553506,
+        "nome": "IPANEMA CLASSICA MASC 41/42",
+        "ean": "7890875227335",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554324,
+        "nome": "IPANEMA CLASSICA MASC 43/44",
+        "ean": "7890244580931",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 23827,
+        "nome": "IPANEMA CLASSICA MASC AZ/BC 43/44",
+        "ean": "7909006061035",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553417,
+        "nome": "IPANEMA CLASSICA MASC37/38",
+        "ean": "7891261848998",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 22855,
+        "nome": "IPANEMA CLASSICA MASCULI 43/44",
+        "ean": "7909224474792",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553611,
+        "nome": "IPANEMA CLASSICA OURO BEGE 35",
+        "ean": "7909006243301",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553603,
+        "nome": "IPANEMA CLASSICA OURO/BEGE  33/34",
+        "ean": "7909006243295",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553620,
+        "nome": "IPANEMA CLASSICA OURO/BEGE 36",
+        "ean": "7909006243318",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554502,
+        "nome": "IPANEMA CLASSICA TAN 35/36",
+        "ean": "7891261575856",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554472,
+        "nome": "IPANEMA CLASSICA TAN FE 33/34",
+        "ean": "7891261575788",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553689,
+        "nome": "IPANEMA CLASSICA TAN FE 35",
+        "ean": "7909224779873",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554499,
+        "nome": "IPANEMA CLASSICA TAN FE 35",
+        "ean": "7891261575801",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554480,
+        "nome": "IPANEMA CLASSICA TAN FE 35",
+        "ean": "7891261575795",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553697,
+        "nome": "IPANEMA CLASSICA TAN FE 36",
+        "ean": "7909224779880",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553700,
+        "nome": "IPANEMA CLASSICA TAN FE 37/38",
+        "ean": "7909224779897",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554510,
+        "nome": "IPANEMA CLASSICA TAN FE 37/38",
+        "ean": "7891261575863",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553719,
+        "nome": "IPANEMA CLASSICA TAN FE 39/40",
+        "ean": "7909224779903",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554529,
+        "nome": "IPANEMA CLASSICA TAN FE 39/40",
+        "ean": "7891261575870",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553441,
+        "nome": "IPANEMA CLASSICAMASC BRANCO/AZUL  35",
+        "ean": "7909006060984",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554766,
+        "nome": "IPANEMA EASY CORES 33/34",
+        "ean": "7909806113156",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554820,
+        "nome": "IPANEMA EASY CORES 36",
+        "ean": "7909806113354",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554774,
+        "nome": "IPANEMA EASY CORES 37",
+        "ean": "7909806113187",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554839,
+        "nome": "IPANEMA EASY CORES 37",
+        "ean": "7909806113361",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554782,
+        "nome": "IPANEMA EASY CORES 38",
+        "ean": "7909806113194",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554847,
+        "nome": "IPANEMA EASY CORES 38",
+        "ean": "7909806113378",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554804,
+        "nome": "IPANEMA EASY CORES 38",
+        "ean": "7909806113255",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554901,
+        "nome": "IPANEMA EASY CORES 39/0 AA671",
+        "ean": "7909806113385",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554790,
+        "nome": "IPANEMA EASY CORES 39/40",
+        "ean": "7909806113200",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554812,
+        "nome": "IPANEMA EASY CORES 39/40",
+        "ean": "7909806113262",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513954,
+        "nome": "IPANEMA FEEL 33/34",
+        "ean": "7909510405240",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513962,
+        "nome": "IPANEMA FEEL 35",
+        "ean": "7909510405257",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513920,
+        "nome": "IPANEMA FEEL 36",
+        "ean": "7909510405264",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513938,
+        "nome": "IPANEMA FEEL 37",
+        "ean": "7909510405271",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513946,
+        "nome": "IPANEMA FEEL 38",
+        "ean": "7909510405288",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513229,
+        "nome": "IPANEMA GALINHA PINT BABY 17/8",
+        "ean": "7909510831162",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513270,
+        "nome": "IPANEMA GALINHA PINT BABY 17/8",
+        "ean": "7909510813977",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 485691,
+        "nome": "IPANEMA GALINHA PINT BABY 19",
+        "ean": "7909510831179",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513237,
+        "nome": "IPANEMA GALINHA PINT BABY 20/1",
+        "ean": "7909510831186",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513296,
+        "nome": "IPANEMA GALINHA PINT BABY 20/1",
+        "ean": "7909510813991",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513253,
+        "nome": "IPANEMA GALINHA PINT BABY 22",
+        "ean": "7909510831193",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513261,
+        "nome": "IPANEMA GALINHA PINT BABY 23/4",
+        "ean": "7909510831209",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513318,
+        "nome": "IPANEMA GALINHA PINT BABY 23/4",
+        "ean": "7909510814011",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553816,
+        "nome": "IPANEMA GLITER 35",
+        "ean": "7909510694965",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553743,
+        "nome": "IPANEMA GLITER 36",
+        "ean": "7909510556843",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553760,
+        "nome": "IPANEMA GLITER 36",
+        "ean": "7909510556898",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553751,
+        "nome": "IPANEMA GLITER 37/38",
+        "ean": "7909510556850",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553778,
+        "nome": "IPANEMA GLITER 37/38",
+        "ean": "7909510556904",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554154,
+        "nome": "IPANEMA GLITER 39/40",
+        "ean": "7909510694996",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553824,
+        "nome": "IPANEMA GLITER AD 36",
+        "ean": "7909510694972",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553832,
+        "nome": "IPANEMA GLITER AD 37/38",
+        "ean": "7909510694989",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553735,
+        "nome": "IPANEMA GLITTER 35",
+        "ean": "7909510556836",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553727,
+        "nome": "IPANEMA GLITTER AD 33/34",
+        "ean": "7909510556829",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513660,
+        "nome": "IPANEMA INF .29",
+        "ean": "7909510882270",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513687,
+        "nome": "IPANEMA INF 31",
+        "ean": "7909510882294",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513695,
+        "nome": "IPANEMA INF 32/3",
+        "ean": "7909510882300",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513652,
+        "nome": "IPANEMA INF. 25",
+        "ean": "7909510882164",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513679,
+        "nome": "IPANEMA INF. 30",
+        "ean": "7909510882287",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 485713,
+        "nome": "IPANEMA NEXO 33/34",
+        "ean": "7909510861145",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 488992,
+        "nome": "IPANEMA NEXO 35",
+        "ean": "7909510861152",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489000,
+        "nome": "IPANEMA NEXO 36",
+        "ean": "7909510861169",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489018,
+        "nome": "IPANEMA NEXO 37",
+        "ean": "7909510861176",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489042,
+        "nome": "IPANEMA NEXO 38",
+        "ean": "7909510861183",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489344,
+        "nome": "IPANEMA NO PRINT 33/34",
+        "ean": "7909510869851",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513709,
+        "nome": "IPANEMA NO PRINT 33/4",
+        "ean": "7909510869974",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489360,
+        "nome": "IPANEMA NO PRINT 35",
+        "ean": "7909510869868",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513717,
+        "nome": "IPANEMA NO PRINT 35",
+        "ean": "7909510869981",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489379,
+        "nome": "IPANEMA NO PRINT 36",
+        "ean": "7909510869875",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513733,
+        "nome": "IPANEMA NO PRINT 36",
+        "ean": "7909510869998",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489387,
+        "nome": "IPANEMA NO PRINT 37",
+        "ean": "7909510869882",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513741,
+        "nome": "IPANEMA NO PRINT 37",
+        "ean": "7909510870000",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489409,
+        "nome": "IPANEMA NO PRINT 38",
+        "ean": "7909510869899",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489441,
+        "nome": "IPANEMA NO PRINT 39/0",
+        "ean": "7909510870024",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 489425,
+        "nome": "IPANEMA NO PRINT AD 38",
+        "ean": "7909510870017",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 16412,
+        "nome": "IPANEMA QUEIJO PARMESAO  200G",
+        "ean": "7896114102340",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553646,
+        "nome": "IPANEMA URBANA MASC 37/38",
+        "ean": "7909171542384",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554049,
+        "nome": "IPANEMA URBANA MASC 37/38",
+        "ean": "7909510832817",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553786,
+        "nome": "IPANEMA URBANA MASC 37/38",
+        "ean": "7909510489660",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553654,
+        "nome": "IPANEMA URBANA MASC 39/40",
+        "ean": "7909171542391",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554057,
+        "nome": "IPANEMA URBANA MASC 39/40",
+        "ean": "7909510832824",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553794,
+        "nome": "IPANEMA URBANA MASC 39/40",
+        "ean": "7909510489677",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553662,
+        "nome": "IPANEMA URBANA MASC 41/42",
+        "ean": "7909171542407",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554065,
+        "nome": "IPANEMA URBANA MASC 41/42",
+        "ean": "7909510832831",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 553808,
+        "nome": "IPANEMA URBANA MASC 41/42",
+        "ean": "7909510489684",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554073,
+        "nome": "IPANEMA URBANA MASC 43/44",
+        "ean": "7909510832848",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513865,
+        "nome": "IPANEMA WAVE ELEGANCE 33/4",
+        "ean": "7891261186458",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513881,
+        "nome": "IPANEMA WAVE ELEGANCE 35",
+        "ean": "7891261186465",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513890,
+        "nome": "IPANEMA WAVE ELEGANCE 36",
+        "ean": "7891261186472",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513903,
+        "nome": "IPANEMA WAVE ELEGANCE 37",
+        "ean": "7891261186489",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 513911,
+        "nome": "IPANEMA WAVE ELEGANCE 38",
+        "ean": "7891261186496",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 490016,
+        "nome": "IPANEMA WAVE ELEGANCE 39/0",
+        "ean": "7891261186502",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554162,
+        "nome": "IPANEMA WAVE MOMENTOS",
+        "ean": "7891261377542",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554235,
+        "nome": "IPANEMA WAVE MOMENTOS 33/34",
+        "ean": "7891261378266",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554170,
+        "nome": "IPANEMA WAVE MOMENTOS 35",
+        "ean": "7891261377559",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554200,
+        "nome": "IPANEMA WAVE MOMENTOS 36",
+        "ean": "7891261378228",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554243,
+        "nome": "IPANEMA WAVE MOMENTOS 36",
+        "ean": "7891261379065",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554189,
+        "nome": "IPANEMA WAVE MOMENTOS 37",
+        "ean": "7891261378174",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554251,
+        "nome": "IPANEMA WAVE MOMENTOS 37",
+        "ean": "7891261379072",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554197,
+        "nome": "IPANEMA WAVE MOMENTOS 38",
+        "ean": "7891261378181",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554227,
+        "nome": "IPANEMA WAVE MOMENTOS 38",
+        "ean": "7891261378242",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 554219,
+        "nome": "IPANEMA WAVE MOMONTOS 37",
+        "ean": "7891261378235",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 12579,
+        "nome": "QUEIJO CHEDDAR FAT IPANEMA 140G",
+        "ean": "7896114100933",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 12573,
+        "nome": "QUEIJO GOUDA FAT IPANEMA  120G",
+        "ean": "7896114101367",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 13813,
+        "nome": "QUEIJO PROVOLONE IPANEMA KG",
+        "ean": "13826",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24478,
+        "nome": "SAND CARTAGO MONTREAL AD  BT754 37",
+        "ean": "7900204769020",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24479,
+        "nome": "SAND CARTAGO MONTREAL AD  BT754 39",
+        "ean": "7900204769013",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24480,
+        "nome": "SAND CARTAGO MONTREAL AD  BT754 40",
+        "ean": "7900204769006",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24561,
+        "nome": "SAND IPANEMA  ANATOMICA LINEA  CB296 36",
+        "ean": "7900377122738",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24565,
+        "nome": "SAND IPANEMA  ANATOMICA LINEA  CB296 39",
+        "ean": "7900377122769",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20219,
+        "nome": "SAND IPANEMA  AZUL/AZUL PEROLADO 35",
+        "ean": "7900204450010",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 21080,
+        "nome": "SAND IPANEMA  ROSA/COBRE 33/34",
+        "ean": "7909937864484",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24547,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 33",
+        "ean": "7900377122592",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24548,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 35",
+        "ean": "7900377122608",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24549,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 36",
+        "ean": "7900377122615",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24550,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 37",
+        "ean": "7900377122622",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24551,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 38",
+        "ean": "7900377122639",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24552,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB294 39",
+        "ean": "7900377122646",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24553,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 33",
+        "ean": "7900377122653",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24554,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 35",
+        "ean": "7900377122660",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24555,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 36",
+        "ean": "7900377122677",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24556,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 37",
+        "ean": "7900377122684",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24557,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 38",
+        "ean": "7900377122691",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24558,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB295 39",
+        "ean": "7900377122707",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24559,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB296 33",
+        "ean": "7900377122714",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24560,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB296 35",
+        "ean": "7900377122721",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24562,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB296 37",
+        "ean": "7900377122745",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24563,
+        "nome": "SAND IPANEMA ANATOMICA LINEA  CB296 38",
+        "ean": "7900377122752",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24675,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS347 25",
+        "ean": "7900204590327",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24676,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS347 27",
+        "ean": "7900204590334",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24677,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS347 29",
+        "ean": "7900204590341",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24678,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS347 31",
+        "ean": "7900204590358",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24679,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS347 33",
+        "ean": "7900204590365",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24680,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS587 25",
+        "ean": "7900204810357",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24682,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS587 27",
+        "ean": "7900204810340",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24683,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS587 29",
+        "ean": "7900204810333",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24684,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS587 31",
+        "ean": "7900204810326",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24685,
+        "nome": "SAND IPANEMA BARBIE MEU CANTO BS587 33",
+        "ean": "7900204810319",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20235,
+        "nome": "SAND IPANEMA CLASS  BRAN/AZUL 39/40",
+        "ean": "7909006061028",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20212,
+        "nome": "SAND IPANEMA CLASS 36/37 ROSA/COBRE/METALI",
+        "ean": "7909937864460",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20236,
+        "nome": "SAND IPANEMA CLASS AZUL ESCURA 33/34",
+        "ean": "7890244991720",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20237,
+        "nome": "SAND IPANEMA CLASS AZUL ESCURA 35",
+        "ean": "7890244991737",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20222,
+        "nome": "SAND IPANEMA CLASS AZUL/AZUL PEROLADO 36",
+        "ean": "7900204450003",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20223,
+        "nome": "SAND IPANEMA CLASS AZUL/AZUL PEROLADO 38/39",
+        "ean": "7900204449991",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20224,
+        "nome": "SAND IPANEMA CLASS AZUL/AZUL PEROLADO 39",
+        "ean": "7900204449984",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20238,
+        "nome": "SAND IPANEMA CLASS AZUL/ESCURA  36",
+        "ean": "7890244991744",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20239,
+        "nome": "SAND IPANEMA CLASS AZUL/ESCURA 37/38",
+        "ean": "7890244991751",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20240,
+        "nome": "SAND IPANEMA CLASS AZUL/ESCURA 39/40",
+        "ean": "7890244991768",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20233,
+        "nome": "SAND IPANEMA CLASS BRANC/AZUL 33/34",
+        "ean": "7909006060977",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20234,
+        "nome": "SAND IPANEMA CLASS BRANC/AZUL 39",
+        "ean": "7909006061011",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20226,
+        "nome": "SAND IPANEMA CLASS BRANCA 43/44",
+        "ean": "7890875227342",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20227,
+        "nome": "SAND IPANEMA CLASS PRETA/VERME 33/34",
+        "ean": "7909224474730",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20206,
+        "nome": "SAND IPANEMA CLASS PRETO/PRETO  33/34",
+        "ean": "7891261807612",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20210,
+        "nome": "SAND IPANEMA CLASS PRETO/PRETO 35",
+        "ean": "7891261818786",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20207,
+        "nome": "SAND IPANEMA CLASS PRETO/PRETO 35/36",
+        "ean": "7891261807629",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20208,
+        "nome": "SAND IPANEMA CLASS PRETO/PRETO 36",
+        "ean": "7891261807636",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20209,
+        "nome": "SAND IPANEMA CLASS PRETO/PRETO 37/38",
+        "ean": "7891261016540",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20242,
+        "nome": "SAND IPANEMA CLASS ROSA 33/34",
+        "ean": "7909006045394",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20243,
+        "nome": "SAND IPANEMA CLASS ROSA 35",
+        "ean": "7909006045400",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20244,
+        "nome": "SAND IPANEMA CLASS ROSA 36",
+        "ean": "7909006045417",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20245,
+        "nome": "SAND IPANEMA CLASS ROSA 37/38",
+        "ean": "7909006045424",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20211,
+        "nome": "SAND IPANEMA CLASS ROSA/COBRE/METALI 35",
+        "ean": "7909937864477",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20213,
+        "nome": "SAND IPANEMA CLASS ROSA/COBRE/METALIZ 37/38",
+        "ean": "7909937864453",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20214,
+        "nome": "SAND IPANEMA CLASS ROSA/COBRE/METALIZ 39/40",
+        "ean": "7909937864446",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20232,
+        "nome": "SAND IPANEMA CLASS VERM/PTO  39",
+        "ean": "7909224474785",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20215,
+        "nome": "SAND IPANEMA CLASS VERME/PEROLADO 33/34",
+        "ean": "7900204450072",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20229,
+        "nome": "SAND IPANEMA CLASS VERME/PTO 36",
+        "ean": "7909224474754",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20218,
+        "nome": "SAND IPANEMA CLASS VERMELH/PEROLADO 37/38",
+        "ean": "7900204450041",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20216,
+        "nome": "SAND IPANEMA CLASS VERMELHO/PEROLADO 35",
+        "ean": "7900204450065",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20217,
+        "nome": "SAND IPANEMA CLASS VERMELHO/PEROLADO 36",
+        "ean": "7900204450058",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20231,
+        "nome": "SAND IPANEMA CLASS VMERM/PTO 39/40",
+        "ean": "7909224474778",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20425,
+        "nome": "SAND IPANEMA CLASSICA VERM/PTO 35",
+        "ean": "7909224474747",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 20424,
+        "nome": "SAND IPANEMA CLASSICA VERM/PTO 37/38",
+        "ean": "7909224474761",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24414,
+        "nome": "SAND IPANEMA DAY FEM  37/38",
+        "ean": "7909937975784",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24403,
+        "nome": "SAND IPANEMA DAY FEM AD",
+        "ean": "7909937975753",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24404,
+        "nome": "SAND IPANEMA DAY FEM AD 35/36",
+        "ean": "7909937975760",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24405,
+        "nome": "SAND IPANEMA DAY FEM AD 36/37",
+        "ean": "7909937975777",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24412,
+        "nome": "SAND IPANEMA DAY FEM AD 37/38",
+        "ean": "244138",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24415,
+        "nome": "SAND IPANEMA DAY FEM AD 39/40",
+        "ean": "7909937975791",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24472,
+        "nome": "SAND IPANEMA DAY FEM AD BQ188 35",
+        "ean": "7900204481533",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24474,
+        "nome": "SAND IPANEMA DAY FEM AD BQ188 36",
+        "ean": "7900204481540",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24475,
+        "nome": "SAND IPANEMA DAY FEM AD BQ188 37",
+        "ean": "7900204481557",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24477,
+        "nome": "SAND IPANEMA DAY FEM AD BQ188 39",
+        "ean": "7900204481564",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24647,
+        "nome": "SAND IPANEMA DAY FEM BQ188 33",
+        "ean": "7900204481526",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24691,
+        "nome": "SAND IPANEMA FANTASIA INF CB900 29",
+        "ean": "7900377161164",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24692,
+        "nome": "SAND IPANEMA FANTASIA INF CB900 31",
+        "ean": "7900377161171",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24693,
+        "nome": "SAND IPANEMA FANTASIA INF CB900 33",
+        "ean": "7900377161188",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24694,
+        "nome": "SAND IPANEMA FANTASIA INF CB900 35",
+        "ean": "7900377161195",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24695,
+        "nome": "SAND IPANEMA FANTASIA INF CB900 36",
+        "ean": "7900377161201",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24529,
+        "nome": "SAND IPANEMA FLORA AD BZ193 36",
+        "ean": "7900377000890",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24530,
+        "nome": "SAND IPANEMA FLORA AD BZ193 37",
+        "ean": "7900377000906",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24533,
+        "nome": "SAND IPANEMA FLORA AD BZ551 35",
+        "ean": "7900377023912",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24393,
+        "nome": "SAND IPANEMA GLITTER AD 33/34",
+        "ean": "7909510556874",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24394,
+        "nome": "SAND IPANEMA GLITTER AD 35/36",
+        "ean": "7909510556881",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24395,
+        "nome": "SAND IPANEMA GLITTER AD 39/40",
+        "ean": "7909510556911",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24462,
+        "nome": "SAND IPANEMA HAPPY FEM AD BS400 33",
+        "ean": "7900204631518",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24463,
+        "nome": "SAND IPANEMA HAPPY FEM AD BS400 35",
+        "ean": "7900204631501",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24464,
+        "nome": "SAND IPANEMA HAPPY FEM AD BS400 36",
+        "ean": "7900204631495",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24465,
+        "nome": "SAND IPANEMA HAPPY FEM AD BS400 37",
+        "ean": "7900204631488",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24466,
+        "nome": "SAND IPANEMA HAPPY FEM AD BS400 39",
+        "ean": "7900204631471",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24654,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 23",
+        "ean": "7900204205542",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24655,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 25",
+        "ean": "7900204205535",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24656,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 27",
+        "ean": "7900204205528",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24657,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 29",
+        "ean": "7900204205511",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24658,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 31",
+        "ean": "7900204205504",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24659,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK204 33",
+        "ean": "7900204205498",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24660,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK207 25",
+        "ean": "7900204205412",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24661,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK207 27",
+        "ean": "7900204205405",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24662,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK207 29",
+        "ean": "7900204205399",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24663,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK207 31",
+        "ean": "7900204205382",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24664,
+        "nome": "SAND IPANEMA POLLY MAX STEEL BK207 33",
+        "ean": "7900204205375",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24471,
+        "nome": "SAND IPANEMA SEM IGUAL FEM BR224  33",
+        "ean": "7900020481526",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24467,
+        "nome": "SAND IPANEMA SEM IGUAL FEM BR224 33",
+        "ean": "7900204652698",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24468,
+        "nome": "SAND IPANEMA SEM IGUAL FEM BR224 35",
+        "ean": "7900204652681",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24469,
+        "nome": "SAND IPANEMA SEM IGUAL FEM BR224 36",
+        "ean": "7900204652674",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24470,
+        "nome": "SAND IPANEMA SEM IGUAL FEM BR224 37",
+        "ean": "7900204652667",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24602,
+        "nome": "SAND IPANEMA SHINE AD CE402 33",
+        "ean": "7900377319794",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24603,
+        "nome": "SAND IPANEMA SHINE AD CE402 35",
+        "ean": "7900377319800",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24604,
+        "nome": "SAND IPANEMA SHINE AD CE402 36",
+        "ean": "7900377319817",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24605,
+        "nome": "SAND IPANEMA SHINE AD CE402 37",
+        "ean": "7900377319824",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24606,
+        "nome": "SAND IPANEMA SHINE AD CE402 38",
+        "ean": "7900377319831",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24607,
+        "nome": "SAND IPANEMA SHINE AD CE402 39",
+        "ean": "7900377319848",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24608,
+        "nome": "SAND IPANEMA SHINE AD CE403 33",
+        "ean": "7900377319855",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24609,
+        "nome": "SAND IPANEMA SHINE AD CE403 35",
+        "ean": "7900377319862",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24610,
+        "nome": "SAND IPANEMA SHINE AD CE403 36",
+        "ean": "7900377319879",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24611,
+        "nome": "SAND IPANEMA SHINE AD CE403 37",
+        "ean": "7900377319886",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24612,
+        "nome": "SAND IPANEMA SHINE AD CE403 38",
+        "ean": "7900377319893",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24613,
+        "nome": "SAND IPANEMA SHINE AD CE403 39",
+        "ean": "7900377319909",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24614,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 33",
+        "ean": "7900377329656",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24615,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 35",
+        "ean": "7900377329663",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24616,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 36",
+        "ean": "7900377329670",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24617,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 37",
+        "ean": "7900377329687",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24618,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 38",
+        "ean": "7900377329694",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24619,
+        "nome": "SAND IPANEMA SHINE PIN AD CE653 39",
+        "ean": "7900377329700",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24620,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 33",
+        "ean": "7900377329830",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24621,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 35",
+        "ean": "7900377329847",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24622,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 36",
+        "ean": "7900377329854",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24623,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 37",
+        "ean": "7900377329861",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24624,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 38",
+        "ean": "7900377329878",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24625,
+        "nome": "SAND IPANEMA SHINE PIN AD CE656 39",
+        "ean": "7900377329885",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24686,
+        "nome": "SAND IPANEMA SONIC LETS INF BW814 29",
+        "ean": "7900204951364",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24687,
+        "nome": "SAND IPANEMA SONIC LETS INF BW814 31",
+        "ean": "7900204951371",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24688,
+        "nome": "SAND IPANEMA SONIC LETS INF BW814 33",
+        "ean": "7900204951388",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24689,
+        "nome": "SAND IPANEMA SONIC LETS INF BW816 29",
+        "ean": "7900204951425",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24690,
+        "nome": "SAND IPANEMA SONIC LETS INF BW816 31",
+        "ean": "7900204951432",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24665,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR671 27",
+        "ean": "7900204625234",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24666,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR671 29",
+        "ean": "7900204625227",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24667,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR671 31",
+        "ean": "7900204625210",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24668,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR671 33",
+        "ean": "7900204625203",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24669,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 23",
+        "ean": "7900204625074",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24670,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 25",
+        "ean": "7900204625067",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24671,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 27",
+        "ean": "7900204625050",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24672,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 29",
+        "ean": "7900204625043",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24673,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 31",
+        "ean": "7900204625036",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24674,
+        "nome": "SAND IPANEMA TURMA DA MONICA BR675 33",
+        "ean": "7900204625029",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24543,
+        "nome": "SAND IPANEMA VIBRA  AD CB266",
+        "ean": "7900377119004",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24537,
+        "nome": "SAND IPANEMA VIBRA AD CB258 33",
+        "ean": "7900377118694",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24538,
+        "nome": "SAND IPANEMA VIBRA AD CB258 35",
+        "ean": "7900377118700",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24539,
+        "nome": "SAND IPANEMA VIBRA AD CB258 36",
+        "ean": "7900377118717",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24540,
+        "nome": "SAND IPANEMA VIBRA AD CB258 37",
+        "ean": "7900377184927",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24541,
+        "nome": "SAND IPANEMA VIBRA AD CB258 39",
+        "ean": "7900377118748",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24542,
+        "nome": "SAND IPANEMA VIBRA AD CB266 33",
+        "ean": "7900377118991",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24544,
+        "nome": "SAND IPANEMA VIBRA AD CB266 36",
+        "ean": "7900377119011",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24545,
+        "nome": "SAND IPANEMA VIBRA AD CB266 37",
+        "ean": "7900377184972",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24546,
+        "nome": "SAND IPANEMA VIBRA AD CB266 39",
+        "ean": "7900377119042",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24425,
+        "nome": "SAND RIDER FEEL SLIDE AD 37/38",
+        "ean": "7900204390941",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24426,
+        "nome": "SAND RIDER FEEL SLIDE AD 39/40",
+        "ean": "7900204390934",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24427,
+        "nome": "SAND RIDER FEEL SLIDE AD 40/41",
+        "ean": "7900204390927",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24428,
+        "nome": "SAND RIDER FEEL SLIDE AD 41/42",
+        "ean": "7900204390910",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24429,
+        "nome": "SAND RIDER FEEL SLIDE AD 42/43",
+        "ean": "7900204390903",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24421,
+        "nome": "SAND RIDER STREET DUO 37/38",
+        "ean": "7900204205269",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24422,
+        "nome": "SAND RIDER STREET DUO 41/42",
+        "ean": "7900204205252",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24423,
+        "nome": "SAND RIDER STREET DUO 43/44",
+        "ean": "7900204205245",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24424,
+        "nome": "SAND RIDER STREET DUO A 43/44",
+        "ean": "7900204205238",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24417,
+        "nome": "SAND RIDER STREET DUO AD 37/38",
+        "ean": "7909937767211",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24418,
+        "nome": "SAND RIDER STREET DUO AD 39/40",
+        "ean": "7909937767228",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24419,
+        "nome": "SAND RIDER STREET DUO AD 41/42",
+        "ean": "7909937767235",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 24420,
+        "nome": "SAND RIDER STREET DUO AD 43/44",
+        "ean": "7909937767242",
+        "marca": "IPANEMA"
+      },
+      {
+        "id": 22035,
+        "nome": "CAIXA DE BOMBOM GAROTO 220G",
+        "ean": "7891000457092",
+        "marca": "NESTLE"
+      },
+      {
+        "id": 23241,
+        "nome": "CAIXA DE BOMBOM GAROTO 220G - 10% GRATIS",
+        "ean": "7891000474983",
+        "marca": "NESTLE"
+      }
+    ]
+  }
+]

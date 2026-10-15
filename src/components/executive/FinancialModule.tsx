@@ -115,9 +115,15 @@ export function FinancialModule({ selectedStore, globalStartDate, globalEndDate 
   const handleClearFilters = () => {
     setBusca("");
     setStatus("");
-    setStartDate("");
-    setEndDate("");
-    setDataPagamento(new Date().toISOString().split('T')[0]);
+    
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    const startDefault = d.toISOString().split('T')[0];
+    const endDefault = new Date().toISOString().split('T')[0];
+    
+    setStartDate(startDefault);
+    setEndDate(endDefault);
+    setDataPagamento(endDefault);
     setSomenteDesconto(false);
     setStoreFilter(null);
     toast.info("Filtros limpos.");

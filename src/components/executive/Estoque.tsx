@@ -9,6 +9,61 @@ export function Estoque() {
 
   const [searchResults, setSearchResults] = useState<any[]>([]);
 
+  // Loja Virtual integration states
+  const [siteActive, setSiteActive] = useState(false);
+  const [sitePrice, setSitePrice] = useState("");
+  const [siteDesc, setSiteDesc] = useState("");
+  const [siteCat, setSiteCat] = useState("🎁 Presentes");
+  const [siteEmoji, setSiteEmoji] = useState("📦");
+  const [siteBadge, setSiteBadge] = useState("");
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  const fetchSiteConfig = async (id: number) => {
+    try {
+      const res = await fetch(`/api/produtos/site-config/${id}`);
+      if (res.ok) {
+        const config = await res.json();
+        setSiteActive(config.active || false);
+        setSitePrice(config.price !== undefined ? String(config.price) : "");
+        setSiteDesc(config.desc || "");
+        setSiteCat(config.cat || "🎁 Presentes");
+        setSiteEmoji(config.emoji || "📦");
+        setSiteBadge(config.badge || "");
+      }
+    } catch (e) {
+      console.error("Erro ao carregar configuracoes do site", e);
+    }
+  };
+
+  const handleSaveSiteConfig = async (id: number, name: string) => {
+    setSavingConfig(true);
+    try {
+      const res = await fetch("/api/produtos/site-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idProduto: id,
+          active: siteActive,
+          name: name,
+          price: parseFloat(sitePrice) || 0,
+          desc: siteDesc,
+          cat: siteCat,
+          emoji: siteEmoji,
+          badge: siteBadge
+        })
+      });
+      if (res.ok) {
+        toast.success("Configurações da loja virtual salvas com sucesso!");
+      } else {
+        toast.error("Falha ao salvar configurações.");
+      }
+    } catch (err) {
+      toast.error("Erro de conexão ao salvar configurações.");
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   const fetchEstoque = async (codigoId: string) => {
     setLoading(true);
     setData(null);
@@ -146,6 +201,17 @@ export function Estoque() {
               <h1 className="text-2xl font-bold text-white font-serif tracking-wide">{data.produto.DESCRICAO}</h1>
             </div>
             <div className="hidden md:flex bg-black/40 px-4 py-3 rounded-xl border border-white/5 items-center gap-4">
+              {data.precoOnline > 0 && (
+                <>
+                  <div className="flex flex-col items-end">
+                    <span className="text-xs text-slate-400 uppercase">Preço Site (Online)</span>
+                    <span className="font-bold text-xl text-cyan-400">
+                      {fmtCurrency(data.precoOnline)}
+                    </span>
+                  </div>
+                  <div className="w-px h-8 bg-white/10 mx-2"></div>
+                </>
+              )}
               <div className="flex flex-col items-end">
                 <span className="text-xs text-slate-400 uppercase">Custo Total</span>
                 <span className="font-bold text-xl text-rose-400">
@@ -172,6 +238,8 @@ export function Estoque() {
                    quantidadeTotal: 0,
                    custoTotalLoja: 0,
                    custoMedioBase: cur.custoMedio,
+                   precoVendaLoja: cur.precoVenda,
+                   precoPromoLoja: cur.precoPromo,
                    dataUltimaVenda: cur.dataUltimaVenda,
                    locais: []
                  };
@@ -179,6 +247,13 @@ export function Estoque() {
                acc[cur.idEmpresa].quantidadeTotal += cur.quantidade;
                acc[cur.idEmpresa].custoTotalLoja += (cur.quantidade > 0 ? cur.quantidade : 0) * cur.custoMedio;
                
+               if (cur.precoVenda && !acc[cur.idEmpresa].precoVendaLoja) {
+                 acc[cur.idEmpresa].precoVendaLoja = cur.precoVenda;
+               }
+               if (cur.precoPromo && !acc[cur.idEmpresa].precoPromoLoja) {
+                 acc[cur.idEmpresa].precoPromoLoja = cur.precoPromo;
+               }
+
                if (cur.dataUltimaVenda && (!acc[cur.idEmpresa].dataUltimaVenda || new Date(cur.dataUltimaVenda) > new Date(acc[cur.idEmpresa].dataUltimaVenda))) {
                    acc[cur.idEmpresa].dataUltimaVenda = cur.dataUltimaVenda;
                }
@@ -190,82 +265,120 @@ export function Estoque() {
                });
                return acc;
             }, {})).map((store: any) => {
-              const semEstoque = store.quantidadeTotal <= 0;
-              const info = data.infoAdicionalPorLoja?.[store.idEmpresa] || null;
+               const semEstoque = store.quantidadeTotal <= 0;
+               const info = data.infoAdicionalPorLoja?.[store.idEmpresa] || null;
 
-              return (
-                <div 
-                  key={store.idEmpresa} 
-                  className={`glass-strong rounded-2xl p-5 flex flex-col gap-4 border transition-all hover:scale-[1.01] ${semEstoque ? 'border-white/5 opacity-80' : 'border-primary/20'}`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2 text-slate-300 font-semibold truncate">
-                      <MapPin className={`w-4 h-4 ${semEstoque ? 'text-slate-500' : 'text-primary'}`} />
-                      <span className="truncate" title={store.loja}>{store.loja}</span>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono bg-white/5 px-2 py-0.5 rounded">Lj {store.idEmpresa}</span>
-                  </div>
+               return (
+                 <div 
+                   key={store.idEmpresa} 
+                   className={`glass-strong rounded-2xl p-5 flex flex-col gap-4 border transition-all hover:scale-[1.01] ${semEstoque ? 'border-white/5 opacity-80' : 'border-primary/20'}`}
+                 >
+                   <div className="flex justify-between items-start">
+                     <div className="flex items-center gap-2 text-slate-300 font-semibold truncate">
+                       <MapPin className={`w-4 h-4 ${semEstoque ? 'text-slate-500' : 'text-primary'}`} />
+                       <span className="truncate" title={store.loja}>{store.loja}</span>
+                     </div>
+                     <span className="text-xs text-slate-500 font-mono bg-white/5 px-2 py-0.5 rounded">Lj {store.idEmpresa}</span>
+                   </div>
 
-                  <div className="flex items-baseline gap-2 mt-2">
-                    <span className={`text-4xl font-bold font-mono ${semEstoque ? 'text-slate-500' : 'text-white'}`}>
-                      {Number(store.quantidadeTotal).toLocaleString("pt-BR")}
-                    </span>
-                    <span className="text-sm text-slate-400">unidades totais</span>
-                  </div>
+                   <div className="flex items-baseline gap-2 mt-2">
+                     <span className={`text-4xl font-bold font-mono ${semEstoque ? 'text-slate-500' : 'text-white'}`}>
+                       {Number(store.quantidadeTotal).toLocaleString("pt-BR")}
+                     </span>
+                     <span className="text-sm text-slate-400">unidades totais</span>
+                   </div>
 
-                  <div className="flex flex-col gap-2 mt-1 bg-black/20 p-3 rounded-xl border border-white/5">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Locais de Estoque</span>
-                    {store.locais.map((l: any) => (
-                      <div key={l.idLocal} className="flex items-center justify-between">
-                        <span className="text-xs text-slate-300 truncate mr-2" title={l.nomeLocal}>{l.nomeLocal}</span>
-                        <span className="text-xs font-mono font-semibold text-white whitespace-nowrap">
-                          {Number(l.quantidade).toLocaleString("pt-BR")} <span className="text-[10px] text-slate-500">un</span>
+                   <div className="flex flex-col gap-2 mt-1 bg-black/20 p-3 rounded-xl border border-white/5">
+                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Locais de Estoque</span>
+                     {store.locais.map((l: any) => (
+                       <div key={l.idLocal} className="flex items-center justify-between">
+                         <span className="text-xs text-slate-300 truncate mr-2" title={l.nomeLocal}>{l.nomeLocal}</span>
+                         <span className="text-xs font-mono font-semibold text-white whitespace-nowrap">
+                           {Number(l.quantidade).toLocaleString("pt-BR")} <span className="text-[10px] text-slate-500">un</span>
+                         </span>
+                       </div>
+                     ))}
+                   </div>
+
+                   <div className="flex items-center gap-2 mt-1">
+                     <span className="text-xs text-slate-500 bg-black/20 px-2 py-1 rounded">
+                       Custo Total: <span className="font-semibold text-slate-300">{fmtCurrency(store.custoTotalLoja)}</span>
+                     </span>
+                   </div>
+
+                   <div className="grid grid-cols-3 gap-1 mt-2 border-t border-white/5 pt-4">
+                     <div className="flex flex-col gap-1">
+                       <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-0.5">
+                         <DollarSign className="w-3 h-3"/> Custo Médio
+                       </span>
+                       <span className="text-xs font-semibold text-slate-300 truncate">
+                         {fmtCurrency(store.custoMedioBase)}
+                       </span>
+                     </div>
+                     <div className="flex flex-col gap-1">
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-0.5">
+                          <DollarSign className="w-3 h-3 text-emerald-400"/> Preço Venda
+                        </span>
+                        <span className="text-xs font-semibold text-emerald-400 truncate flex flex-col gap-0.5">
+                          <div>
+                            {fmtCurrency(store.precoVendaLoja || data.precoOnline || 0)}
+                            {(!store.precoVendaLoja && data.precoOnline > 0) && (
+                              <span className="text-[8px] text-cyan-400 ml-1 font-normal">(Site)</span>
+                            )}
+                          </div>
+                          {store.precoPromoLoja > 0 && (
+                            <span className="text-[9px] text-orange-400 font-bold bg-orange-400/10 px-1 py-0.5 rounded w-fit">
+                              Promo: {fmtCurrency(store.precoPromoLoja)}
+                            </span>
+                          )}
+                          {(() => {
+                            const preco = store.precoVendaLoja || data.precoOnline || 0;
+                            const custo = store.custoMedioBase || 0;
+                            const margem = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
+                            return preco > 0 && custo > 0 ? (
+                              <span className="text-[9px] text-slate-400 block font-normal mt-0.5">
+                                Margem: <span className={margem >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{margem.toFixed(1)}%</span>
+                              </span>
+                            ) : null;
+                          })()}
                         </span>
                       </div>
-                    ))}
-                  </div>
+                     <div className="flex flex-col gap-1">
+                       <span className="text-[9px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-0.5">
+                         <Calendar className="w-3 h-3"/> Última Venda
+                       </span>
+                       <span className="text-xs font-semibold text-slate-300 truncate">
+                         {fmtDate(store.dataUltimaVenda)}
+                       </span>
+                     </div>
+                   </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-slate-500 bg-black/20 px-2 py-1 rounded">
-                      Custo Total: <span className="font-semibold text-slate-300">{fmtCurrency(store.custoTotalLoja)}</span>
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-2 border-t border-white/5 pt-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-                        <DollarSign className="w-3 h-3"/> Custo Médio
-                      </span>
-                      <span className="text-sm font-semibold text-slate-300">
-                        {fmtCurrency(store.custoMedioBase)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-                        <Calendar className="w-3 h-3"/> Última Venda
-                      </span>
-                      <span className="text-sm font-semibold text-slate-300">
-                        {fmtDate(store.dataUltimaVenda)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {info && (
-                    <div className="flex flex-col gap-3 mt-2 border-t border-white/5 pt-4">
-                      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Última Entrada de Nota</span>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] text-slate-500 flex items-center gap-1"><Calendar className="w-3 h-3"/> Data e Nota</span>
-                          <span className="text-xs font-semibold text-slate-300">{fmtDate(info.ultimaEntrada)} <span className="font-mono bg-white/5 px-1 rounded ml-1 text-[10px]">#{info.numeroNota}</span></span>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] text-slate-500 flex items-center gap-1"><User className="w-3 h-3"/> Usuário</span>
-                          <span className="text-xs font-semibold text-slate-300 truncate" title={info.usuarioEntrada}>{info.usuarioEntrada}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1 mt-2 bg-primary/5 p-2 rounded-lg border border-primary/10">
+                                       {info && (
+                     <div className="flex flex-col gap-3 mt-2 border-t border-white/5 pt-4">
+                       <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Últimas Entradas de Nota</span>
+                       
+                       <div className="flex flex-col gap-2">
+                         {info.ultimasEntradas?.map((ent: any, idx: number) => (
+                           <div key={idx} className="grid grid-cols-3 gap-2 text-xs items-center border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                             <div className="flex flex-col gap-0.5">
+                               <span className="text-slate-300 flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-500"/> {fmtDate(ent.data)}</span>
+                               <span className="font-mono text-slate-500 text-[10px]">#{ent.numeroNota}</span>
+                             </div>
+                             <div className="flex flex-col text-slate-400 truncate gap-0.5" title={ent.usuario}>
+                               <span className="text-[10px] text-slate-500 flex items-center gap-1"><User className="w-3 h-3"/> Usuário</span>
+                               <span className="truncate">{ent.usuario}</span>
+                             </div>
+                             <div className="flex flex-col items-end gap-0.5">
+                               <span className="text-[10px] text-slate-500">Qtd</span>
+                               <span className="font-mono font-bold text-emerald-400">{Number(ent.quantidade).toLocaleString("pt-BR")} <span className="text-[9px] text-slate-500 font-normal">un</span></span>
+                             </div>
+                           </div>
+                         ))}
+                         {(!info.ultimasEntradas || info.ultimasEntradas.length === 0) && (
+                           <span className="text-xs text-slate-500 italic">Nenhuma entrada recente</span>
+                         )}
+                       </div>
+<div className="flex flex-col gap-1 mt-2 bg-primary/5 p-2 rounded-lg border border-primary/10">
                         <span className="text-[10px] text-primary/70 font-semibold uppercase tracking-wider flex items-center gap-1"><Repeat className="w-3 h-3"/> Histórico (Compra x Venda)</span>
                         <div className="flex items-center gap-2 justify-between mt-1">
                           <div className="flex flex-col">

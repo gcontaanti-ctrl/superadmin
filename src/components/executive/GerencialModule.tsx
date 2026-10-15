@@ -88,6 +88,20 @@ const fmtDate = (d: string) => {
   return dt.toLocaleDateString("pt-BR", { timeZone: "UTC" });
 };
 
+const fmtTimestamp = (ts: string) => {
+  if (!ts) return "—";
+  try {
+    const parts = ts.split(" ");
+    const datePart = parts[0];
+    const timePart = parts[1];
+    const [y, m, d] = datePart.split("-");
+    const cleanTime = timePart ? timePart.substring(0, 5) : "";
+    return `${d}/${m}/${y} ${cleanTime}`;
+  } catch (e) {
+    return ts;
+  }
+};
+
 export function GerencialModule({ selectedStore, globalStartDate, globalEndDate }: GerencialModuleProps) {
   const [subTab, setSubTab] = useState<SubTab>("top-vendidos");
   const [loadingTop, setLoadingTop] = useState(false);
@@ -99,6 +113,8 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
   const [vendasHora, setVendasHora] = useState<any[]>([]);
   const [margemCritica, setMargemCritica] = useState<any[]>([]);
   const [semMovimento, setSemMovimento] = useState<any[]>([]);
+  const [diasFiltro, setDiasFiltro] = useState<30 | 60 | 90>(30);
+  const [agrupamentoHora, setAgrupamentoHora] = useState<"secao" | "loja">("secao");
 
   const [loadingVendasHora, setLoadingVendasHora] = useState(false);
   const [loadingMargem, setLoadingMargem] = useState(false);
@@ -867,63 +883,128 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
         </div>
       )}
       {/* ── VENDAS POR HORA ────────────────────────────────────────────── */}
-      {subTab === "vendas-hora" && (
-        <div className="glass-strong rounded-2xl p-6 flex flex-col gap-5">
-          <div className="border-b border-white/10 pb-4">
-            <h3 className="font-serif text-lg font-bold text-slate-100 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-purple-400" />
-              Vendas por Hora (por Sessão)
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Distribuição de vendas ao longo do dia comercial</p>
-          </div>
+      {subTab === "vendas-hora" && (() => {
+        const pivotedVendasHora = (() => {
+          const hoursMap: Record<string, Record<string, any>> = {};
+          for (let h = 0; h < 24; h++) {
+            const hourStr = `${h.toString().padStart(2, '0')}:00`;
+            hoursMap[hourStr] = { hora: hourStr };
+          }
 
-          {loadingVendasHora ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+          vendasHora.forEach(row => {
+            const hourStr = `${parseInt(row.hora).toString().padStart(2, '0')}:00`;
+            const key = agrupamentoHora === "secao" ? row.secao : row.loja;
+            const valor = parseFloat(row.totalVendas) || 0;
+            if (hoursMap[hourStr]) {
+              hoursMap[hourStr][key] = (hoursMap[hourStr][key] || 0) + valor;
+            }
+          });
+
+          return Object.values(hoursMap).filter((hObj: Record<string, any>) => {
+            const keys = Object.keys(hObj).filter(k => k !== 'hora');
+            const sum = keys.reduce((acc, k) => acc + hObj[k], 0);
+            return sum > 0;
+          });
+        })();
+
+        const activeKeys = (() => {
+          const keysSet = new Set<string>();
+          pivotedVendasHora.forEach((hObj: Record<string, any>) => {
+            Object.keys(hObj).forEach(k => {
+              if (k !== 'hora') keysSet.add(k);
+            });
+          });
+          return Array.from(keysSet);
+        })();
+
+        const colors = [
+          "#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b", "#3b82f6",
+          "#ef4444", "#10b981", "#6366f1", "#f43f5e", "#06b6d4"
+        ];
+
+        return (
+          <div className="glass-strong rounded-2xl p-6 flex flex-col gap-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-400" />
+                  Vendas por Hora {agrupamentoHora === "secao" ? "(por Seção)" : "(por Filial)"}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Distribuição de vendas ao longo do dia comercial</p>
+              </div>
+
+              {/* Segmented Control para selecionar agrupamento */}
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10 shrink-0">
+                <button
+                  onClick={() => setAgrupamentoHora("secao")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    agrupamentoHora === "secao"
+                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Agrupar por Seção
+                </button>
+                <button
+                  onClick={() => setAgrupamentoHora("loja")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    agrupamentoHora === "loja"
+                      ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  Agrupar por Filial
+                </button>
+              </div>
             </div>
-          ) : vendasHora.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 text-sm">Sem dados de vendas por hora no período.</div>
-          ) : (
-            <div className="h-[400px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={vendasHora} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="hora" stroke="#475569" fontSize={11} tickMargin={10} />
-                  <YAxis stroke="#475569" fontSize={11} tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }}
-                    labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '8px' }}
-                    formatter={(val: number) => fmtCurrency(val)}
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
-                  
-                  {/* Pega as seções dinâmicas das chaves do primeiro objeto que não seja 'hora' */}
-                  {Object.keys(vendasHora[0] || {}).filter(k => k !== 'hora').slice(0, 5).map((secao, i) => {
-                    const colors = ["#8b5cf6", "#ec4899", "#14b8a6", "#f59e0b", "#3b82f6"];
-                    return (
-                      <Area 
-                        key={secao}
-                        type="monotone" 
-                        dataKey={secao} 
-                        stackId="1"
-                        stroke={colors[i]} 
-                        fill={i === 0 ? "url(#colorPrimary)" : colors[i]} 
-                        fillOpacity={0.6}
-                      />
-                    );
-                  })}
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      )}
+
+            {loadingVendasHora ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : pivotedVendasHora.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm">Sem dados de vendas por hora no período.</div>
+            ) : (
+              <div className="h-[400px] w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={pivotedVendasHora} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorPrimary" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="hora" stroke="#475569" fontSize={11} tickMargin={10} />
+                    <YAxis stroke="#475569" fontSize={11} tickFormatter={(val) => `R$ ${(val/1000).toFixed(0)}k`} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '12px' }}
+                      labelStyle={{ color: '#94a3b8', fontWeight: 'bold', marginBottom: '8px' }}
+                      formatter={(val: number) => fmtCurrency(val)}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '20px' }} />
+                    
+                    {activeKeys.slice(0, 10).map((keyName, i) => {
+                      const color = colors[i % colors.length];
+                      return (
+                        <Area 
+                          key={keyName}
+                          type="monotone" 
+                          dataKey={keyName} 
+                          stackId="1"
+                          stroke={color} 
+                          fill={i === 0 ? "url(#colorPrimary)" : color} 
+                          fillOpacity={0.4}
+                        />
+                      );
+                    })}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── MARGEM CRÍTICA ────────────────────────────────────────────── */}
       {subTab === "margem-critica" && (
@@ -988,67 +1069,118 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
       )}
 
       {/* ── SEM MOVIMENTO ────────────────────────────────────────────── */}
-      {subTab === "sem-movimento" && (
-        <div className="glass-strong rounded-2xl p-6 flex flex-col gap-5">
-          <div className="border-b border-white/10 pb-4">
-            <h3 className="font-serif text-lg font-bold text-slate-100 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-slate-300" />
-              Itens Sem Movimento (Estoque Parado)
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Produtos com estoque maior que zero, mas sem vendas recentes.</p>
-          </div>
+      {subTab === "sem-movimento" && (() => {
+        const filteredSemMov = semMovimento.filter(item => item.diasParado >= diasFiltro);
+        return (
+          <div className="glass-strong rounded-2xl p-6 flex flex-col gap-5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-slate-100 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-slate-300" />
+                  Itens Sem Movimento (Estoque Parado)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Produtos com estoque maior que zero, mas sem vendas recentes.</p>
+              </div>
 
-          {loadingSemMov ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              {/* Pills de Filtro por Dias Parados */}
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10 shrink-0">
+                <button
+                  onClick={() => setDiasFiltro(30)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    diasFiltro === 30
+                      ? "bg-primary/20 text-primary border border-primary/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  +30 dias
+                </button>
+                <button
+                  onClick={() => setDiasFiltro(60)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    diasFiltro === 60
+                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  +60 dias
+                </button>
+                <button
+                  onClick={() => setDiasFiltro(90)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    diasFiltro === 90
+                      ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  +90 dias
+                </button>
+              </div>
             </div>
-          ) : semMovimento.length === 0 ? (
-            <div className="text-center py-16 text-slate-400 text-sm">Estoque saudável! Nenhum item parado detectado.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 text-slate-400 text-[10px] uppercase tracking-wider">
-                    <th className="py-3 px-3 text-left">Produto</th>
-                    <th className="py-3 px-3 text-center">Dias Parado</th>
-                    <th className="py-3 px-3 text-center">Última Venda</th>
-                    <th className="py-3 px-3 text-right">Qtd Estoque</th>
-                    <th className="py-3 px-3 text-right">Custo Parado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {semMovimento.map((item, i) => (
-                    <tr 
-                      key={`${item.idProduto}-${i}`} 
-                      className="border-b border-white/5 hover:bg-slate-500/10 cursor-pointer transition-colors"
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('openRastreamento', { detail: { idProduto: item.idProduto }}));
-                        toast.success(`Redirecionando para rastreamento do produto ${item.idProduto}`);
-                      }}
-                    >
-                      <td className="py-3 px-3">
-                        <div className="font-semibold text-slate-200">{item.produto}</div>
-                        <div className="text-[10px] text-slate-500">{item.secao}</div>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
-                          item.diasParado > 90 ? 'bg-red-500/20 text-red-400' : 
-                          item.diasParado > 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-500/20 text-slate-300'
-                        }`}>
-                          {item.diasParado} dias
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center text-slate-400">{fmtDate(item.ultimaVenda)}</td>
-                      <td className="py-3 px-3 text-right font-bold text-slate-300 font-mono">{item.estoqueTotal.toFixed(0)}</td>
-                      <td className="py-3 px-3 text-right font-bold text-rose-400 font-mono">{fmtCurrency(item.custoTotal)}</td>
+
+            {loadingSemMov ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : filteredSemMov.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 text-sm">Estoque saudável! Nenhum item parado detectado para +{diasFiltro} dias.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-3 text-left">Produto</th>
+                      <th className="py-3 px-3 text-center">Dias Parado</th>
+                      <th className="py-3 px-3 text-center">Última Venda</th>
+                      <th className="py-3 px-3 text-left">Última Entrada (Nota/Data/User)</th>
+                      <th className="py-3 px-3 text-right">Qtd Estoque</th>
+                      <th className="py-3 px-3 text-right">Custo Parado</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+                  </thead>
+                  <tbody>
+                    {filteredSemMov.map((item, i) => (
+                      <tr 
+                        key={`${item.idProduto}-${i}`} 
+                        className="border-b border-white/5 hover:bg-white/[0.04] cursor-pointer transition-colors"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('openRastreamento', { detail: { idProduto: item.idProduto }}));
+                          toast.success(`Redirecionando para rastreamento do produto ${item.idProduto}`);
+                        }}
+                      >
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-slate-200">{item.produto}</div>
+                          <div className="text-[10px] text-slate-500">{item.secao}</div>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                            item.diasParado > 90 ? 'bg-red-500/20 text-red-400' : 
+                            item.diasParado > 60 ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-500/20 text-slate-300'
+                          }`}>
+                            {item.diasParado} dias
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center text-slate-400">{fmtDate(item.ultimaVenda)}</td>
+                        <td className="py-3 px-3">
+                          {item.ultimaNotaNum ? (
+                            <div className="flex flex-col gap-0.5 text-left">
+                              <span className="font-semibold text-slate-200">NF #{item.ultimaNotaNum}</span>
+                              <span className="text-[10px] text-slate-400">{fmtTimestamp(item.ultimaNotaData)}</span>
+                              <span className="text-[9px] text-slate-500">Por: {item.ultimaNotaUsuario}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 italic text-[10px]">Sem registros</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-slate-300 font-mono">{item.estoqueTotal.toFixed(0)}</td>
+                        <td className="py-3 px-3 text-right font-bold text-rose-400 font-mono">{fmtCurrency(item.custoTotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
     </div>
   );

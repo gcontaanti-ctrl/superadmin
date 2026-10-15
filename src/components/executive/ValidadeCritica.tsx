@@ -65,7 +65,11 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
 
   // Avarias States
   const [avariaSearchTerm, setAvariaSearchTerm] = useState("");
-  const [avariaStartDate, setAvariaStartDate] = useState("2026-05-01"); // Default start date
+  const [avariaStartDate, setAvariaStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
   const [avariaEndDate, setAvariaEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [avariaSecao, setAvariaSecao] = useState("");
   const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
@@ -351,8 +355,8 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
             </div>
 
             <div 
-              onClick={() => { setMinDias("10"); setMaxDias("10"); }}
-              className={`glass-strong rounded-2xl p-5 bg-orange-500/[0.02] flex flex-col gap-3 relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.02] ${maxDias === "10" && minDias === "10" ? 'border-2 border-orange-500/60 ring-2 ring-orange-500/20 shadow-lg shadow-orange-500/10' : 'border border-orange-500/20'}`}
+              onClick={() => { setMinDias("6"); setMaxDias("10"); }}
+              className={`glass-strong rounded-2xl p-5 bg-orange-500/[0.02] flex flex-col gap-3 relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.02] ${maxDias === "10" && minDias === "6" ? 'border-2 border-orange-500/60 ring-2 ring-orange-500/20 shadow-lg shadow-orange-500/10' : 'border border-orange-500/20'}`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="flex items-center justify-between">
@@ -367,12 +371,12 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
               <p className="text-xs text-orange-400 font-semibold font-mono">
                 {resumo?.alertaValor ? resumo.alertaValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
               </p>
-              <p className="text-[10px] text-orange-500/70">{maxDias === "10" && minDias === "10" ? '✓ Exatos 10 dias' : 'Clique: exatos 10 dias'}</p>
+              <p className="text-[10px] text-orange-500/70">{maxDias === "10" && minDias === "6" ? '✓ 6 a 10 dias' : 'Clique: 6 a 10 dias'}</p>
             </div>
 
             <div 
-              onClick={() => { setMinDias("15"); setMaxDias("15"); }}
-              className={`glass-strong rounded-2xl p-5 bg-amber-500/[0.02] flex flex-col gap-3 relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.02] ${maxDias === "15" && minDias === "15" ? 'border-2 border-amber-500/60 ring-2 ring-amber-500/20 shadow-lg shadow-amber-500/10' : 'border border-amber-500/20'}`}
+              onClick={() => { setMinDias("11"); setMaxDias("15"); }}
+              className={`glass-strong rounded-2xl p-5 bg-amber-500/[0.02] flex flex-col gap-3 relative overflow-hidden group cursor-pointer transition-all duration-300 hover:scale-[1.02] ${maxDias === "15" && minDias === "11" ? 'border-2 border-amber-500/60 ring-2 ring-amber-500/20 shadow-lg shadow-amber-500/10' : 'border border-amber-500/20'}`}
             >
               <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="flex items-center justify-between">
@@ -387,7 +391,7 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
               <p className="text-xs text-amber-400 font-semibold font-mono">
                 {resumo?.atencaoValor ? resumo.atencaoValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
               </p>
-              <p className="text-[10px] text-amber-500/70">{maxDias === "15" && minDias === "15" ? '✓ Exatos 15 dias' : 'Clique: exatos 15 dias'}</p>
+              <p className="text-[10px] text-amber-500/70">{maxDias === "15" && minDias === "11" ? '✓ 11 a 15 dias' : 'Clique: 11 a 15 dias'}</p>
             </div>
 
             <div 

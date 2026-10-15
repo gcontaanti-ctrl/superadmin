@@ -35,25 +35,53 @@ interface CommercialModuleProps {
 
 export function CommercialModule({ selectedStore, globalStartDate, globalEndDate }: CommercialModuleProps) {
   // Filtros
+  const [subTab, setSubTab] = useState<"compradores" | "fornecedores" | "vendedores">("compradores");
   const [busca, setBusca] = useState("");
   const [fornecedorId, setFornecedorId] = useState("");
   const [startDate, setStartDate] = useState(globalStartDate || "");
   const [endDate, setEndDate] = useState(globalEndDate || "");
+  const [statusRecebimento, setStatusRecebimento] = useState("");
+  const [compradorBusca, setCompradorBusca] = useState("");
+  const [lojaFiltro, setLojaFiltro] = useState(selectedStore || "todas");
+  const [mesSelecionado, setMesSelecionado] = useState("2026-06");
+
+  const mesesDisponiveis = [
+    { label: "Julho / 2026", value: "2026-07", start: "2026-07-01", end: "2026-07-31" },
+    { label: "Junho / 2026", value: "2026-06", start: "2026-06-01", end: "2026-06-30" },
+    { label: "Abril / 2026", value: "2026-04", start: "2026-04-01", end: "2026-04-30" },
+    { label: "Dezembro / 2025", value: "2025-12", start: "2025-12-01", end: "2025-12-31" },
+    { label: "Fevereiro / 2025", value: "2025-02", start: "2025-02-01", end: "2025-02-28" }
+  ];
 
   // Sync with global dates
   useEffect(() => {
-    if (globalStartDate) setStartDate(globalStartDate);
-  }, [globalStartDate]);
+    if (globalStartDate && subTab !== "compradores") setStartDate(globalStartDate);
+  }, [globalStartDate, subTab]);
 
   useEffect(() => {
-    if (globalEndDate) setEndDate(globalEndDate);
-  }, [globalEndDate]);
+    if (globalEndDate && subTab !== "compradores") setEndDate(globalEndDate);
+  }, [globalEndDate, subTab]);
+
+  useEffect(() => {
+    setLojaFiltro(selectedStore || "todas");
+  }, [selectedStore]);
+
+  useEffect(() => {
+    if (subTab === "compradores") {
+      const match = mesesDisponiveis.find(m => m.value === mesSelecionado);
+      if (match) {
+        setStartDate(match.start);
+        setEndDate(match.end);
+      }
+    }
+  }, [mesSelecionado, subTab]);
 
   // Dados
   const [compradores, setCompradores] = useState<any[]>([]);
   const [compras, setCompras] = useState<any[]>([]);
   const [fornecedores, setFornecedores] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
+  const [empresas, setEmpresas] = useState<any[]>([]);
   const [selectedVendedor, setSelectedVendedor] = useState<any | null>(null);
   const [vendedorDetalhes, setVendedorDetalhes] = useState<any | null>(null);
   
@@ -69,7 +97,7 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
     setSelectedComprador(comprador);
     setLoadingComprasModal(true);
     try {
-      let url = `/api/comercial/comprador-compras?compradorId=${comprador.IDUSUARIO}&compradorNome=${encodeURIComponent(comprador.COMPRADOR)}`;
+      let url = `/api/comercial/comprador-compras?compradorId=${comprador.IDUSUARIO || comprador.idComprador || ''}&compradorNome=${encodeURIComponent(comprador.COMPRADOR)}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
       const res = await fetch(url);
@@ -77,14 +105,35 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
       setCompradorCompras(json.lista || []);
     } catch (e) {
       console.error(e);
-      setCompradorCompras([]);
+      toast.error("Erro ao carregar histórico de compras do comprador");
     } finally {
       setLoadingComprasModal(false);
     }
   };
 
+  // Modal de Detalhes do Pedido
+  const [modalPedidoOpen, setModalPedidoOpen] = useState(false);
+  const [pedidoItens, setPedidoItens] = useState<any[]>([]);
+  const [loadingPedido, setLoadingPedido] = useState(false);
+  const [currentPedidoId, setCurrentPedidoId] = useState<number | null>(null);
+
+  const fetchPedidoDetalhes = async (idPedido: number) => {
+    setCurrentPedidoId(idPedido);
+    setModalPedidoOpen(true);
+    setLoadingPedido(true);
+    try {
+      const res = await fetch(`/api/comercial/pedido-detalhes?idPedido=${idPedido}`);
+      const json = await res.json();
+      setPedidoItens(json.itens || []);
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar detalhes do pedido");
+    } finally {
+      setLoadingPedido(false);
+    }
+  };
+
   // Aba interna do modulo comercial
-  const [subTab, setSubTab] = useState<"compradores" | "fornecedores" | "vendedores">("compradores");
 
   // Configurar períodos automáticos (Ex: 6 meses para vendedores)
   useEffect(() => {
@@ -96,14 +145,14 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
       setStartDate(sixMonthsAgo.toISOString().split('T')[0]);
       setEndDate(today.toISOString().split('T')[0]);
       setBusca("");
-    } else {
+    } else if (subTab !== "compradores") {
       setStartDate(globalStartDate || "");
       setEndDate(globalEndDate || "");
       setBusca("");
     }
   }, [subTab]);
 
-  // Carregar lista de fornecedores para dropdown
+  // Carregar lista de fornecedores e empresas para dropdown
   useEffect(() => {
     fetch("/api/fornecedores")
       .then((res) => res.json())
@@ -111,6 +160,13 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
         if (Array.isArray(data)) {
           setFornecedores(data);
         }
+      })
+      .catch(console.error);
+
+    fetch('/api/empresas')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) setEmpresas(data);
       })
       .catch(console.error);
   }, []);
@@ -123,6 +179,7 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
         const params: string[] = [];
         if (startDate) params.push(`startDate=${startDate}`);
         if (endDate) params.push(`endDate=${endDate}`);
+        if (selectedStore) params.push(`idEmpresa=${selectedStore}`);
         if (params.length > 0) url += `?${params.join("&")}`;
 
         const res = await fetch(url);
@@ -135,6 +192,9 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
         if (busca) params.push(`busca=${encodeURIComponent(busca)}`);
         if (startDate) params.push(`startDate=${startDate}`);
         if (endDate) params.push(`endDate=${endDate}`);
+        if (statusRecebimento) params.push(`statusRecebimento=${statusRecebimento}`);
+        if (compradorBusca) params.push(`compradorBusca=${encodeURIComponent(compradorBusca)}`);
+        if (lojaFiltro && lojaFiltro !== "todas") params.push(`idEmpresa=${lojaFiltro}`);
         url += params.join("&");
 
         const res = await fetch(url);
@@ -185,7 +245,7 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
 
   useEffect(() => {
     fetchData();
-  }, [subTab, fornecedorId, selectedStore, startDate, endDate]);
+  }, [subTab, fornecedorId, selectedStore, lojaFiltro, startDate, endDate, statusRecebimento, compradorBusca]);
 
   const handleApplyFilters = () => {
     fetchData();
@@ -195,6 +255,9 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
   const handleClearFilters = () => {
     setBusca("");
     setFornecedorId("");
+    setStatusRecebimento("");
+    setCompradorBusca("");
+    setLojaFiltro(selectedStore || "todas");
     if (subTab === "vendedores") {
       const today = new Date();
       const sixMonthsAgo = new Date();
@@ -202,8 +265,10 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
       setStartDate(sixMonthsAgo.toISOString().split('T')[0]);
       setEndDate(today.toISOString().split('T')[0]);
     } else {
-      setStartDate("");
-      setEndDate("");
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      setStartDate(d.toISOString().split('T')[0]);
+      setEndDate(new Date().toISOString().split('T')[0]);
     }
     toast.info("Filtros comerciais limpos.");
     setTimeout(() => {
@@ -222,9 +287,11 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
   };
 
   // KPIs calculados
-  const totalPedidosGeral = compradores.reduce((acc, cur) => acc + (cur.QTD_PEDIDOS || 0), 0);
-  const totalValorGeral = compradores.reduce((acc, cur) => acc + (cur.TOTAL_VALOR || 0), 0);
-  const ticketMedioGeral = totalPedidosGeral > 0 ? totalValorGeral / totalPedidosGeral : 0;
+  const totalOrcadoGeral = compradores.reduce((acc, cur) => acc + (cur.ORCADO || 0), 0);
+  const totalGastoGeral = compradores.reduce((acc, cur) => acc + (cur.GASTO || 0), 0);
+  const totalVendasGeral = compradores.reduce((acc, cur) => acc + (cur.VENDAS || 0), 0);
+  const totalCmvGeral = compradores.reduce((acc, cur) => acc + (cur.CMV || 0), 0);
+  const margemGeral = totalVendasGeral > 0 ? ((totalVendasGeral - totalCmvGeral) / totalVendasGeral) * 100 : 0;
 
   // Paleta de cores premium para os gráficos
   const chartColors = ["#6366f1", "#a855f7", "#ec4899", "#f43f5e", "#f57c00", "#10b981", "#14b8a6", "#06b6d4"];
@@ -334,72 +401,118 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
       {/* 1. ABA DE DESEMPENHO POR COMPRADORA */}
       {subTab === "compradores" && (
         <div className="flex flex-col gap-6">
+          {/* Seletor Mensal de Orçamento */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.02] border border-white/5 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 border border-primary/20 rounded-xl text-primary">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-serif text-sm font-bold text-slate-200">Período de Competência do Orçamento</h4>
+                <p className="text-[11px] text-slate-400">Selecione o mês para analisar a verba definida vs. compras e CMV</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={mesSelecionado}
+                onChange={(e) => setMesSelecionado(e.target.value)}
+                className="bg-slate-950 border border-white/10 rounded-xl px-4 py-2 text-xs font-semibold text-slate-300 focus:outline-none focus:border-primary"
+              >
+                {mesesDisponiveis.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* Grid de KPIs rápidos */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total de Compras R$ */}
-            <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-primary/20 transition duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Total Orçado */}
+            <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-blue-500/20 transition duration-300">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] tracking-executive text-slate-400 block">VOLUME TOTAL DE COMPRAS</span>
-                  <h2 className="text-2xl font-bold font-serif text-primary mt-1 tabular-nums">
-                    {fmtCurrency(totalValorGeral)}
+                  <span className="text-[10px] tracking-executive text-slate-400 block font-semibold">ORÇAMENTO DEFINIDO</span>
+                  <h2 className="text-2xl font-bold font-serif text-blue-400 mt-1 tabular-nums">
+                    {fmtCurrency(totalOrcadoGeral)}
                   </h2>
                 </div>
-                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <DollarSign className="w-5 h-5" />
+                <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                  <Calendar className="w-5 h-5" />
                 </div>
               </div>
               <div className="text-[11px] text-slate-400 mt-3 border-t border-white/5 pt-2">
-                Consolidado do período selecionado
+                Verba de compras aprovada no mês
               </div>
             </div>
 
-            {/* Total Pedidos */}
-            <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-purple-500/20 transition duration-300">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] tracking-executive text-slate-400 block">TOTAL DE PEDIDOS EMITIDOS</span>
-                  <h2 className="text-2xl font-bold font-serif text-purple-400 mt-1 tabular-nums">
-                    {totalPedidosGeral} pedidos
-                  </h2>
-                </div>
-                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
-                  <ShoppingBag className="w-5 h-5" />
-                </div>
-              </div>
-              <div className="text-[11px] text-slate-400 mt-3 border-t border-white/5 pt-2">
-                Distribuição entre compradoras
-              </div>
-            </div>
-
-            {/* Ticket Médio */}
+            {/* Total Gasto */}
             <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-emerald-500/20 transition duration-300">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] tracking-executive text-slate-400 block">TICKET MÉDIO POR PEDIDO</span>
+                  <span className="text-[10px] tracking-executive text-slate-400 block font-semibold">TOTAL COMPRADO (GASTO)</span>
                   <h2 className="text-2xl font-bold font-serif text-emerald-400 mt-1 tabular-nums">
-                    {fmtCurrency(ticketMedioGeral)}
+                    {fmtCurrency(totalGastoGeral)}
                   </h2>
                 </div>
                 <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 border-t border-white/5 pt-2">
+                <span>Atingimento da verba:</span>
+                <span className={`font-bold ${totalGastoGeral > totalOrcadoGeral ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {totalOrcadoGeral > 0 ? ((totalGastoGeral / totalOrcadoGeral) * 100).toFixed(1) : 0}%
+                </span>
+              </div>
+            </div>
+
+            {/* Faturamento */}
+            <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-indigo-500/20 transition duration-300">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] tracking-executive text-slate-400 block font-semibold">VENDAS (FATURAMENTO)</span>
+                  <h2 className="text-2xl font-bold font-serif text-indigo-400 mt-1 tabular-nums">
+                    {fmtCurrency(totalVendasGeral)}
+                  </h2>
+                </div>
+                <div className="p-2 bg-indigo-500/10 rounded-lg text-indigo-400">
                   <TrendingUp className="w-5 h-5" />
                 </div>
               </div>
               <div className="text-[11px] text-slate-400 mt-3 border-t border-white/5 pt-2">
-                Média de valor por ordem de compra
+                Venda gerada pelas categorias
+              </div>
+            </div>
+
+            {/* Margem Comercial */}
+            <div className="glass-strong rounded-2xl p-5 flex flex-col justify-between min-h-[120px] hover:border-purple-500/20 transition duration-300">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] tracking-executive text-slate-400 block font-semibold">MARGEM BRUTA COMERCIAL</span>
+                  <h2 className="text-2xl font-bold font-serif text-purple-400 mt-1 tabular-nums">
+                    {margemGeral.toFixed(2)}%
+                  </h2>
+                </div>
+                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                  <Percent className="w-5 h-5" />
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-400 mt-3 border-t border-white/5 pt-2">
+                CMV Consolidado: <span className="font-semibold text-slate-200">{fmtCurrency(totalCmvGeral)}</span>
               </div>
             </div>
           </div>
 
-          {/* Gráfico e Tabela */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Gráfico BarChart de Valores por Comprador */}
-            <div className="glass-strong rounded-2xl p-6 lg:col-span-2 flex flex-col gap-4">
+          {/* Gráficos Comparativos */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Gráfico 1: Orçamento vs. Gasto */}
+            <div className="glass-strong rounded-2xl p-6 flex flex-col gap-4">
               <div>
-                <span className="text-[10px] tracking-executive text-primary">Comparativo Comercial</span>
-                <h3 className="font-serif text-lg font-bold mt-1 text-slate-200">Volume de Compra por Compradora</h3>
-                <p className="text-xs text-slate-400">Participação financeira em reais de cada comprador no período</p>
+                <span className="text-[10px] tracking-executive text-primary font-bold">Orçamento de Compras</span>
+                <h3 className="font-serif text-base font-bold mt-1 text-slate-200">Verba Definida vs. Valor Comprado</h3>
+                <p className="text-xs text-slate-400">Comparativo financeiro mensal de orçado vs gasto por compradora</p>
               </div>
 
               {loading ? (
@@ -416,81 +529,138 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
                         stroke="rgba(255,255,255,0.4)" 
                         fontSize={10} 
                         tickLine={false}
-                        tickFormatter={(v) => v.split(" ")[0]} // Apenas primeiro nome
+                        tickFormatter={(v) => v && typeof v === "string" ? v.split(" ")[0] : ""}
                       />
                       <YAxis 
                         stroke="rgba(255,255,255,0.4)" 
                         fontSize={10} 
                         tickLine={false}
-                        tickFormatter={(v) => `R$ ${v / 1000}k`}
+                        tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
                       />
                       <Tooltip 
                         contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", borderColor: "rgba(255,255,255,0.1)", borderRadius: "12px" }}
                         labelStyle={{ fontFamily: "serif", fontWeight: "bold", color: "#f8fafc" }}
                         itemStyle={{ color: "#f1f5f9" }}
-                        formatter={(value: any) => [fmtCurrency(value), "Total de Compras"]}
+                        formatter={(value: any) => [fmtCurrency(value)]}
                       />
-                      <Bar dataKey="TOTAL_VALOR" radius={[4, 4, 0, 0]}>
-                        {compradores.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                        ))}
-                      </Bar>
+                      <Bar dataKey="ORCADO" name="Orçado" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="GASTO" name="Comprado" fill="#10b981" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </div>
 
-            {/* Tabela de Detalhes de Compras */}
+            {/* Gráfico 2: Vendas vs. CMV */}
             <div className="glass-strong rounded-2xl p-6 flex flex-col gap-4">
               <div>
-                <h3 className="font-serif text-lg font-bold text-slate-200">Ranking do Período</h3>
-                <p className="text-xs text-slate-400">Quantidade de pedidos e valores</p>
+                <span className="text-[10px] tracking-executive text-purple-400 font-bold">Performance de Vendas</span>
+                <h3 className="font-serif text-base font-bold mt-1 text-slate-200">Venda Líquida vs. CMV</h3>
+                <p className="text-xs text-slate-400">Relação entre o faturamento gerado e o custo das mercadorias vendidas</p>
               </div>
 
               {loading ? (
-                <div className="flex justify-center items-center py-10">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="h-64 flex justify-center items-center">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 overflow-y-auto max-h-[300px]">
-                  {compradores.map((c, i) => (
-                    <div 
-                      key={c.IDUSUARIO || i} 
-                      onClick={() => fetchCompradorCompras(c)}
-                      className="bg-white/[0.02] border border-white/5 rounded-xl p-3 flex items-center justify-between gap-2 hover:bg-primary/10 hover:border-primary/20 transition cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="size-8 rounded-lg flex items-center justify-center shrink-0 text-white font-bold text-xs"
-                          style={{ backgroundColor: chartColors[i % chartColors.length] + "40", border: `1px solid ${chartColors[i % chartColors.length]}` }}
-                        >
-                          <User className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-200 max-w-[130px] truncate group-hover:text-primary transition" title={c.COMPRADOR}>
-                            {c.COMPRADOR}
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {c.QTD_PEDIDOS} pedidos realizados
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs font-mono font-bold text-slate-100">
-                          {fmtCurrency(c.TOTAL_VALOR)}
-                        </div>
-                        <div className="text-[9px] text-slate-400">
-                          Média: {fmtCurrency(c.TOTAL_VALOR / c.QTD_PEDIDOS)}
-                        </div>
-                        <div className="text-[8px] text-primary/60 mt-0.5 group-hover:text-primary transition">Ver pedidos →</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="h-64 w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={compradores} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis 
+                        dataKey="COMPRADOR" 
+                        stroke="rgba(255,255,255,0.4)" 
+                        fontSize={10} 
+                        tickLine={false}
+                        tickFormatter={(v) => v && typeof v === "string" ? v.split(" ")[0] : ""}
+                      />
+                      <YAxis 
+                        stroke="rgba(255,255,255,0.4)" 
+                        fontSize={10} 
+                        tickLine={false}
+                        tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: "rgba(0,0,0,0.85)", borderColor: "rgba(255,255,255,0.1)", borderRadius: "12px" }}
+                        labelStyle={{ fontFamily: "serif", fontWeight: "bold", color: "#f8fafc" }}
+                        itemStyle={{ color: "#f1f5f9" }}
+                        formatter={(value: any) => [fmtCurrency(value)]}
+                      />
+                      <Bar dataKey="VENDAS" name="Vendas" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="CMV" name="CMV" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </div>
+          </div>
 
+          {/* Tabela de Resultados por Compradora */}
+          <div className="glass-strong rounded-2xl p-6 flex flex-col gap-4">
+            <div>
+              <h3 className="font-serif text-lg font-bold text-slate-200">Demonstrativo por Compradora</h3>
+              <p className="text-xs text-slate-400">Tabela analítica cruzando orçado, gasto, vendas, CMV e margem do período</p>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center py-10">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 font-semibold text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-4">Compradora</th>
+                      <th className="py-3 px-4 text-right">Orçamento</th>
+                      <th className="py-3 px-4 text-right">Gasto (Compras)</th>
+                      <th className="py-3 px-4 text-center">Atingido %</th>
+                      <th className="py-3 px-4 text-right">Vendas</th>
+                      <th className="py-3 px-4 text-right">CMV</th>
+                      <th className="py-3 px-4 text-center">Margem %</th>
+                      <th className="py-3 px-4 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compradores.map((c, i) => {
+                      const atingido = c.ORCADO > 0 ? (c.GASTO / c.ORCADO) * 100 : 0;
+                      const margem = c.VENDAS > 0 ? ((c.VENDAS - c.CMV) / c.VENDAS) * 100 : 0;
+                      return (
+                        <tr key={c.COMPRADOR || i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-200 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: chartColors[i % chartColors.length] }} />
+                            {c.COMPRADOR}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-300">{fmtCurrency(c.ORCADO)}</td>
+                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-300">{fmtCurrency(c.GASTO)}</td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${atingido > 100 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                              {atingido.toFixed(1)}%
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-300">{fmtCurrency(c.VENDAS)}</td>
+                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-300">{fmtCurrency(c.CMV)}</td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`font-bold ${margem >= 20 ? 'text-emerald-400' : margem >= 10 ? 'text-indigo-400' : 'text-amber-400'}`}>
+                              {margem.toFixed(2)}%
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <button
+                              onClick={() => fetchCompradorCompras(c)}
+                              className="px-2.5 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[10px] text-primary hover:bg-primary/20 transition font-bold"
+                            >
+                              Ver Pedidos
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -514,7 +684,24 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
           </div>
 
           {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-3 text-sm">
+            {/* Selecionar Loja */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 font-semibold">Loja</label>
+              <select
+                value={lojaFiltro}
+                onChange={(e) => setLojaFiltro(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 focus:outline-none focus:border-primary text-slate-300 text-xs"
+              >
+                <option value="todas" className="bg-slate-950">Todas as Lojas</option>
+                {empresas.map((emp) => (
+                  <option key={emp.IDEMPRESA} value={emp.IDEMPRESA} className="bg-slate-950">
+                    {emp.IDEMPRESA} - {emp.DESCREMPRESA || emp.NOMEFANTASIA || "Loja"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Selecionar Fornecedor */}
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-400 font-semibold">Fornecedor</label>
@@ -569,6 +756,36 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
                 className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 focus:outline-none focus:border-primary text-slate-300 text-xs font-mono"
               />
             </div>
+
+            {/* Buscar Comprador */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 font-semibold">Comprador</label>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+                <input 
+                  type="text"
+                  placeholder="Ex: ANA LUIZA"
+                  value={compradorBusca}
+                  onChange={(e) => setCompradorBusca(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:border-primary text-slate-300 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Status de Recebimento */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400 font-semibold">Status de Recebimento</label>
+              <select
+                value={statusRecebimento}
+                onChange={(e) => setStatusRecebimento(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 focus:outline-none focus:border-primary text-slate-300 text-xs"
+              >
+                <option value="" className="text-slate-100 bg-slate-950">Todos</option>
+                <option value="pendente" className="text-slate-100 bg-slate-950">Pendente (Não Entregue)</option>
+                <option value="parcial" className="text-slate-100 bg-slate-950">Recebido Parcial</option>
+                <option value="total" className="text-slate-100 bg-slate-950">Recebido Total</option>
+              </select>
+            </div>
           </div>
 
           {/* Ações de Filtro */}
@@ -609,17 +826,35 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
                     <th className="py-3 px-4">Fornecedor</th>
                     <th className="py-3 px-4">Comprador Responsável</th>
                     <th className="py-3 px-4 text-center">Itens Distintos</th>
+                    <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Valor Total do Pedido</th>
                   </tr>
                 </thead>
                 <tbody>
                   {compras.map((comp) => (
                     <tr key={comp.IDPEDIDO} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-medium text-slate-300 tabular-nums">#{comp.IDPEDIDO}</td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-slate-300 tabular-nums">
+                        <button 
+                          onClick={() => fetchPedidoDetalhes(comp.IDPEDIDO)}
+                          className="hover:text-primary transition-colors hover:underline text-left"
+                          title="Clique para ver os itens"
+                        >
+                          #{comp.IDPEDIDO}
+                        </button>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-400 font-mono">{fmtDate(comp.DATA_PEDIDO)}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-200 max-w-[220px] truncate">{comp.FORNECEDOR}</td>
                       <td className="py-3.5 px-4 text-slate-300">{comp.COMPRADOR || "Comprador Geral"}</td>
                       <td className="py-3.5 px-4 text-center text-slate-400 font-mono">{comp.QTD_ITENS || 1} un</td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                          comp.STATUS_RECEBIMENTO === 'Parcial' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                          comp.STATUS_RECEBIMENTO === 'Total' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                          'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                        }`}>
+                          {comp.STATUS_RECEBIMENTO}
+                        </span>
+                      </td>
                       <td className="py-3.5 px-4 text-right font-bold text-sm text-primary tabular-nums">{fmtCurrency(comp.VALOR_TOTAL)}</td>
                     </tr>
                   ))}
@@ -1070,6 +1305,104 @@ export function CommercialModule({ selectedStore, globalStartDate, globalEndDate
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalhes do Pedido (Itens) */}
+      {modalPedidoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
+                  <ShoppingBag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-slate-100">
+                    Detalhes do Pedido <span className="text-primary">#{currentPedidoId}</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Relação de itens solicitados e entregues</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setModalPedidoOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-400 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-0 overflow-y-auto flex-1">
+              {loadingPedido ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-slate-400 text-sm font-medium">Buscando itens do pedido...</span>
+                </div>
+              ) : pedidoItens.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 text-sm flex flex-col items-center gap-2">
+                  <ShoppingBag className="w-10 h-10 text-slate-500 opacity-50" />
+                  <span>Nenhum item localizado para este pedido.</span>
+                </div>
+              ) : (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-white/5 sticky top-0 z-10 backdrop-blur-md">
+                    <tr className="border-b border-white/10 text-slate-400 font-semibold text-[10px] uppercase tracking-wider">
+                      <th className="py-3 px-4">Cod. Subproduto</th>
+                      <th className="py-3 px-4">Descrição</th>
+                      <th className="py-3 px-4 text-center">Qtd. Solicitada</th>
+                      <th className="py-3 px-4 text-center">Qtd. Atendida</th>
+                      <th className="py-3 px-4 text-center">Pendente</th>
+                      <th className="py-3 px-4 text-right">Valor Un.</th>
+                      <th className="py-3 px-4 text-right">Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pedidoItens.map((item, i) => (
+                      <tr key={item.IDSUBPRODUTO || i} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td className="py-3 px-4 font-mono text-slate-400">{item.IDSUBPRODUTO}</td>
+                        <td className="py-3 px-4 text-slate-200 font-medium max-w-[250px] truncate" title={item.DESCRICAO}>
+                          {item.DESCRICAO}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono text-slate-300">
+                          {item.QTDSOLICITADA}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono text-emerald-400">
+                          {item.QTDATENDIDA}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {item.QTDPENDENTE > 0 ? (
+                            <span className="bg-amber-500/10 text-amber-400 font-bold px-2 py-0.5 rounded font-mono">
+                              {item.QTDPENDENTE}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-mono">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-300">
+                          {fmtCurrency(item.VALUNITARIO)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-bold text-primary">
+                          {fmtCurrency(item.VALORTOTAL)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 bg-black/20 flex justify-end">
+              <button
+                onClick={() => setModalPedidoOpen(false)}
+                className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition"
+              >
+                Fechar
+              </button>
+            </div>
           </div>
         </div>
       )}

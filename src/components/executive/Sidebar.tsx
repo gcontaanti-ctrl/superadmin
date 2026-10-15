@@ -1,28 +1,26 @@
 
-import { LayoutDashboard, TrendingUp, Package, ShoppingCart, Users, Wallet, Brain, Building2, Settings, Sparkles, Search, BarChart3, Tag, AlertTriangle, FileCheck, Trophy, ShieldAlert, BookOpen, Scale, Eye, Target } from "lucide-react";
+import { LayoutDashboard, TrendingUp, Package, ShoppingCart, ShoppingBag, Users, Wallet, Brain, Building2, Settings, Sparkles, Search, BarChart3, Tag, AlertTriangle, FileCheck, Trophy, ShieldAlert, BookOpen, Scale, Eye, Target, Smartphone, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export const nav = [
   { icon: LayoutDashboard, label: "Visão Geral", id: "visao-geral" },
+  { icon: FileSpreadsheet, label: "Pedidos & Orçamentos", id: "pedidos-compradores", badge: "NOVO" },
+  { icon: ShoppingBag, label: "Sugestões Compras", id: "sugestoes-compras", badge: "GERENTES" },
+  { icon: Smartphone, label: "Painel Gerente", id: "painel-gerente", badge: "MOBILE" },
   { icon: Target, label: "Metas de Vendas", id: "metas-vendas", badge: "ESTRATÉGICO" },
   { icon: BarChart3, label: "Gerencial", id: "gerencial" },
   { icon: Tag, label: "Promoções", id: "promocoes" },
   { icon: AlertTriangle, label: "Validade Crítica", id: "validade-critica" },
-  { icon: FileCheck, label: "Notas Fiscais", id: "comparar-xml", badge: "XML" },
   { icon: FileCheck, label: "Entradas", id: "entradas", badge: "NF" },
   { icon: Scale, label: "Auditor Fiscal", id: "auditor-fiscal", badge: "NOVO" },
   { icon: TrendingUp, label: "Comercial", id: "comercial" },
   { icon: Trophy, label: "Campanhas", id: "campanhas", badge: "SAAS" },
-  { icon: BookOpen, label: "Contabilidade", id: "contabilidade" },
-  { icon: Wallet, label: "Financeiro", id: "financeiro" },
   { icon: Package, label: "Estoque", id: "estoque" },
   { icon: ShieldAlert, label: "Prevenção Ruptura", id: "rupturas", badge: "NOVO" },
   { icon: ShoppingCart, label: "Compras", id: "compras" },
   { icon: Users, label: "RH Inteligente", id: "rh" },
   { icon: Search, label: "Rastreamento", id: "rastreamento", badge: "NOVO" },
-  { icon: Sparkles, label: "Gerador de Relatórios", id: "ai-report", badge: "IA" },
-  { icon: ShieldAlert, label: "SmartCatalog AI", id: "smartcatalog", badge: "NOVO" },
 
   { icon: Building2, label: "Multiempresa", id: "multiempresa" },
   { icon: Settings, label: "Configurações", id: "configuracoes" },

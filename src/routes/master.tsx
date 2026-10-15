@@ -63,6 +63,18 @@ function MasterLayout() {
             Dashboard
           </Link>
           <Link
+            to="/master/users"
+            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors [&.active]:bg-primary [&.active]:text-primary-foreground text-slate-400 hover:text-white hover:bg-white/5"
+          >
+            Usuários
+          </Link>
+          <Link
+            to="/master/settings"
+            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors [&.active]:bg-primary [&.active]:text-primary-foreground text-slate-400 hover:text-white hover:bg-white/5"
+          >
+            Configurações
+          </Link>
+          <Link
             to="/master/updates"
             className="px-4 py-2 text-sm font-medium rounded-lg transition-colors [&.active]:bg-primary [&.active]:text-primary-foreground text-slate-400 hover:text-white hover:bg-white/5"
           >

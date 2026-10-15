@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador Mobile — Horus Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cinzel:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#060b14;--panel-bg:#0d1526;--border:rgba(255,255,255,0.07);--cyan:#06b6d4;--cyan-dim:rgba(6,182,212,0.15);--text:#e2e8f0;--muted:#64748b}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;background-image:radial-gradient(ellipse at 10% 0%,rgba(6,182,212,0.08) 0%,transparent 50%),radial-gradient(ellipse at 90% 100%,rgba(139,92,246,0.07) 0%,transparent 50%)}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:rgba(13,21,38,0.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:10px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,rgba(6,182,212,0.25),rgba(59,130,246,0.25));border:1px solid rgba(6,182,212,0.4);display:grid;place-items:center;box-shadow:0 0 16px rgba(6,182,212,0.2)}
+    .brand-icon svg{width:20px;height:20px;color:#22d3ee}
+    .brand-title{font-family:'Cinzel',serif;font-size:17px;font-weight:700;background:linear-gradient(90deg,#22d3ee,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .brand-sub{font-size:9px;letter-spacing:3px;color:#94a3b8;text-transform:uppercase}
+    .topbar-badge{display:flex;align-items:center;gap:6px;background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.25);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:600;color:#22d3ee}
+    .dot-live{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse-dot 2s infinite}
+    @keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+    .simulator-layout{flex:1;display:flex;align-items:flex-start;justify-content:center;gap:32px;padding:32px 24px;flex-wrap:wrap}
+    .phone-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+    .phone-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600}
+    .phone-frame{position:relative;width:390px;height:928px;border-radius:52px;background:linear-gradient(160deg,#1a1a2e,#0f0f1e);box-shadow:0 0 0 1px rgba(255,255,255,0.12),0 0 0 8px #0a0a14,0 0 0 10px rgba(255,255,255,0.07),0 40px 80px rgba(0,0,0,0.7),0 0 60px rgba(6,182,212,0.07);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;transition:box-shadow 0.4s,width 0.3s,height 0.3s,border-radius 0.3s}
+    .phone-frame:hover{box-shadow:0 0 0 1px rgba(255,255,255,0.15),0 0 0 8px #0a0a14,0 0 0 10px rgba(255,255,255,0.09),0 50px 100px rgba(0,0,0,0.75),0 0 80px rgba(6,182,212,0.15)}
+    .dynamic-island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px;z-index:10;display:flex;align-items:center;justify-content:center;gap:8px;transition:width 0.3s ease}
+    .dynamic-island:hover{width:180px}
+    .di-camera{width:10px;height:10px;border-radius:50%;background:#1a1a1a;border:2px solid #2a2a2a;position:relative}
+    .di-camera::after{content:'';position:absolute;inset:2px;border-radius:50%;background:#0d1a2d}
+    .status-bar{height:54px;padding:18px 24px 0;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;color:#fff;position:relative;z-index:5;flex-shrink:0}
+    .status-time{font-weight:700;font-size:14px}
+    .status-icons{display:flex;align-items:center;gap:5px}
+    .status-icons svg{width:14px;height:14px}
+    .phone-screen{flex:1;position:relative;overflow:hidden;background:#030712}
+    .phone-screen iframe{width:100%;height:100%;border:none;display:block}
+    .screen-loading{position:absolute;inset:0;background:#030712;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;transition:opacity 0.5s}
+    .screen-loading.hidden{opacity:0;pointer-events:none}
+    .spinner{width:36px;height:36px;border:3px solid rgba(6,182,212,0.2);border-top-color:#06b6d4;border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{font-size:12px;color:#64748b}
+    .home-bar{height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#000}
+    .home-bar-line{width:130px;height:5px;border-radius:3px;background:rgba(255,255,255,0.35)}
+    .phone-side-left{position:absolute;left:-12px;top:120px;display:flex;flex-direction:column;gap:12px}
+    .phone-side-right{position:absolute;right:-12px;top:140px}
+    .side-btn{width:4px;border-radius:3px;background:linear-gradient(180deg,#2a2a3e,#1a1a2a);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.1)}
+    .control-panel{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:16px}
+    .panel-section{background:rgba(13,21,38,0.6);border:1px solid var(--border);border-radius:18px;padding:18px}
+    .section-header{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+    .section-icon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center}
+    .section-icon svg{width:15px;height:15px}
+    .section-title{font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8}
+    .device-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .device-btn{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer;transition:all 0.2s;text-align:center}
+    .device-btn:hover{background:rgba(255,255,255,0.06)}
+    .device-btn.active{background:var(--cyan-dim);border-color:rgba(6,182,212,0.4)}
+    .device-btn .device-name{font-size:11px;font-weight:600;color:#cbd5e1}
+    .device-btn .device-size{font-size:10px;color:#64748b;margin-top:2px}
+    .device-btn.active .device-name{color:#22d3ee}
+    .device-btn.active .device-size{color:#67e8f9}
+    .action-btns{display:flex;flex-direction:column;gap:8px}
+    .action-btn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,0.03);cursor:pointer;font-size:12px;font-weight:600;color:#cbd5e1;transition:all 0.2s;width:100%;text-align:left}
+    .action-btn:hover{background:rgba(255,255,255,0.07);color:#fff}
+    .action-btn svg{width:15px;height:15px;flex-shrink:0}
+    .action-btn.cyan{border-color:rgba(6,182,212,0.3)}
+    .action-btn.cyan:hover{background:rgba(6,182,212,0.12);color:#22d3ee}
+    .action-btn.rose{border-color:rgba(244,63,94,0.3)}
+    .action-btn.rose:hover{background:rgba(244,63,94,0.12);color:#fda4af}
+    .action-btn.emerald{border-color:rgba(16,185,129,0.3)}
+    .action-btn.emerald:hover{background:rgba(16,185,129,0.12);color:#6ee7b7}
+    .action-btn.purple{border-color:rgba(168,85,247,0.4);background:rgba(168,85,247,0.15);color:#d8b4fe}
+    .action-btn.purple:hover{background:rgba(168,85,247,0.28);color:#fff}
+    .btn-badge{margin-left:auto;font-size:9px;font-weight:800;letter-spacing:0.5px;background:rgba(6,182,212,0.2);color:#22d3ee;padding:2px 7px;border-radius:8px}
+
+    /* Estilo de expansão Fullscreen do Frame */
+    .phone-frame.is-fullscreen-frame {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      border-radius: 0 !important;
+      z-index: 99999 !important;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+    .exit-fs-btn {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 100000;
+      background: rgba(244,63,94,0.9);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      display: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px);
+    }
+    .phone-frame.is-fullscreen-frame ~ .exit-fs-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .url-box{background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+    .url-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted)}
+    .url-value{font-family:'Courier New',monospace;font-size:12px;font-weight:600;color:#22d3ee;word-break:break-all}
+    .url-copy-btn{align-self:flex-end;background:rgba(6,182,212,0.15);border:1px solid rgba(6,182,212,0.3);border-radius:8px;padding:5px 10px;font-size:10px;font-weight:700;color:#22d3ee;cursor:pointer;transition:all 0.2s}
+    .url-copy-btn:hover{background:rgba(6,182,212,0.25)}
+    .qr-container{display:flex;flex-direction:column;align-items:center;gap:10px}
+    .qr-img{width:140px;height:140px;border-radius:16px;border:3px solid rgba(6,182,212,0.4);background:#fff;padding:8px}
+    .qr-hint{font-size:11px;color:#64748b;text-align:center}
+    .info-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600}
+    .chip svg{width:10px;height:10px}
+    .chip.green{background:rgba(16,185,129,0.12);color:#6ee7b7;border:1px solid rgba(16,185,129,0.25)}
+    .chip.blue{background:rgba(59,130,246,0.12);color:#93c5fd;border:1px solid rgba(59,130,246,0.25)}
+    .chip.yellow{background:rgba(245,158,11,0.12);color:#fde68a;border:1px solid rgba(245,158,11,0.25)}
+    .scale-display{font-size:10px;color:#64748b;text-align:center}
+    #sim-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(13,21,38,0.95);border:1px solid rgba(6,182,212,0.4);border-radius:14px;padding:11px 18px;font-size:12px;font-weight:600;color:#22d3ee;display:flex;align-items:center;gap:8px;opacity:0;transition:all 0.35s;pointer-events:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.5);white-space:nowrap}
+    #sim-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    kbd{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:2px 7px;font-size:10px;font-family:monospace;color:#cbd5e1}
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="brand-title">HORUS</div>
+      <div class="brand-sub">Simulador Mobile &middot; Horus Analytics</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <button class="topbar-badge" style="cursor:pointer;background:rgba(168,85,247,0.2);border-color:rgba(168,85,247,0.4);color:#d8b4fe;" onclick="toggleExpandFrame()" title="Expandir App para Tela Cheia">
+      📺 Tela Cheia (Fullscreen)
+    </button>
+    <div class="topbar-badge">
+      <div class="dot-live"></div>
+      App rodando em :8082
+    </div>
+    <div class="info-chips">
+      <span class="chip green">PWA-ready</span>
+      <span class="chip blue">Touch-first</span>
+      <span class="chip yellow">Responsive</span>
+    </div>
+  </div>
+</header>
+
+<div class="simulator-layout">
+  <!-- PHONE -->
+  <div class="phone-wrap">
+    <div class="phone-label" id="phone-model-label">iPhone 16 Pro &mdash; 390&times;840</div>
+    <div style="position:relative">
+      <div class="phone-side-left">
+        <div class="side-btn" style="height:32px"></div>
+        <div class="side-btn" style="height:56px"></div>
+        <div class="side-btn" style="height:56px"></div>
+      </div>
+      <div class="phone-side-right">
+        <div class="side-btn" style="height:80px"></div>
+      </div>
+      <div class="phone-frame" id="phoneFrame">
+        <div class="dynamic-island" id="dynamicIsland">
+          <div class="di-camera"></div>
+          <div style="width:8px;height:8px;border-radius:50%;background:#111;display:grid;place-items:center">
+            <div style="width:4px;height:4px;border-radius:50%;background:#1a2a1a"></div>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span class="status-time" id="statusTime">16:00</span>
+          <div class="status-icons">
+            <svg viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="16" width="4" height="7" rx="1"/><rect x="7" y="11" width="4" height="12" rx="1"/><rect x="13" y="6" width="4" height="17" rx="1"/><rect x="19" y="2" width="4" height="21" rx="1" opacity="0.35"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="18" height="11" rx="2" ry="2"/><rect x="3" y="8" width="13" height="9" rx="1" fill="currentColor" stroke="none"/><polyline points="22 11 22 13" stroke-width="2.5"/></svg>
+          </div>
+        </div>
+        <div class="phone-screen">
+          <div class="screen-loading" id="screenLoading">
+            <div class="spinner"></div>
+            <div class="loading-text">Carregando Horus Analytics...</div>
+          </div>
+          <iframe id="mobileFrame" src="./mobile-gerente/index.html" title="Horus Analytics Mobile Gerente" onload="onFrameLoad()" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
+        </div>
+        <div class="home-bar"><div class="home-bar-line"></div></div>
+      </div>
+      <button class="exit-fs-btn" id="exitFsBtn" onclick="toggleExpandFrame()">
+        ✕ Sair da Tela Cheia (ESC)
+      </button>
+    </div>
+    <div class="scale-display" id="scaleDisplay">Escala: 100% &middot; 390&times;840px</div>
+  </div>
+
+  <!-- PANEL -->
+  <div class="control-panel">
+
+    <div class="panel-section">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(6,182,212,0.12);color:#22d3ee">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" stroke-width="3"/></svg>
+        </div>
+        <div class="section-title">Modelo de Dispositivo</div>
+      </div>
+      <div class="device-grid">
+        <div class="device-btn active" onclick="setDevice(390,840,'iPhone 16 Pro',this)"><div class="device-name">iPhone 16 Pro</div><div class="device-size">390&times;840</div></div>
+        <div class="device-btn" onclick="setDevice(360,780,'Galaxy S24',this)"><div class="device-name">Galaxy S24</div><div class="device-size">360&times;780</div></div>
+        <div class="device-btn" onclick="setDevice(412,892,'Pixel 9',this)"><div class="device-name">Pixel 9</div><div class="device-size">412&times;892</div></div>
+        <div class="device-btn" onclick="setDevice(375,667,'iPhone SE',this)"><div class="device-name">iPhone SE</div><div class="device-size">375&times;667</div></div>
+        <div class="device-btn" style="grid-column:span 2" onclick="setDevice(768,1024,'iPad Mini',this)"><div class="device-name">&#x1F4F1; iPad Mini (Tablet)</div><div class="device-size">768&times;1024</div></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(99,102,241,0.12);color:#a5b4fc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="section-title">Controles</div>
+      </div>
+      <div class="action-btns">
+        <button class="action-btn cyan" onclick="reloadFrame()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Recarregar App
+        </button>
+        <button class="action-btn" onclick="toggleOrientation()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 2v16a2 2 0 002 2h12"/><path d="M2 10h12"/><rect x="8" y="6" width="12" height="16" rx="2" ry="2"/></svg>
+          Girar (Portrait / Landscape)
+          <span class="btn-badge" id="orientBadge">PORT</span>
+        </button>
+        <button class="action-btn" onclick="zoomPhone(-0.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          Diminuir Zoom
+        </button>
+        <button class="action-btn" onclick="zoomPhone(+0.1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          Aumentar Zoom
+        </button>
+        <button class="action-btn purple" onclick="toggleExpandFrame()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+          Modo Tela Cheia (Fullscreen)
+        </button>
+        <button class="action-btn emerald" onclick="window.open('/','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Abrir App em Nova Aba
+        </button>
+        <button class="action-btn rose" onclick="window.open('/','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Abrir Painel Admin (Desktop)
+        </button>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(16,185,129,0.12);color:#6ee7b7">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
+        <div class="section-title">Acesso ao App</div>
+      </div>
+      <div class="url-box">
+        <div class="url-label">🌐 URL / Caminho para Testar no Simulador</div>
+        <div style="display:flex; gap:6px; margin-top:4px;">
+          <input type="text" id="targetUrlInput" style="flex:1; padding:8px 10px; font-size:12px; font-family:monospace; background:rgba(0,0,0,0.5); border:1px solid var(--border); border-radius:8px; color:#22d3ee; outline:none;" value="./mobile-gerente/index.html" onkeydown="if(event.key==='Enter')changeTargetUrl()" />
+          <button class="url-copy-btn" onclick="changeTargetUrl()" style="padding:6px 12px;">Ir ➔</button>
+        </div>
+        <div style="display:flex; gap:4px; margin-top:8px; flex-wrap:wrap;">
+          <button class="url-copy-btn" style="font-size:9px; padding:3px 7px;" onclick="setUrl('./mobile-gerente/index.html')">📱 Painel Gerente</button>
+          <button class="url-copy-btn" style="font-size:9px; padding:3px 7px;" onclick="setPort(8082)">:8082 (Mobile)</button>
+          <button class="url-copy-btn" style="font-size:9px; padding:3px 7px;" onclick="setUrl('/')">Dashboard Admin</button>
+          <button class="url-copy-btn" style="font-size:9px; padding:3px 7px;" onclick="setPort(5173)">:5173 (Vite)</button>
+        </div>
+      </div>
+      <div class="qr-container" style="margin-top:14px">
+        <div style="font-size:10px;color:#64748b;letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:2px">Abrir no celular real:</div>
+        <img class="qr-img" id="qrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=ffffff&data=http://localhost:8082/" alt="QR Code" />
+        <div class="qr-hint">&#x1F4F7; Escaneie com a c&acirc;mera do celular<br>para abrir o Painel Gerente Mobile</div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-header">
+        <div class="section-icon" style="background:rgba(245,158,11,0.12);color:#fde68a">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+        </div>
+        <div class="section-title">Atalhos do Teclado</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:#94a3b8">
+        <div style="display:flex;justify-content:space-between"><span>Recarregar</span><kbd>F5</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Girar tela</span><kbd>R</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Tela Cheia</span><kbd>F</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Zoom +</span><kbd>+</kbd></div>
+        <div style="display:flex;justify-content:space-between"><span>Zoom &minus;</span><kbd>&minus;</kbd></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="sim-toast">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastMsg"></span>
+<script>
+  let zoom=1,landscape=false,cW=390,cH=840,model='iPhone 16 Pro',isFullscreenFrame=false;
+
+  function tick(){const n=new Date();document.getElementById('statusTime').textContent=n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0')}
+  tick();setInterval(tick,15000);
+
+  function onFrameLoad(){setTimeout(()=>{const l=document.getElementById('screenLoading');l.classList.add('hidden');setTimeout(()=>l.style.display='none',500)},800)}
+
+  function reloadFrame(){const l=document.getElementById('screenLoading');const f=document.getElementById('mobileFrame');l.style.display='flex';l.classList.remove('hidden');f.src=f.src;toast('App recarregado!')}
+
+  function setDevice(w,h,m,el){document.querySelectorAll('.device-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');cW=w;cH=h;model=m;landscape=false;document.getElementById('orientBadge').textContent='PORT';apply();toast('Dispositivo: '+m)}
+
+  function apply(){const f=document.getElementById('phoneFrame');const di=document.getElementById('dynamicIsland');const w=landscape?cH:cW;const h=landscape?cW:cH;if(!isFullscreenFrame){f.style.width=w+'px';f.style.height=(h+54+34)+'px';f.style.borderRadius=w>700?'28px':'52px';}if(di)di.style.display=w>700?'none':'flex';document.getElementById('scaleDisplay').textContent='Escala: '+Math.round(zoom*100)+'% · '+w+'×'+h+'px'+(landscape?' · Paisagem':'');document.getElementById('phone-model-label').textContent=model+' — '+w+'×'+h+(landscape?' · 🔄 Paisagem':'');updateQr()}
+
+  function toggleExpandFrame(){
+    const f=document.getElementById('phoneFrame');
+    isFullscreenFrame=!isFullscreenFrame;
+    if(isFullscreenFrame){
+      f.classList.add('is-fullscreen-frame');
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+      }
+      toast('Modo Tela Cheia Ativado! (Pressione ESC para sair)');
+    } else {
+      f.classList.remove('is-fullscreen-frame');
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(()=>{});
+      }
+      apply();
+      toast('Saindo do Modo Tela Cheia');
+    }
+  }
+
+  function toggleOrientation(){landscape=!landscape;document.getElementById('orientBadge').textContent=landscape?'LAND':'PORT';apply();toast(landscape?'Modo Paisagem':'Modo Retrato')}
+
+  function zoomPhone(d){zoom=Math.min(1.5,Math.max(0.4,zoom+d));const f=document.getElementById('phoneFrame');f.style.transform='scale('+zoom+')';f.style.transformOrigin='top center';document.getElementById('scaleDisplay').textContent='Escala: '+Math.round(zoom*100)+'%';toast('Zoom: '+Math.round(zoom*100)+'%')}
+
+  function changeTargetUrl() {
+    let val = (document.getElementById('targetUrlInput').value || '').trim();
+    if (!val) return;
+    if (!val.startsWith('http://') && !val.startsWith('https://')) {
+      val = 'http://' + val;
+    }
+    document.getElementById('targetUrlInput').value = val;
+    const f = document.getElementById('mobileFrame');
+    const l = document.getElementById('screenLoading');
+    if (l) { l.style.display='flex'; l.classList.remove('hidden'); }
+    f.src = val;
+    document.getElementById('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&bgcolor=ffffff&data=' + encodeURIComponent(val);
+    toast('Testando URL: ' + val);
+  }
+
+  function setUrl(url) {
+    document.getElementById('targetUrlInput').value = url;
+    const f = document.getElementById('mobileFrame');
+    const l = document.getElementById('screenLoading');
+    if (l) { l.style.display='flex'; l.classList.remove('hidden'); }
+    f.src = url;
+    toast('Testando caminho: ' + url);
+  }
+
+  function setPort(p) {
+    const u = 'http://localhost:' + p;
+    document.getElementById('targetUrlInput').value = u;
+    changeTargetUrl();
+  }
+
+  function toast(msg){const t=document.getElementById('sim-toast');document.getElementById('toastMsg').textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800)}
+
+  document.addEventListener('keydown',e=>{
+    if(['INPUT','TEXTAREA'].includes(e.target.tagName))return;
+    if(e.key==='F5'){e.preventDefault();reloadFrame()}
+    if(e.key==='r'||e.key==='R')toggleOrientation();
+    if(e.key==='f'||e.key==='F')toggleExpandFrame();
+    if(e.key==='Escape' && isFullscreenFrame)toggleExpandFrame();
+    if(e.key==='='||e.key==='+')zoomPhone(0.1);
+    if(e.key==='-'||e.key==='_')zoomPhone(-0.1);
+  });
+
+  document.addEventListener('fullscreenchange', ()=>{
+    if (!document.fullscreenElement && isFullscreenFrame) {
+      isFullscreenFrame=false;
+      const f=document.getElementById('phoneFrame');
+      if(f) f.classList.remove('is-fullscreen-frame');
+      apply();
+    }
+  });
+
+  updateQr();apply();
+</script>
+</body>
+</html>

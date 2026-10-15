@@ -1,0 +1,12 @@
+[
+  {
+    "id": "admin-1",
+    "nome": "Cristiano (Administrador)",
+    "username": "cristiano",
+    "password": "91126395",
+    "idEmpresa": "todas",
+    "role": "admin",
+    "status": "APROVADO",
+    "createdAt": "2026-10-15T13:20:56.228Z"
+  }
+]

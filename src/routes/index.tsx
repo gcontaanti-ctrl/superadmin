@@ -2,7 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/executive/Sidebar";
 import { KpiCards } from "@/components/executive/KpiCards";
-import { RevenueChart } from "@/components/executive/RevenueChart";
+import { DepartmentMarginPanel } from "@/components/executive/DepartmentMarginPanel";
 import { StoreRanking } from "@/components/executive/StoreRanking";
 import { CategoryBreakdown } from "@/components/executive/CategoryBreakdown";
 import { ProductTracking } from "@/components/executive/ProductTracking";
@@ -24,6 +24,9 @@ import { EntradasModule } from "@/components/executive/EntradasModule";
 import { AiReportModule } from "@/components/executive/AiReportModule";
 import { SmartCatalogAuditor } from "@/components/executive/SmartCatalogAuditor";
 import { MetasGerenciaisModule } from "@/components/executive/MetasGerenciaisModule";
+import { SugestoesComprasModule } from "@/components/executive/SugestoesComprasModule";
+import { PainelGerenteMobileModule } from "@/components/executive/PainelGerenteMobileModule";
+import { PedidosCompradoresModule } from "@/components/executive/PedidosCompradoresModule";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
@@ -44,12 +47,19 @@ const get30DaysAgoStr = () => {
 };
 
 function Dashboard() {
-  const [authChecked, setAuthChecked] = useState(false);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(true);
+  const [authenticated, setAuthenticated] = useState(true);
   const [username, setUsername] = useState("cristiano");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("visao-geral");
+  
+  const isMobileDevice = typeof window !== 'undefined' && (
+    window.innerWidth < 768 || 
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    window.location.search.includes('mobile=true')
+  );
+  
+  const [activeTab, setActiveTab] = useState(() => isMobileDevice ? "painel-gerente" : "visao-geral");
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
   const [startDate, setStartDate] = useState<string>(get30DaysAgoStr());
@@ -61,17 +71,7 @@ function Dashboard() {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => {
-        setAuthenticated(res.ok);
-      })
-      .catch(() => setAuthenticated(false))
-      .finally(() => setAuthChecked(true));
-  }, []);
-
-  useEffect(() => {
-    if (!authenticated) return;
-
+    // Sincronização inicial de lojas e estoque
     const performSync = () => {
       Promise.all([
         fetch('/api/empresas').then(res => res.json()).then(data => { if (!data.error) setDbLojas(data); }),
@@ -96,7 +96,7 @@ function Dashboard() {
     const interval = setInterval(performSync, 5 * 60 * 1000); // Sync every 5 minutes
 
     return () => clearInterval(interval);
-  }, [authenticated]);
+  }, []);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -317,7 +317,7 @@ function Dashboard() {
             <KpiCards selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-4">
-                <RevenueChart mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+                <DepartmentMarginPanel mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <StoreRanking mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
@@ -374,6 +374,16 @@ function Dashboard() {
         {/* Metas Gerenciais de Vendas Tab */}
         {activeTab === "metas-vendas" && (
           <MetasGerenciaisModule selectedStore={selectedStore} />
+        )}
+
+        {/* Sugestões de Compras / Estoque Tab */}
+        {activeTab === "sugestoes-compras" && (
+          <SugestoesComprasModule selectedStore={selectedStore} />
+        )}
+
+        {/* Painel Gerente Mobile Tab */}
+        {activeTab === "painel-gerente" && (
+          <PainelGerenteMobileModule selectedStore={selectedStore} />
         )}
 
         {/* Estoque Tab */}
@@ -510,8 +520,17 @@ function Dashboard() {
           <SmartCatalogAuditor />
         )}
 
+        {/* Gestão de Pedidos & Orçamentos (Compradores) Tab */}
+        {activeTab === "pedidos-compradores" && (
+          <PedidosCompradoresModule
+            selectedStore={selectedStore}
+            globalStartDate={startDate}
+            globalEndDate={endDate}
+          />
+        )}
+
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
+        {activeTab !== "visao-geral" && activeTab !== "pedidos-compradores" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>

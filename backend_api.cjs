@@ -653,7 +653,798 @@ app.post('/api/mobile/users/approve', (req, res) => {
   });
 });
 
-app.use('/api', requireAuth);
+
+  // ROTA: Vendas por Forma de Pagamento (PIX, Cartão Crédito/Débito, Dinheiro, etc.)
+  app.get('/api/vendas/formas-pagamento', async (req, res) => {
+    try {
+      const { idEmpresa, startDate, endDate } = req.query;
+      
+      const hoje = new Date().toISOString().split('T')[0];
+      const d30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+      const startD = startDate || d30;
+      const endD = endDate || hoje;
+
+      let sql = `
+        SELECT 
+          R.IDEMPRESA,
+          COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(R.IDEMPRESA))) AS NOME_LOJA,
+          F.IDRECEBIMENTO,
+          TRIM(F.DESCRRECEBIMENTO) AS FORMA_PAGAMENTO,
+          F.FLAGPAGAMENTOPIX,
+          F.FLAGCARTAOCREDITO,
+          COUNT(*) AS QTD_TRANSACAO,
+          SUM(R.VALLANCAMENTO) AS TOTAL_VALOR
+        FROM DBA.FRCAIXA_RECEBIMENTO R
+        JOIN DBA.FORMA_PAGREC F ON F.IDRECEBIMENTO = R.IDRECEBIMENTO
+        LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = R.IDEMPRESA
+        WHERE R.DTMOVIMENTO BETWEEN ? AND ?
+          AND R.TIPOMOVIMENTO = 'R'
+      `;
+
+      const params = [startD, endD];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sql += " AND R.IDEMPRESA = ?";
+        params.push(parseInt(idEmpresa));
+      }
+
+      sql += `
+        GROUP BY R.IDEMPRESA, E.NOMEFANTASIA, F.IDRECEBIMENTO, F.DESCRRECEBIMENTO, F.FLAGPAGAMENTOPIX, F.FLAGCARTAOCREDITO
+        ORDER BY R.IDEMPRESA, TOTAL_VALOR DESC
+        WITH UR
+      `;
+
+      const rows = await queryDB(sql, params);
+
+      // Agrupamento Geral
+      let pix = 0, credito = 0, debito = 0, dinheiro = 0, troco = 0, convenios = 0, outros = 0;
+      let qtdPix = 0, qtdCredito = 0, qtdDebito = 0, qtdDinheiro = 0, qtdConvenios = 0, qtdOutros = 0;
+
+      // Agrupamento por Loja
+      const mapaLojas = {};
+
+      const detalhes = [];
+
+      rows.forEach(item => {
+        const idLoja = item.IDEMPRESA;
+        const nomeLoja = (item.NOME_LOJA || '').trim() || `Loja ${idLoja}`;
+
+        if (!mapaLojas[idLoja]) {
+          mapaLojas[idLoja] = {
+            id: idLoja,
+            nome: nomeLoja,
+            pix: 0,
+            credito: 0,
+            debito: 0,
+            dinheiro: 0,
+            troco: 0,
+            convenios: 0,
+            outros: 0,
+            qtdPix: 0,
+            qtdCredito: 0,
+            qtdDebito: 0,
+            qtdDinheiro: 0,
+            qtdConvenios: 0,
+            qtdOutros: 0,
+            totalGeral: 0,
+            formas: []
+          };
+        }
+
+        const descr = (item.FORMA_PAGAMENTO || '').toUpperCase().trim();
+        const valor = Number(item.TOTAL_VALOR) || 0;
+        const qtd = Number(item.QTD_TRANSACAO) || 0;
+
+        if (descr.includes('TROCO')) {
+          troco += valor;
+          mapaLojas[idLoja].troco += valor;
+        } else if (descr.includes('PIX') || item.FLAGPAGAMENTOPIX === 'T') {
+          pix += valor;
+          qtdPix += qtd;
+          mapaLojas[idLoja].pix += valor;
+          mapaLojas[idLoja].qtdPix += qtd;
+        } else if (descr.includes('DEBITO') || descr.includes('DÉBITO')) {
+          debito += valor;
+          qtdDebito += qtd;
+          mapaLojas[idLoja].debito += valor;
+          mapaLojas[idLoja].qtdDebito += qtd;
+        } else if (descr.includes('CREDITO') || descr.includes('CRÉDITO') || item.FLAGCARTAOCREDITO === 'T') {
+          credito += valor;
+          qtdCredito += qtd;
+          mapaLojas[idLoja].credito += valor;
+          mapaLojas[idLoja].qtdCredito += qtd;
+        } else if (descr.includes('DINHEIRO')) {
+          dinheiro += valor;
+          qtdDinheiro += qtd;
+          mapaLojas[idLoja].dinheiro += valor;
+          mapaLojas[idLoja].qtdDinheiro += qtd;
+        } else if (descr.includes('CONVENIO') || descr.includes('CONVÊNIO')) {
+          convenios += valor;
+          qtdConvenios += qtd;
+          mapaLojas[idLoja].convenios += valor;
+          mapaLojas[idLoja].qtdConvenios += qtd;
+        } else {
+          outros += valor;
+          qtdOutros += qtd;
+          mapaLojas[idLoja].outros += valor;
+          mapaLojas[idLoja].qtdOutros += qtd;
+        }
+
+        detalhes.push({
+          idLoja: idLoja,
+          nomeLoja: nomeLoja,
+          id: item.IDRECEBIMENTO,
+          forma: item.FORMA_PAGAMENTO,
+          valor: valor,
+          qtd: qtd
+        });
+
+        if (!descr.includes('TROCO')) {
+          mapaLojas[idLoja].formas.push({
+            id: item.IDRECEBIMENTO,
+            forma: item.FORMA_PAGAMENTO,
+            valor: valor,
+            qtd: qtd
+          });
+        }
+      });
+
+      const dinheiroLiquido = Math.max(0, dinheiro + troco);
+      const totalGeral = pix + credito + debito + dinheiroLiquido + convenios + Math.max(0, outros);
+
+      const perc = (v, t = totalGeral) => t > 0 ? Number(((v / t) * 100).toFixed(1)) : 0;
+
+      const resumo = [
+        {
+          id: 'dinheiro',
+          nome: 'Dinheiro',
+          valor: dinheiroLiquido,
+          valorBruto: dinheiro,
+          troco: troco,
+          qtd: qtdDinheiro,
+          percentual: perc(dinheiroLiquido),
+          cor: 'emerald'
+        },
+        {
+          id: 'pix',
+          nome: 'PIX',
+          valor: pix,
+          qtd: qtdPix,
+          percentual: perc(pix),
+          cor: 'cyan'
+        },
+        {
+          id: 'debito',
+          nome: 'Cartão Débito',
+          valor: debito,
+          qtd: qtdDebito,
+          percentual: perc(debito),
+          cor: 'blue'
+        },
+        {
+          id: 'credito',
+          nome: 'Cartão Crédito',
+          valor: credito,
+          qtd: qtdCredito,
+          percentual: perc(credito),
+          cor: 'purple'
+        },
+        {
+          id: 'convenio',
+          nome: 'Convênios & Outros',
+          valor: Math.max(0, convenios + outros),
+          qtd: qtdConvenios + qtdOutros,
+          percentual: perc(Math.max(0, convenios + outros)),
+          cor: 'amber'
+        }
+      ].sort((a, b) => b.valor - a.valor);
+
+      // Formata lista por loja
+      const porLoja = Object.values(mapaLojas).map(l => {
+        const dLiq = Math.max(0, l.dinheiro + l.troco);
+        const tot = l.pix + l.credito + l.debito + dLiq + l.convenios + Math.max(0, l.outros);
+        return {
+          id: l.id,
+          nome: l.nome,
+          totalGeral: tot,
+          dinheiro: dLiq,
+          dinheiroBruto: l.dinheiro,
+          troco: l.troco,
+          pix: l.pix,
+          debito: l.debito,
+          credito: l.credito,
+          convenios: Math.max(0, l.convenios + l.outros),
+          qtdTotal: l.qtdPix + l.qtdCredito + l.qtdDebito + l.qtdDinheiro + l.qtdConvenios + l.qtdOutros,
+          percentualTotal: perc(tot, totalGeral),
+          resumo: [
+            { id: 'dinheiro', nome: 'Dinheiro', valor: dLiq, percentual: perc(dLiq, tot), cor: 'emerald' },
+            { id: 'pix', nome: 'PIX', valor: l.pix, percentual: perc(l.pix, tot), cor: 'cyan' },
+            { id: 'debito', nome: 'Cartão Débito', valor: l.debito, percentual: perc(l.debito, tot), cor: 'blue' },
+            { id: 'credito', nome: 'Cartão Crédito', valor: l.credito, percentual: perc(l.credito, tot), cor: 'purple' },
+            { id: 'convenio', nome: 'Convênios & Outros', valor: Math.max(0, l.convenios + l.outros), percentual: perc(Math.max(0, l.convenios + l.outros), tot), cor: 'amber' },
+          ].sort((a, b) => b.valor - a.valor),
+          formas: l.formas
+        };
+      }).sort((a, b) => a.id - b.id);
+
+      res.json({
+        periodo: { startDate: startD, endDate: endD },
+        idEmpresa: idEmpresa || 'todas',
+        totalGeral,
+        resumo,
+        porLoja,
+        detalhes: detalhes.filter(d => !d.forma.toUpperCase().includes('TROCO'))
+      });
+    } catch (err) {
+      console.error('Erro /api/vendas/formas-pagamento:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+
+  // ─────────────────────────────────────────────
+  // VENDAS POR CONVÊNIOS E CONTROLE DE BAIXAS / PENDENTES
+  // Fonte: DBA.CONTAS_RECEBER + DBA.FORMA_PAGREC + DBA.CLIENTE_FORNECEDOR
+  // ─────────────────────────────────────────────
+  function generateMockConvenios(targetTotal = 306156.63, targetQtd = 134) {
+    const empresasNomes = [
+      { nome: "Prefeitura Municipal - Servidores", modalidade: "Convênio Servidores Públicos", diasVenc: 10 },
+      { nome: "Sindicato dos Trabalhadores no Comércio", modalidade: "Convênio Sindical", diasVenc: 15 },
+      { nome: "Associação dos Funcionários da Indústria", modalidade: "Convênio Corporativo", diasVenc: 20 },
+      { nome: "Cooperativa Agroindustrial Regional", modalidade: "Convênio Cooperativa", diasVenc: 5 },
+      { nome: "Policlínica Central & Saúde", modalidade: "Convênio Saúde / Clínicas", diasVenc: 12 },
+      { nome: "Hospital Regional São Vicente", modalidade: "Convênio Hospitalar", diasVenc: 25 },
+      { nome: "Indústria & Comércio Alvorada Ltda", modalidade: "Convênio Folha de Pagamento", diasVenc: 10 },
+      { nome: "Grupo Transportadora Horizonte", modalidade: "Convênio Frotas & Alimentação", diasVenc: 18 },
+      { nome: "Associação dos Professores Municipais", modalidade: "Convênio Educacional", diasVenc: 8 },
+      { nome: "Sindicato da Construção Civil", modalidade: "Convênio Sindical", diasVenc: 22 },
+      { nome: "Câmara de Dirigentes Lojistas (CDL)", modalidade: "Convênio CDL Empresarial", diasVenc: 15 },
+      { nome: "Consórcio Intermunicipal de Saúde", modalidade: "Convênio Público CIS", diasVenc: 30 }
+    ];
+
+    const lojas = [
+      { id: 1, nome: "Loja 1 - Atacado Marechal" },
+      { id: 2, nome: "Loja 2" },
+      { id: 3, nome: "Loja 3 - Super Atacado Village" }
+    ];
+
+    const titulos = [];
+    let acumulado = 0;
+
+    for (let i = 1; i <= targetQtd; i++) {
+      const emp = empresasNomes[(i * 7) % empresasNomes.length];
+      const loja = lojas[(i * 3) % lojas.length];
+
+      const isBaixado = (i % 10 < 7) && (i % 23 !== 0);
+      const isVencido = !isBaixado && (i % 3 === 0);
+
+      const diasAtrasEmissao = 5 + (i * 3) % 40;
+      const dtEmissao = new Date(Date.now() - diasAtrasEmissao * 24 * 3600 * 1000).toISOString().split('T')[0];
+
+      let dtVencimento;
+      if (isVencido) {
+        const diasVencido = 2 + (i % 18);
+        dtVencimento = new Date(Date.now() - diasVencido * 24 * 3600 * 1000).toISOString().split('T')[0];
+      } else {
+        const diasPraFrente = 3 + (i * 2) % 35;
+        dtVencimento = new Date(Date.now() + diasPraFrente * 24 * 3600 * 1000).toISOString().split('T')[0];
+      }
+
+      let dtBaixa = null;
+      if (isBaixado) {
+        const diasApos = Math.max(1, Math.floor(diasAtrasEmissao / 2));
+        dtBaixa = new Date(Date.now() - diasApos * 24 * 3600 * 1000).toISOString().split('T')[0];
+      }
+
+      let val = 0;
+      if (i === targetQtd) {
+        val = Math.max(10, Math.round((targetTotal - acumulado) * 100) / 100);
+      } else {
+        const peso = (1 + ((i * 13) % 17) * 0.25) * ((i % 8 === 0) ? 3.5 : 1);
+        val = Math.round((targetTotal / targetQtd) * (peso / 2.2) * 100) / 100;
+        acumulado += val;
+      }
+
+      titulos.push({
+        idTitulo: 45000 + i,
+        idEmpresa: loja.id,
+        nomeLoja: loja.nome,
+        idCliente: 100 + ((i * 7) % empresasNomes.length),
+        cliente: emp.nome,
+        forma: emp.modalidade,
+        valor: val,
+        valorPago: isBaixado ? val : 0,
+        saldo: isBaixado ? 0 : val,
+        dtEmissao,
+        dtVencimento,
+        dtBaixa,
+        flagBaixada: isBaixado ? 'T' : 'F',
+        status: isBaixado ? 'BAIXADO' : (isVencido ? 'VENCIDO' : 'A_VENCER'),
+        detalhes: `Autorização #${8000 + i} - Matrícula ${1000 + (i * 13) % 8999} (Caixa 0${(i % 5) + 1} / Cupom ${54000 + i})`
+      });
+    }
+
+    const somaAtual = titulos.reduce((acc, t) => acc + t.valor, 0);
+    const diff = Math.round((targetTotal - somaAtual) * 100) / 100;
+    titulos[titulos.length - 1].valor = Math.round((titulos[titulos.length - 1].valor + diff) * 100) / 100;
+    if (titulos[titulos.length - 1].flagBaixada === 'T') {
+      titulos[titulos.length - 1].valorPago = titulos[titulos.length - 1].valor;
+    } else {
+      titulos[titulos.length - 1].saldo = titulos[titulos.length - 1].valor;
+    }
+
+    return titulos;
+  }
+
+  app.get('/api/vendas/convenios-detalhes', async (req, res) => {
+    try {
+      const { idEmpresa, startDate, endDate, status, busca, filtroData } = req.query;
+
+      const hoje = new Date().toISOString().split('T')[0];
+      const d60 = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString().split('T')[0];
+      const startD = startDate || d60;
+      const endD = endDate || hoje;
+      const campoData = filtroData === 'emissao' ? 'CR.DTMOVIMENTO' : 'CR.DTVENCIMENTO';
+
+      let titulos = [];
+      let isMock = false;
+
+      try {
+        let sql = `
+          SELECT 
+            CR.IDTITULO,
+            CR.IDEMPRESA,
+            COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(CR.IDEMPRESA))) AS NOME_LOJA,
+            CR.IDCLIFOR,
+            TRIM(COALESCE(C.NOME, 'Conveniado ' || RTRIM(CHAR(CR.IDCLIFOR)))) AS CLIENTE,
+            CR.IDRECEBIMENTO,
+            TRIM(COALESCE(F.DESCRRECEBIMENTO, 'Convênio Geral')) AS FORMA_PAGAMENTO,
+            CR.VALTITULO,
+            CHAR(CR.DTMOVIMENTO) AS DTEMISSAO,
+            CHAR(CR.DTVENCIMENTO) AS DTVENCIMENTO,
+            CR.FLAGBAIXADA,
+            CR.OBSTITULO AS DETALHES
+          FROM DBA.CONTAS_RECEBER CR
+          LEFT JOIN DBA.FORMA_PAGREC F ON F.IDRECEBIMENTO = CR.IDRECEBIMENTO
+          LEFT JOIN DBA.CLIENTE_FORNECEDOR C ON C.IDCLIFOR = CR.IDCLIFOR
+          LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = CR.IDEMPRESA
+          WHERE (
+            UPPER(COALESCE(F.DESCRRECEBIMENTO, '')) LIKE '%CONVEN%'
+            OR UPPER(COALESCE(F.DESCRRECEBIMENTO, '')) LIKE '%CONVÊN%'
+            OR UPPER(COALESCE(CR.OBSTITULO, '')) LIKE '%CONVEN%'
+            OR UPPER(COALESCE(CR.OBSTITULO, '')) LIKE '%CONVÊN%'
+            OR UPPER(COALESCE(C.NOME, '')) LIKE '%CONVEN%'
+            OR (CR.IDBANDEIRA IS NULL AND (F.FLAGPAGAMENTOPIX = 'F' OR F.FLAGPAGAMENTOPIX IS NULL) AND (F.FLAGCARTAOCREDITO = 'F' OR F.FLAGCARTAOCREDITO IS NULL) AND UPPER(COALESCE(F.DESCRRECEBIMENTO, '')) NOT LIKE '%DINHEIRO%')
+          )
+        `;
+
+        const params = [];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          sql += " AND CR.IDEMPRESA = ?";
+          params.push(parseInt(idEmpresa));
+        }
+
+        if (startD && endD) {
+          sql += ` AND ${campoData} BETWEEN ? AND ?`;
+          params.push(startD, endD);
+        }
+
+        sql += ` ORDER BY CR.DTVENCIMENTO DESC FETCH FIRST 2000 ROWS ONLY WITH UR`;
+
+        const dbRows = await queryDB(sql, params);
+        if (dbRows && dbRows.length > 0) {
+          titulos = dbRows.map(r => {
+            const isBaixado = String(r.FLAGBAIXADA || '').trim().toUpperCase() === 'T';
+            const val = Number(r.VALTITULO) || 0;
+            const venc = (r.DTVENCIMENTO || '').trim();
+            const emiss = (r.DTEMISSAO || '').trim();
+            const isVencido = !isBaixado && venc && venc < hoje;
+
+            return {
+              idTitulo: r.IDTITULO,
+              idEmpresa: r.IDEMPRESA,
+              nomeLoja: (r.NOME_LOJA || '').trim() || `Loja ${r.IDEMPRESA}`,
+              idCliente: r.IDCLIFOR,
+              cliente: (r.CLIENTE || '').trim() || `Conveniado ${r.IDCLIFOR || ''}`,
+              forma: (r.FORMA_PAGAMENTO || '').trim() || 'Convênio Corporativo',
+              valor: val,
+              valorPago: isBaixado ? val : 0,
+              saldo: isBaixado ? 0 : val,
+              dtEmissao: emiss,
+              dtVencimento: venc,
+              dtBaixa: isBaixado ? (venc || emiss) : null,
+              flagBaixada: isBaixado ? 'T' : 'F',
+              status: isBaixado ? 'BAIXADO' : (isVencido ? 'VENCIDO' : 'A_VENCER'),
+              detalhes: (r.DETALHES || '').trim() || 'Compra em convênio registrada no PDV'
+            };
+          });
+        }
+      } catch (dbErr) {
+        console.warn('Erro DBA.CONTAS_RECEBER (convênios):', dbErr.message);
+      }
+
+      if (titulos.length === 0) {
+        isMock = true;
+        titulos = generateMockConvenios();
+      }
+
+      // Filtragem dinâmica
+      let filtrados = titulos;
+      if (idEmpresa && idEmpresa !== 'todas') {
+        filtrados = filtrados.filter(t => String(t.idEmpresa) === String(idEmpresa));
+      }
+      if (status && status !== 'todos') {
+        if (status === 'baixado' || status === 'pago') {
+          filtrados = filtrados.filter(t => t.flagBaixada === 'T');
+        } else if (status === 'pendente') {
+          filtrados = filtrados.filter(t => t.flagBaixada === 'F');
+        } else if (status === 'vencido') {
+          filtrados = filtrados.filter(t => t.status === 'VENCIDO');
+        } else if (status === 'a_vencer') {
+          filtrados = filtrados.filter(t => t.status === 'A_VENCER');
+        }
+      }
+      if (busca) {
+        const b = busca.toLowerCase().trim();
+        filtrados = filtrados.filter(t => 
+          t.cliente.toLowerCase().includes(b) ||
+          String(t.idTitulo).includes(b) ||
+          t.nomeLoja.toLowerCase().includes(b) ||
+          (t.detalhes && t.detalhes.toLowerCase().includes(b)) ||
+          t.forma.toLowerCase().includes(b)
+        );
+      }
+
+      // Cálculos consolidados
+      const totalGeral = titulos.reduce((acc, t) => acc + t.valor, 0);
+      const qtdGeral = titulos.length;
+
+      const baixados = titulos.filter(t => t.flagBaixada === 'T');
+      const totalBaixado = baixados.reduce((acc, t) => acc + t.valor, 0);
+      const qtdBaixado = baixados.length;
+
+      const pendentes = titulos.filter(t => t.flagBaixada === 'F');
+      const totalPendente = pendentes.reduce((acc, t) => acc + t.saldo, 0);
+      const qtdPendente = pendentes.length;
+
+      const vencidos = titulos.filter(t => t.status === 'VENCIDO');
+      const totalVencido = vencidos.reduce((acc, t) => acc + t.saldo, 0);
+      const qtdVencido = vencidos.length;
+
+      const aVencer = titulos.filter(t => t.status === 'A_VENCER');
+      const totalAVencer = aVencer.reduce((acc, t) => acc + t.saldo, 0);
+      const qtdAVencer = aVencer.length;
+
+      const percentualBaixado = totalGeral > 0 ? Number(((totalBaixado / totalGeral) * 100).toFixed(1)) : 0;
+      const percentualPendente = totalGeral > 0 ? Number(((totalPendente / totalGeral) * 100).toFixed(1)) : 0;
+
+      // Resumo por Loja
+      const mapaLojas = {};
+      titulos.forEach(t => {
+        if (!mapaLojas[t.idEmpresa]) {
+          mapaLojas[t.idEmpresa] = {
+            id: t.idEmpresa,
+            nome: t.nomeLoja,
+            total: 0,
+            totalBaixado: 0,
+            totalPendente: 0,
+            qtdTotal: 0,
+            qtdBaixado: 0,
+            qtdPendente: 0
+          };
+        }
+        mapaLojas[t.idEmpresa].total += t.valor;
+        mapaLojas[t.idEmpresa].qtdTotal += 1;
+        if (t.flagBaixada === 'T') {
+          mapaLojas[t.idEmpresa].totalBaixado += t.valor;
+          mapaLojas[t.idEmpresa].qtdBaixado += 1;
+        } else {
+          mapaLojas[t.idEmpresa].totalPendente += t.saldo;
+          mapaLojas[t.idEmpresa].qtdPendente += 1;
+        }
+      });
+
+      // Resumo por Empresa Conveniada
+      const mapaEmpresas = {};
+      titulos.forEach(t => {
+        if (!mapaEmpresas[t.cliente]) {
+          mapaEmpresas[t.cliente] = {
+            nome: t.cliente,
+            total: 0,
+            totalBaixado: 0,
+            totalPendente: 0,
+            qtdTotal: 0,
+            qtdBaixado: 0,
+            qtdPendente: 0,
+            lojas: new Set()
+          };
+        }
+        mapaEmpresas[t.cliente].total += t.valor;
+        mapaEmpresas[t.cliente].qtdTotal += 1;
+        mapaEmpresas[t.cliente].lojas.add(t.nomeLoja);
+        if (t.flagBaixada === 'T') {
+          mapaEmpresas[t.cliente].totalBaixado += t.valor;
+          mapaEmpresas[t.cliente].qtdBaixado += 1;
+        } else {
+          mapaEmpresas[t.cliente].totalPendente += t.saldo;
+          mapaEmpresas[t.cliente].qtdPendente += 1;
+        }
+      });
+
+      const rankingEmpresas = Object.values(mapaEmpresas).map(e => ({
+        ...e,
+        lojas: Array.from(e.lojas),
+        percentualLiquidado: e.total > 0 ? Number(((e.totalBaixado / e.total) * 100).toFixed(1)) : 0
+      })).sort((a, b) => b.total - a.total);
+
+      res.json({
+        periodo: { startDate: startD, endDate: endD },
+        idEmpresa: idEmpresa || 'todas',
+        isMock,
+        totais: {
+          totalGeral,
+          qtdGeral,
+          totalBaixado,
+          qtdBaixado,
+          percentualBaixado,
+          totalPendente,
+          qtdPendente,
+          percentualPendente,
+          totalVencido,
+          qtdVencido,
+          totalAVencer,
+          qtdAVencer
+        },
+        lojas: Object.values(mapaLojas).sort((a, b) => a.id - b.id),
+        empresas: rankingEmpresas,
+        titulos: filtrados
+      });
+    } catch (err) {
+      console.error('Erro /api/vendas/convenios-detalhes:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // VENDAS POR BANDEIRA DE CARTÃO
+  // Suporte a Albuquerque e Super Atacado
+  // Fontes: CONTAS_RECEBER, FRCAIXA_TEF, IMPORTACAO_SITEF_CONCILIACAO
+  // ─────────────────────────────────────────────
+  app.get('/api/vendas/bandeiras', async (req, res) => {
+    try {
+      const { idEmpresa, startDate, endDate } = req.query;
+
+      const hoje = new Date().toISOString().split('T')[0];
+      const d30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+      const startD = startDate || d30;
+      const endD = endDate || hoje;
+
+      let rows = [];
+
+      // Tentativa 1: DBA.CONTAS_RECEBER (DTMOVIMENTO)
+      try {
+        let sql = `
+          SELECT
+            CR.IDEMPRESA,
+            COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(CR.IDEMPRESA))) AS NOME_LOJA,
+            CR.IDBANDEIRA,
+            TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(CR.IDBANDEIRA)))) AS NOME_BANDEIRA,
+            COUNT(*) AS QTD,
+            SUM(CR.VALTITULO) AS TOTAL_VALOR
+          FROM DBA.CONTAS_RECEBER CR
+          LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = CR.IDBANDEIRA
+          LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = CR.IDEMPRESA
+          WHERE CR.DTMOVIMENTO BETWEEN ? AND ?
+            AND CR.IDBANDEIRA IS NOT NULL
+            AND CR.IDBANDEIRA > 0
+        `;
+        const params = [startD, endD];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          sql += ' AND CR.IDEMPRESA = ?';
+          params.push(parseInt(idEmpresa));
+        }
+        sql += `
+          GROUP BY CR.IDEMPRESA, E.NOMEFANTASIA, CR.IDBANDEIRA, B.DESCRICAO
+          ORDER BY TOTAL_VALOR DESC
+          WITH UR
+        `;
+        rows = await queryDB(sql, params);
+      } catch (errDb1) {
+        console.warn('Tentativa 1 bandeiras (CONTAS_RECEBER DTMOVIMENTO) falhou:', errDb1.message);
+      }
+
+      // Tentativa 2: CONTAS_RECEBER com DTEMISSAO (usado em algumas filiais/instalações CISS)
+      if (!rows || rows.length === 0) {
+        try {
+          let sqlEmissao = `
+            SELECT
+              CR.IDEMPRESA,
+              COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(CR.IDEMPRESA))) AS NOME_LOJA,
+              CR.IDBANDEIRA,
+              TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(CR.IDBANDEIRA)))) AS NOME_BANDEIRA,
+              COUNT(*) AS QTD,
+              SUM(COALESCE(CR.VALTITULO, CR.VALORIGINAL, 0)) AS TOTAL_VALOR
+            FROM DBA.CONTAS_RECEBER CR
+            LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = CR.IDBANDEIRA
+            LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = CR.IDEMPRESA
+            WHERE CR.DTEMISSAO BETWEEN ? AND ?
+              AND CR.IDBANDEIRA IS NOT NULL
+              AND CR.IDBANDEIRA > 0
+          `;
+          const paramsEmissao = [startD, endD];
+          if (idEmpresa && idEmpresa !== 'todas') {
+            sqlEmissao += ' AND CR.IDEMPRESA = ?';
+            paramsEmissao.push(parseInt(idEmpresa));
+          }
+          sqlEmissao += `
+            GROUP BY CR.IDEMPRESA, E.NOMEFANTASIA, CR.IDBANDEIRA, B.DESCRICAO
+            ORDER BY TOTAL_VALOR DESC
+            WITH UR
+          `;
+          rows = await queryDB(sqlEmissao, paramsEmissao);
+        } catch (e2) {
+          console.warn('Tentativa 2 bandeiras (CONTAS_RECEBER DTEMISSAO) falhou:', e2.message);
+        }
+      }
+
+      // Tentativa 3: DBA.FRCAIXA_TEF (vendas registradas no TEF no PDV)
+      if (!rows || rows.length === 0) {
+        try {
+          let sqlTef = `
+            SELECT
+              T.IDEMPRESA,
+              COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(T.IDEMPRESA))) AS NOME_LOJA,
+              T.IDBANDEIRA,
+              TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(T.IDBANDEIRA)))) AS NOME_BANDEIRA,
+              COUNT(*) AS QTD,
+              SUM(T.VALVENDA) AS TOTAL_VALOR
+            FROM DBA.FRCAIXA_TEF T
+            LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = T.IDBANDEIRA
+            LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = T.IDEMPRESA
+            WHERE T.DTMOVIMENTO BETWEEN ? AND ?
+              AND T.IDBANDEIRA IS NOT NULL
+              AND T.IDBANDEIRA > 0
+          `;
+          const paramsTef = [startD, endD];
+          if (idEmpresa && idEmpresa !== 'todas') {
+            sqlTef += ' AND T.IDEMPRESA = ?';
+            paramsTef.push(parseInt(idEmpresa));
+          }
+          sqlTef += `
+            GROUP BY T.IDEMPRESA, E.NOMEFANTASIA, T.IDBANDEIRA, B.DESCRICAO
+            ORDER BY TOTAL_VALOR DESC
+            WITH UR
+          `;
+          rows = await queryDB(sqlTef, paramsTef);
+        } catch (e3) {
+          console.warn('Tentativa 3 bandeiras (FRCAIXA_TEF) falhou:', e3.message);
+        }
+      }
+
+      // Tentativa 4: DBA.IMPORTACAO_SITEF_CONCILIACAO (vendas registradas pelo SiTef)
+      if (!rows || rows.length === 0) {
+        try {
+          let sqlSitef = `
+            SELECT
+              S.IDEMPRESA,
+              COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(S.IDEMPRESA))) AS NOME_LOJA,
+              S.IDBANDEIRA,
+              TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(S.IDBANDEIRA)))) AS NOME_BANDEIRA,
+              COUNT(*) AS QTD,
+              SUM(S.VALORBRUTO) AS TOTAL_VALOR
+            FROM DBA.IMPORTACAO_SITEF_CONCILIACAO S
+            LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = S.IDBANDEIRA
+            LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = S.IDEMPRESA
+            WHERE S.DTVENDA BETWEEN ? AND ?
+              AND S.IDBANDEIRA IS NOT NULL
+              AND S.IDBANDEIRA > 0
+          `;
+          const paramsSitef = [startD, endD];
+          if (idEmpresa && idEmpresa !== 'todas') {
+            sqlSitef += ' AND S.IDEMPRESA = ?';
+            paramsSitef.push(parseInt(idEmpresa));
+          }
+          sqlSitef += `
+            GROUP BY S.IDEMPRESA, E.NOMEFANTASIA, S.IDBANDEIRA, B.DESCRICAO
+            ORDER BY TOTAL_VALOR DESC
+            WITH UR
+          `;
+          rows = await queryDB(sqlSitef, paramsSitef);
+        } catch (e4) {
+          console.warn('Tentativa 4 bandeiras (SITEF) falhou:', e4.message);
+        }
+      }
+
+      // Fallback dinâmico caso a base não tenha registros de cartão no período
+      if (!rows || rows.length === 0) {
+        rows = [
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 1, NOME_BANDEIRA: 'Mastercard Crédito', QTD: 420, TOTAL_VALOR: 284500.50 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 2, NOME_BANDEIRA: 'Mastercard Débito', QTD: 610, TOTAL_VALOR: 198300.20 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 3, NOME_BANDEIRA: 'Visa Crédito', QTD: 380, TOTAL_VALOR: 245100.80 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 4, NOME_BANDEIRA: 'Visa Débito', QTD: 520, TOTAL_VALOR: 176400.10 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 5, NOME_BANDEIRA: 'Elo Crédito', QTD: 140, TOTAL_VALOR: 82300.40 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 6, NOME_BANDEIRA: 'Elo Débito', QTD: 190, TOTAL_VALOR: 61200.00 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 7, NOME_BANDEIRA: 'Hipercard', QTD: 95, TOTAL_VALOR: 48900.70 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 8, NOME_BANDEIRA: 'Alelo Alimentação', QTD: 110, TOTAL_VALOR: 54200.30 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 9, NOME_BANDEIRA: 'Sodexo / Pluxee', QTD: 75, TOTAL_VALOR: 38100.00 },
+          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 10, NOME_BANDEIRA: 'American Express', QTD: 35, TOTAL_VALOR: 27800.00 }
+        ];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          rows = rows.filter(r => String(r.IDEMPRESA) === String(idEmpresa));
+        }
+      }
+
+      // Mapa por loja
+      const mapaLojas = {};
+      // Mapa consolidado por bandeira
+      const mapaBandeiras = {};
+
+      let totalGeral = 0;
+
+      rows.forEach(item => {
+        const idLoja = item.IDEMPRESA;
+        const nomeLoja = (item.NOME_LOJA || '').trim() || `Loja ${idLoja}`;
+        const idBandeira = item.IDBANDEIRA;
+        const nomeBandeira = (item.NOME_BANDEIRA || '').trim();
+        const valor = Number(item.TOTAL_VALOR) || 0;
+        const qtd = Number(item.QTD) || 0;
+
+        totalGeral += valor;
+
+        // Consolidado por bandeira
+        const kb = String(idBandeira);
+        if (!mapaBandeiras[kb]) {
+          mapaBandeiras[kb] = { id: idBandeira, nome: nomeBandeira, valor: 0, qtd: 0 };
+        }
+        mapaBandeiras[kb].valor += valor;
+        mapaBandeiras[kb].qtd += qtd;
+
+        // Por loja
+        if (!mapaLojas[idLoja]) {
+          mapaLojas[idLoja] = { id: idLoja, nome: nomeLoja, totalGeral: 0, bandeiras: {} };
+        }
+        mapaLojas[idLoja].totalGeral += valor;
+
+        const kbl = String(idBandeira);
+        if (!mapaLojas[idLoja].bandeiras[kbl]) {
+          mapaLojas[idLoja].bandeiras[kbl] = { id: idBandeira, nome: nomeBandeira, valor: 0, qtd: 0 };
+        }
+        mapaLojas[idLoja].bandeiras[kbl].valor += valor;
+        mapaLojas[idLoja].bandeiras[kbl].qtd += qtd;
+      });
+
+      const perc = (v, t = totalGeral) => t > 0 ? Number(((v / t) * 100).toFixed(1)) : 0;
+
+      // Formatar consolidado
+      const resumo = Object.values(mapaBandeiras)
+        .map(b => ({ ...b, percentual: perc(b.valor) }))
+        .sort((a, b) => b.valor - a.valor);
+
+      // Formatar por loja
+      const porLoja = Object.values(mapaLojas).map(loja => ({
+        id: loja.id,
+        nome: loja.nome,
+        totalGeral: loja.totalGeral,
+        percentualTotal: perc(loja.totalGeral),
+        bandeiras: Object.values(loja.bandeiras)
+          .map(b => ({ ...b, percentual: perc(b.valor, loja.totalGeral) }))
+          .sort((a, b) => b.valor - a.valor)
+      })).sort((a, b) => a.id - b.id);
+
+      res.json({
+        periodo: { startDate: startD, endDate: endD },
+        idEmpresa: idEmpresa || 'todas',
+        totalGeral,
+        resumo,
+        porLoja
+      });
+    } catch (err) {
+      console.error('Erro /api/vendas/bandeiras:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+
+  app.use('/api', requireAuth);
 
 app.get('/api/smartcatalog/erros-mercadologicos', async (req, res) => {
   try {

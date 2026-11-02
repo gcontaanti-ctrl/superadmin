@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   BarChart3,
   AlertTriangle,
@@ -18,8 +18,17 @@ import {
   ChevronUp,
   ChevronDown,
   Layers,
+  FileText,
+  Clock,
+  User,
+  Eye,
+  ExternalLink,
+  ChevronRight,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
+import { Button } from "../ui/button";
 import {
   AreaChart,
   Area,
@@ -59,7 +68,12 @@ interface TopPorLoja {
 
 interface NotaSemPreco {
   notaFiscal: string;
+  serieNota?: string;
+  idPlanilha?: number;
   dataEntrada: string;
+  horaEntrada?: string;
+  dataHoraEntrada?: string;
+  dataValidade?: string | null;
   loja: string;
   fornecedor: string;
   usuarioEntrada: string;
@@ -68,6 +82,7 @@ interface NotaSemPreco {
   marca: string;
   qtdEntrada: number;
   custoUnitario: number;
+  custoTotal?: number;
   precoVenda: number;
   idEmpresa: number;
 }
@@ -123,6 +138,33 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
   const [busca, setBusca] = useState("");
   const [sortField, setSortField] = useState<SortField>("rank");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Modal de visualização completa da Nota Fiscal
+  const [selectedNotaFiscal, setSelectedNotaFiscal] = useState<NotaSemPreco | null>(null);
+  const [loadingNotaItens, setLoadingNotaItens] = useState(false);
+  const [itensDaNota, setItensDaNota] = useState<any[]>([]);
+
+  const handleOpenNota = async (nota: NotaSemPreco) => {
+    setSelectedNotaFiscal(nota);
+    if (nota.idPlanilha && nota.idEmpresa) {
+      setLoadingNotaItens(true);
+      try {
+        const res = await fetch(`/api/notas/${nota.idEmpresa}/${nota.idPlanilha}/itens`);
+        if (res.ok) {
+          const data = await res.json();
+          setItensDaNota(Array.isArray(data) ? data : []);
+        } else {
+          setItensDaNota([]);
+        }
+      } catch {
+        setItensDaNota([]);
+      } finally {
+        setLoadingNotaItens(false);
+      }
+    } else {
+      setItensDaNota([]);
+    }
+  };
 
   // ─── Carrega Top 50 ──────────────────────────────────────────────────────────
   const fetchTopVendidos = async () => {
@@ -813,41 +855,83 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-white/10 text-slate-400 text-[10px] uppercase tracking-wider">
-                    <th className="py-3 px-3 text-left">Nota / Data</th>
+                    <th className="py-3 px-3 text-left">Nota / Data / Hora</th>
                     <th className="py-3 px-3 text-left">Produto</th>
+                    <th className="py-3 px-3 text-center">Validade Digitada</th>
                     <th className="py-3 px-3 text-left hidden md:table-cell">Fornecedor</th>
                     <th className="py-3 px-3 text-left hidden lg:table-cell">Loja</th>
-                    <th className="py-3 px-3 text-right">Qtd Entrada</th>
+                    <th className="py-3 px-3 text-right">Qtd</th>
                     <th className="py-3 px-3 text-right">Custo Unit.</th>
-                    <th className="py-3 px-3 text-center">Preço Venda</th>
+                    <th className="py-3 px-3 text-right">Custo Total</th>
+                    <th className="py-3 px-3 text-center">Status</th>
                     <th className="py-3 px-3 text-left hidden xl:table-cell">Usuário</th>
+                    <th className="py-3 px-3 text-center">Ação</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredNotas.map((nota, i) => (
-                    <tr key={`${nota.notaFiscal}-${nota.idProduto}-${i}`} className="border-b border-white/5 hover:bg-white/[0.04] transition-colors">
-                      {/* Nota / Data */}
+                  {filteredNotas.map((nota, i) => {
+                    const totalLote = nota.custoTotal || (nota.qtdEntrada * nota.custoUnitario);
+                    const valFormatada = nota.dataValidade 
+                      ? String(nota.dataValidade).split('T')[0].split('-').reverse().join('/') 
+                      : null;
+
+                    return (
+                    <tr 
+                      key={`${nota.notaFiscal}-${nota.idProduto}-${i}`} 
+                      className="border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer group"
+                      onClick={() => handleOpenNota(nota)}
+                    >
+                      {/* Nota / Data / Hora */}
                       <td className="py-3 px-3">
-                        <div className="font-mono font-bold text-slate-200">#{nota.notaFiscal}</div>
-                        <div className="text-[10px] text-slate-500">{fmtDate(nota.dataEntrada)}</div>
+                        <div className="flex items-center gap-1.5 font-mono font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">
+                          <FileText className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400" />
+                          <span>#{nota.notaFiscal}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono mt-0.5">
+                          <span>{fmtDate(nota.dataEntrada)}</span>
+                          {nota.horaEntrada && (
+                            <span className="text-cyan-400 bg-cyan-500/10 px-1 rounded border border-cyan-500/20">
+                              {nota.horaEntrada}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Produto */}
-                      <td className="py-3 px-3 max-w-[200px]">
-                        <div className="font-semibold text-slate-200 truncate">{nota.produto}</div>
-                        {nota.marca && (
-                          <div className="text-[10px] text-slate-500 truncate">{nota.marca}</div>
+                      <td className="py-3 px-3 max-w-[220px]">
+                        <div className="font-semibold text-slate-200 truncate" title={nota.produto}>
+                          {nota.produto}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                          <span>Cód: {nota.idProduto}</span>
+                          {nota.marca && <span>• {nota.marca}</span>}
+                        </div>
+                      </td>
+
+                      {/* Validade Digitada */}
+                      <td className="py-3 px-3 text-center">
+                        {valFormatada ? (
+                          <span className="inline-flex items-center gap-1 font-mono font-bold text-[11px] px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                            <Calendar className="w-3 h-3 shrink-0" />
+                            {valFormatada}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 font-mono text-[11px]">—</span>
                         )}
                       </td>
 
                       {/* Fornecedor */}
                       <td className="py-3 px-3 hidden md:table-cell max-w-[150px]">
-                        <span className="text-slate-300 truncate block">{nota.fornecedor}</span>
+                        <span className="text-slate-300 truncate block text-xs" title={nota.fornecedor}>
+                          {nota.fornecedor}
+                        </span>
                       </td>
 
                       {/* Loja */}
                       <td className="py-3 px-3 hidden lg:table-cell">
-                        <span className="text-slate-300 text-[11px]">{nota.loja}</span>
+                        <span className="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 font-bold text-[11px]">
+                          {nota.loja}
+                        </span>
                       </td>
 
                       {/* Qtd Entrada */}
@@ -862,9 +946,14 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
                         <span className="font-mono text-amber-400">{fmtCurrency(nota.custoUnitario)}</span>
                       </td>
 
-                      {/* Preço Venda */}
+                      {/* Custo Total */}
+                      <td className="py-3 px-3 text-right font-mono font-bold text-red-400">
+                        {fmtCurrency(totalLote)}
+                      </td>
+
+                      {/* Status Preço Venda */}
                       <td className="py-3 px-3 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold">
                           <AlertTriangle className="w-3 h-3" />
                           SEM PREÇO
                         </span>
@@ -872,14 +961,211 @@ export function GerencialModule({ selectedStore, globalStartDate, globalEndDate 
 
                       {/* Usuário */}
                       <td className="py-3 px-3 hidden xl:table-cell">
-                        <span className="text-slate-500 text-[11px]">{nota.usuarioEntrada}</span>
+                        <span className="inline-flex items-center gap-1 text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20 text-[11px]">
+                          <User className="w-3 h-3 text-purple-400" />
+                          {nota.usuarioEntrada}
+                        </span>
+                      </td>
+
+                      {/* Botão Ação */}
+                      <td className="py-3 px-3 text-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenNota(nota);
+                          }}
+                          className="h-7 px-2 text-xs text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10 gap-1"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Ver Nota</span>
+                        </Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
+
+          {/* Modal / Dialog de Visualização Completa da Nota Fiscal */}
+          <Dialog open={!!selectedNotaFiscal} onOpenChange={(o) => !o && setSelectedNotaFiscal(null)}>
+            <DialogContent className="bg-slate-900 border border-white/10 text-white max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl">
+              <DialogHeader className="p-6 pb-4 border-b border-white/10 bg-slate-950/50">
+                <div className="flex items-center justify-between">
+                  <DialogTitle className="text-xl font-bold font-serif text-white flex items-center gap-2">
+                    <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20 text-emerald-400">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span>Nota Fiscal de Entrada Nº {selectedNotaFiscal?.notaFiscal}</span>
+                  </DialogTitle>
+                  <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Série: {selectedNotaFiscal?.serieNota || "1"}
+                  </span>
+                </div>
+
+                {/* Grid de Informações da Nota */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-3 pt-3 border-t border-white/5 text-xs">
+                  <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/5">
+                    <Store className="w-4 h-4 text-blue-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider">Loja Destino</div>
+                      <div className="font-semibold text-blue-300 truncate">
+                        {selectedNotaFiscal?.loja || `Loja ${selectedNotaFiscal?.idEmpresa}`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/5">
+                    <Truck className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider">Fornecedor</div>
+                      <div className="font-semibold text-amber-300 truncate max-w-[140px]" title={selectedNotaFiscal?.fornecedor}>
+                        {selectedNotaFiscal?.fornecedor}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/5">
+                    <User className="w-4 h-4 text-purple-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider">Usuário Entrada</div>
+                      <div className="font-semibold text-purple-300 truncate">
+                        {selectedNotaFiscal?.usuarioEntrada}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-white/5 p-2 rounded-lg border border-white/5">
+                    <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider">Data / Hora Entrada</div>
+                      <div className="font-semibold text-cyan-300 font-mono">
+                        {fmtDate(selectedNotaFiscal?.dataEntrada || '')} {selectedNotaFiscal?.horaEntrada && `às ${selectedNotaFiscal.horaEntrada}`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Alerta do Produto Pendente que Originou a Consulta */}
+                <div className="mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                    <span>
+                      Item Pendente: <strong className="text-white">{selectedNotaFiscal?.produto}</strong> (Cód: {selectedNotaFiscal?.idProduto})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-300">Qtd: <strong>{selectedNotaFiscal?.qtdEntrada}</strong></span>
+                    <span className="text-amber-400">Custo: <strong>{fmtCurrency(selectedNotaFiscal?.custoUnitario || 0)}</strong></span>
+                    <span className="text-red-400 font-bold">Total Lote: {fmtCurrency(selectedNotaFiscal?.custoTotal || ((selectedNotaFiscal?.qtdEntrada || 0) * (selectedNotaFiscal?.custoUnitario || 0)) || 0)}</span>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Tabela com TODOS os itens da Nota Fiscal */}
+              <div className="flex-1 overflow-y-auto p-6 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                    Todos os Itens Registrados Nesta Nota Fiscal
+                  </h4>
+                  {loadingNotaItens && (
+                    <span className="text-xs text-emerald-400 animate-pulse flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" /> Carregando produtos da nota...
+                    </span>
+                  )}
+                </div>
+
+                {itensDaNota.length > 0 ? (
+                  <div className="border border-white/10 rounded-xl overflow-hidden bg-black/30">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-white/5 border-b border-white/10 text-slate-400 text-[10px] uppercase tracking-wider">
+                          <th className="py-2.5 px-3 text-left w-12">Seq</th>
+                          <th className="py-2.5 px-3 text-left w-24">Código</th>
+                          <th className="py-2.5 px-3 text-left">Descrição do Produto</th>
+                          <th className="py-2.5 px-3 text-center w-28">Validade</th>
+                          <th className="py-2.5 px-3 text-right w-20">Qtd</th>
+                          <th className="py-2.5 px-3 text-right w-28">Unitário</th>
+                          <th className="py-2.5 px-3 text-right w-32">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {itensDaNota.map((item: any, idx: number) => {
+                          const isItemSemPreco = item.IDPRODUTO === selectedNotaFiscal?.idProduto;
+                          const valItem = item.DTVALIDADE 
+                            ? String(item.DTVALIDADE).split('T')[0].split('-').reverse().join('/') 
+                            : null;
+
+                          return (
+                            <tr 
+                              key={idx} 
+                              className={`border-b border-white/5 transition-colors ${
+                                isItemSemPreco ? 'bg-red-500/10 border-red-500/30' : 'hover:bg-white/[0.03]'
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 font-mono text-slate-500">{item.SEQUENCIA}</td>
+                              <td className="py-2.5 px-3 font-mono text-cyan-400 font-semibold">{item.IDPRODUTO}</td>
+                              <td className="py-2.5 px-3">
+                                <div className="font-medium text-slate-200">
+                                  {item.PRODUTO_DESC}
+                                  {isItemSemPreco && (
+                                    <span className="ml-2 px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 text-[10px] font-bold border border-red-500/30">
+                                      SEM PREÇO
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                {valItem ? (
+                                  <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                                    <Calendar className="w-3 h-3" />
+                                    {valItem}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600 font-mono text-[11px]">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-300">
+                                {Number(item.QUANTIDADE || 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-400">
+                                {fmtCurrency(item.VALUNITARIO || 0)}
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                                {fmtCurrency(item.VALTOTAL || 0)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : !loadingNotaItens ? (
+                  <div className="text-center py-10 text-slate-500 text-xs">
+                    Nenhum item detalhado encontrado para esta nota fiscal.
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Rodapé do Modal */}
+              <div className="p-4 px-6 border-t border-white/10 bg-slate-950/60 flex items-center justify-between">
+                <span className="text-xs text-slate-400">
+                  Total de itens na nota: <strong className="text-white">{itensDaNota.length}</strong>
+                </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400">Valor Total da Nota:</span>
+                  <span className="font-mono text-base font-bold text-emerald-400">
+                    {fmtCurrency(
+                      itensDaNota.reduce((acc, it) => acc + (Number(it.VALTOTAL) || 0), 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
       {/* ── VENDAS POR HORA ────────────────────────────────────────────── */}

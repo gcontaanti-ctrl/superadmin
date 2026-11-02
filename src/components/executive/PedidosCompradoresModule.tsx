@@ -21,7 +21,17 @@ import {
   ChevronRight,
   Package,
   BarChart3,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Battery,
+  BatteryCharging,
+  BatteryFull,
+  BatteryMedium,
+  BatteryLow,
+  BatteryWarning,
+  Zap,
+  Layers,
+  Tag,
+  SlidersHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -59,6 +69,169 @@ const CustomTooltipGrafico = ({ active, payload, label }: any) => {
   return null;
 };
 
+interface BatteryBudgetGaugeProps {
+  compradorNome: string;
+  idUsuario: number;
+  orcado: number;
+  comprado: number;
+  saldo: number;
+  totalPedidos?: number;
+  onVerPedidos?: () => void;
+  selected?: boolean;
+}
+
+function BatteryBudgetGauge({
+  compradorNome,
+  idUsuario,
+  orcado,
+  comprado,
+  saldo,
+  totalPedidos = 0,
+  onVerPedidos,
+  selected = false
+}: BatteryBudgetGaugeProps) {
+  // Carga restante da bateria (% que resta para acabar a verba)
+  const percRestante = orcado > 0 ? Math.max(0, (saldo / orcado) * 100) : 0;
+  // % de consumo já gasto
+  const percGasto = orcado > 0 ? (comprado / orcado) * 100 : 0;
+  const isEstourado = orcado > 0 && saldo < 0;
+
+  // Cor e gradiente da bateria de acordo com a carga restante
+  let batteryGrad = "from-emerald-500 via-emerald-400 to-green-300";
+  let batteryBorder = "border-emerald-500/50";
+  let badgeClass = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+  let statusText = "Carga Confortável";
+  let StatusIcon = BatteryFull;
+
+  if (isEstourado) {
+    batteryGrad = "from-rose-600 to-red-600";
+    batteryBorder = "border-rose-500/70 shadow-[0_0_15px_rgba(244,63,94,0.3)]";
+    badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse";
+    statusText = "Orçamento Estourado";
+    StatusIcon = BatteryWarning;
+  } else if (percRestante < 20) {
+    batteryGrad = "from-rose-500 via-red-500 to-orange-400";
+    batteryBorder = "border-rose-500/50";
+    badgeClass = "bg-rose-500/15 text-rose-400 border-rose-500/30";
+    statusText = "Bateria Baixa (<20%)";
+    StatusIcon = BatteryLow;
+  } else if (percRestante <= 45) {
+    batteryGrad = "from-amber-400 via-yellow-400 to-amber-300";
+    batteryBorder = "border-amber-500/50";
+    badgeClass = "bg-amber-500/15 text-amber-400 border-amber-500/30";
+    statusText = "Atenção ao Teto";
+    StatusIcon = BatteryMedium;
+  }
+
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
+  return (
+    <div
+      className={`p-4 rounded-2xl bg-slate-900/90 border transition-all duration-300 flex flex-col gap-3 group relative overflow-hidden ${
+        selected ? 'border-primary ring-2 ring-primary/20 bg-slate-900 shadow-xl' : 'border-white/10 hover:border-white/20'
+      }`}
+    >
+      {/* Topo do Card */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`p-2 rounded-xl border ${badgeClass} shrink-0`}>
+            <StatusIcon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-bold text-sm text-white truncate group-hover:text-primary transition-colors">
+              {compradorNome}
+            </h4>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400">
+              <span className="font-mono">ID {idUsuario}</span>
+              <span>•</span>
+              <span>{totalPedidos} pedidos</span>
+            </div>
+          </div>
+        </div>
+
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${badgeClass}`}>
+          {statusText}
+        </span>
+      </div>
+
+      {/* Gráfico da Bateria Física */}
+      <div className="flex flex-col gap-1.5 mt-0.5">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-slate-400 font-medium flex items-center gap-1">
+            <Zap className="w-3 h-3 text-amber-400" />
+            Nível da Verba:
+          </span>
+          <span className={`font-mono font-bold ${isEstourado ? 'text-rose-400' : 'text-slate-200'}`}>
+            {isEstourado ? `+${(percGasto - 100).toFixed(1)}% acima do teto` : `${percRestante.toFixed(1)}% disponível`}
+          </span>
+        </div>
+
+        {/* Bateria com Terminal */}
+        <div className="flex items-center">
+          <div className={`relative flex-1 h-8 bg-slate-950 rounded-lg border-2 p-0.5 flex items-center overflow-hidden shadow-inner ${batteryBorder}`}>
+            {/* Grade de segmentos (25% cada) */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0c_1px,transparent_1px)] bg-[size:25%_100%] pointer-events-none z-10" />
+
+            {/* Barra de carga que vai diminuindo / descontando conforme consome */}
+            <div
+              className={`h-full rounded-sm transition-all duration-700 bg-gradient-to-r ${batteryGrad} relative z-0`}
+              style={{ width: `${Math.max(0, Math.min(100, percRestante))}%` }}
+            >
+              {/* Efeito de brilho na parte superior */}
+              <div className="absolute inset-x-0 top-0 h-1/2 bg-white/30 rounded-t-sm" />
+            </div>
+
+            {/* Texto interno sobreposto com contraste */}
+            <div className="absolute inset-0 flex items-center justify-between px-2.5 text-[10px] font-mono font-bold text-white drop-shadow z-20 pointer-events-none">
+              <span>{percGasto.toFixed(0)}% GASTO</span>
+              <span>{saldo >= 0 ? `${fmt(saldo)} RESTA` : 'ESGOTADO'}</span>
+            </div>
+          </div>
+
+          {/* Polo Positivo da Bateria (+) */}
+          <div className="w-1.5 h-4 bg-slate-600 rounded-r border-y-2 border-r-2 border-slate-600 shrink-0 -ml-px" />
+        </div>
+      </div>
+
+      {/* Valores Detalhados: Orçado, Comprado e Falta para Acabar */}
+      <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-white/5 text-[10px]">
+        <div>
+          <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Orçamento</span>
+          <span className="font-bold text-purple-400 font-mono text-[11px] truncate block mt-0.5">
+            {orcado > 0 ? fmt(orcado) : '-'}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Já Comprado</span>
+          <span className="font-bold text-indigo-400 font-mono text-[11px] truncate block mt-0.5">
+            {fmt(comprado)}
+          </span>
+        </div>
+
+        <div className="text-right">
+          <span className="text-slate-400 block text-[9px] uppercase tracking-wider font-semibold">Falta p/ Acabar</span>
+          <span className={`font-bold font-mono text-[11px] truncate block mt-0.5 ${saldo >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {orcado > 0 ? fmt(saldo) : '-'}
+          </span>
+        </div>
+      </div>
+
+      {/* Ação rápida */}
+      {onVerPedidos && (
+        <button
+          onClick={onVerPedidos}
+          className="w-full mt-0.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-[11px] font-semibold transition-all flex items-center justify-center gap-1.5"
+        >
+          Filtrar Pedidos deste Comprador
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface PedidosCompradoresModuleProps {
   selectedStore?: string;
   globalStartDate?: string;
@@ -71,14 +244,17 @@ export function PedidosCompradoresModule({
   globalEndDate
 }: PedidosCompradoresModuleProps) {
   // Estados de Filtros
-  const [activeTab, setActiveTab] = useState<'compradores' | 'graficos' | 'orcamentos' | 'pedidos'>('compradores');
+  const [activeTab, setActiveTab] = useState<'compradores' | 'baterias' | 'graficos' | 'orcamentos' | 'pedidos'>('compradores');
   const [periodoPreset, setPeriodoPreset] = useState<'mes_atual' | '7d' | '15d' | '30d' | 'custom'>('30d');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [filtroLoja, setFiltroLoja] = useState<string>(selectedStore);
   const [filtroComprador, setFiltroComprador] = useState<string>('todos');
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'entregue' | 'pendente'>('todos');
+  const [filtroSecao, setFiltroSecao] = useState<string>('todas');
+  const [filtroDepartamento, setFiltroDepartamento] = useState<string>('todos');
   const [busca, setBusca] = useState('');
+  const [filtrosExpanded, setFiltrosExpanded] = useState(false);
 
   // Estados dos Gráficos
   const [graficoModoLoja, setGraficoModoLoja] = useState<'total' | 'empilhado'>('total');
@@ -87,7 +263,10 @@ export function PedidosCompradoresModule({
 
   // Dados das APIs
   const [empresas, setEmpresas] = useState<any[]>([]);
+  const [secoesFiltro, setSecoesFiltro] = useState<any[]>([]);
+  const [departamentosFiltro, setDepartamentosFiltro] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFiltros, setLoadingFiltros] = useState(false);
   const [kpis, setKpis] = useState<any>({
     totalPedidos: 0,
     pedidosEntregues: 0,
@@ -164,6 +343,31 @@ export function PedidosCompradoresModule({
     if (selectedStore) setFiltroLoja(selectedStore);
   }, [selectedStore]);
 
+  // Carregar seções e departamentos disponíveis para filtro
+  const carregarFiltrosMetadata = async () => {
+    if (!startDate || !endDate) return;
+    setLoadingFiltros(true);
+    try {
+      let url = `/api/pedidos-compradores/filtros?startDate=${startDate}&endDate=${endDate}`;
+      if (filtroLoja && filtroLoja !== 'todas') url += `&idEmpresa=${filtroLoja}`;
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.secoes) setSecoesFiltro(json.secoes);
+      if (json.departamentos) setDepartamentosFiltro(json.departamentos);
+    } catch (e) {
+      console.error('Erro ao carregar metadados de filtros:', e);
+    } finally {
+      setLoadingFiltros(false);
+    }
+  };
+
+  // Recarregar seções/departamentos quando loja ou datas mudam
+  useEffect(() => {
+    if (startDate && endDate) {
+      carregarFiltrosMetadata();
+    }
+  }, [startDate, endDate, filtroLoja]);
+
   // Carregar dados principais
   const carregarDados = async () => {
     if (!startDate || !endDate) return;
@@ -213,6 +417,8 @@ export function PedidosCompradoresModule({
       if (filtroLoja && filtroLoja !== 'todas') urlPed += `&idEmpresa=${filtroLoja}`;
       if (filtroComprador && filtroComprador !== 'todos') urlPed += `&compradorId=${filtroComprador}`;
       if (filtroStatus && filtroStatus !== 'todos') urlPed += `&status=${filtroStatus}`;
+      if (filtroSecao && filtroSecao !== 'todas') urlPed += `&secao=${filtroSecao}`;
+      if (filtroDepartamento && filtroDepartamento !== 'todos') urlPed += `&departamento=${filtroDepartamento}`;
       if (busca && busca.trim()) urlPed += `&busca=${encodeURIComponent(busca.trim())}`;
 
       const resPed = await fetch(urlPed);
@@ -253,7 +459,7 @@ export function PedidosCompradoresModule({
     if (startDate && endDate) {
       carregarPedidos();
     }
-  }, [filtroStatus, busca]);
+  }, [filtroStatus, busca, filtroSecao, filtroDepartamento]);
 
   // Abrir Modal de Itens do Pedido
   const abrirItensPedido = async (pedido: any) => {
@@ -420,7 +626,94 @@ export function PedidosCompradoresModule({
             ))}
           </select>
         </div>
+
+        {/* Botão Expandir Filtros Avançados */}
+        <button
+          onClick={() => setFiltrosExpanded(v => !v)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
+            filtrosExpanded || filtroSecao !== 'todas' || filtroDepartamento !== 'todos'
+              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+              : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filtros Avançados
+          {(filtroSecao !== 'todas' || filtroDepartamento !== 'todos') && (
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+          )}
+        </button>
       </div>
+
+      {/* Filtros Avançados (Seção e Departamento) */}
+      {filtrosExpanded && (
+        <div className="glass-strong px-4 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex flex-wrap items-center gap-4 text-xs">
+          <div className="flex items-center gap-2 text-amber-400 font-semibold shrink-0">
+            <SlidersHorizontal className="w-4 h-4" />
+            Filtros de Gastos Detalhados:
+          </div>
+
+          {/* Filtro por Seção */}
+          <div className="flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={filtroSecao}
+              onChange={(e) => setFiltroSecao(e.target.value)}
+              disabled={loadingFiltros}
+              className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500 text-xs disabled:opacity-50"
+            >
+              <option value="todas">Todas as Seções</option>
+              {secoesFiltro.map((s) => (
+                <option key={s.id} value={s.id}>{s.descr}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro por Departamento */}
+          <div className="flex items-center gap-2">
+            <Tag className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={filtroDepartamento}
+              onChange={(e) => setFiltroDepartamento(e.target.value)}
+              disabled={loadingFiltros}
+              className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500 text-xs disabled:opacity-50"
+            >
+              <option value="todos">Todos os Departamentos</option>
+              {departamentosFiltro.map((d) => (
+                <option key={d.id} value={d.id}>{d.descr}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Indicadores de filtros ativos */}
+          {(filtroSecao !== 'todas' || filtroDepartamento !== 'todos') && (
+            <div className="flex items-center gap-2 ml-auto">
+              {filtroSecao !== 'todas' && (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                  <Layers className="w-3 h-3" />
+                  {secoesFiltro.find(s => String(s.id) === String(filtroSecao))?.descr || 'Seção'}
+                  <button onClick={() => setFiltroSecao('todas')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              {filtroDepartamento !== 'todos' && (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                  <Tag className="w-3 h-3" />
+                  {departamentosFiltro.find(d => String(d.id) === String(filtroDepartamento))?.descr || 'Depto'}
+                  <button onClick={() => setFiltroDepartamento('todos')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
+                </span>
+              )}
+              <button
+                onClick={() => { setFiltroSecao('todas'); setFiltroDepartamento('todos'); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-[10px] font-bold transition"
+              >
+                <X className="w-3 h-3" /> Limpar Filtros
+              </button>
+            </div>
+          )}
+          {loadingFiltros && (
+            <span className="text-slate-500 text-[10px] animate-pulse ml-auto">Carregando opções...</span>
+          )}
+        </div>
+      )}
 
       {/* 3. CARDS DE KPIS EXECUTIVOS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -522,7 +815,7 @@ export function PedidosCompradoresModule({
       </div>
 
       {/* 4. SELETOR DE ABAS DO MÓDULO */}
-      <div className="flex items-center gap-4 border-b border-white/10 pb-1">
+      <div className="flex items-center gap-4 border-b border-white/10 pb-1 flex-wrap">
         <button
           onClick={() => setActiveTab('compradores')}
           className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'compradores' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
@@ -531,6 +824,17 @@ export function PedidosCompradoresModule({
           Acompanhamento por Comprador
           <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-mono">
             {compradores.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('baterias')}
+          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'baterias' ? 'border-emerald-400 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+        >
+          <BatteryCharging className="w-4 h-4 text-emerald-400" />
+          Baterias de Orçamento (Carga)
+          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 font-mono font-bold animate-pulse">
+            AO VIVO
           </span>
         </button>
 
@@ -570,116 +874,237 @@ export function PedidosCompradoresModule({
 
       {/* 5. CONTEÚDO DAS ABAS */}
 
-      {/* ABA 1: COMPRADORES */}
+      {/* ABA 1: COMPRADORES COM PAINEL LATERAL DE BATERIAS */}
       {activeTab === 'compradores' && (
-        <div className="glass-strong rounded-2xl p-6 border border-white/5 flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-            <div>
-              <h3 className="text-base font-bold font-serif text-slate-100">
-                Desempenho & Pedidos por Comprador
-              </h3>
-              <p className="text-xs text-slate-400">
-                Relação de pedidos digitados, status de entrega validado pela entrada de NF e cumprimento da verba orçamentária.
-              </p>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+          {/* COLUNA PRINCIPAL (ESQUERDA - 8 COLS): TABELA DETALHADA */}
+          <div className="xl:col-span-8 flex flex-col gap-4">
+            <div className="glass-strong rounded-2xl p-6 border border-white/5 flex flex-col gap-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-bold font-serif text-slate-100 flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    Desempenho & Pedidos por Comprador
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Relação de pedidos digitados, status de entrega validado pela entrada de NF e cumprimento da verba orçamentária.
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-3 font-semibold">Comprador</th>
+                      <th className="py-3 px-2 font-semibold text-center">Pedidos</th>
+                      <th className="py-3 px-2 font-semibold text-center">Entregues</th>
+                      <th className="py-3 px-2 font-semibold text-center">% Ent.</th>
+                      <th className="py-3 px-3 font-semibold text-right">Comprado (R$)</th>
+                      <th className="py-3 px-3 font-semibold text-right">Orçado (CISS)</th>
+                      <th className="py-3 px-3 font-semibold text-right">Saldo Verba</th>
+                      <th className="py-3 px-2 font-semibold text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {compradores.map((comp, idx) => {
+                      const percEnt = comp.TOTAL_PEDIDOS > 0 ? (comp.PEDIDOS_ENTREGUES / comp.TOTAL_PEDIDOS) * 100 : 0;
+                      const saldo = comp.ORCADO > 0 ? comp.ORCADO - comp.VALOR_TOTAL_COMPRADO : 0;
+                      const isFiltroAtivo = String(filtroComprador) === String(comp.IDUSUARIO);
+
+                      return (
+                        <tr 
+                          key={comp.IDUSUARIO || idx} 
+                          className={`hover:bg-white/[0.04] transition cursor-pointer ${isFiltroAtivo ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
+                          onClick={() => setFiltroComprador(isFiltroAtivo ? 'todos' : String(comp.IDUSUARIO))}
+                        >
+                          <td className="py-3.5 px-3 font-semibold text-slate-200 flex items-center gap-2">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: cores[idx % cores.length] }}
+                            />
+                            <div>
+                              <span>{comp.COMPRADOR}</span>
+                              <span className="block text-[10px] text-slate-500 font-mono">ID {comp.IDUSUARIO}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-2 text-center font-mono font-bold text-slate-100">
+                            {comp.TOTAL_PEDIDOS}
+                          </td>
+                          <td className="py-3.5 px-2 text-center font-mono font-bold text-emerald-400">
+                            {comp.PEDIDOS_ENTREGUES}
+                          </td>
+                          <td className="py-3.5 px-2 text-center">
+                            <span className="font-mono text-[10px] text-slate-300">
+                              {percEnt.toFixed(0)}%
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-indigo-400">
+                            {fmtMoeda(comp.VALOR_TOTAL_COMPRADO)}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono text-purple-400">
+                            {comp.ORCADO > 0 ? fmtMoeda(comp.ORCADO) : '-'}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold">
+                            {comp.ORCADO > 0 ? (
+                              <span className={saldo >= 0 ? 'text-emerald-400' : 'text-rose-400 font-black'}>
+                                {fmtMoeda(saldo)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">-</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-2 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFiltroComprador(String(comp.IDUSUARIO));
+                                setActiveTab('pedidos');
+                              }}
+                              className="px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition"
+                            >
+                              Ver Pedidos
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {compradores.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-8 text-center text-slate-500">
+                          Nenhum dado encontrado para o período selecionado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4 font-semibold">Comprador</th>
-                  <th className="py-3 px-4 font-semibold text-center">Pedidos Digitados</th>
-                  <th className="py-3 px-4 font-semibold text-center">Entregues (NF)</th>
-                  <th className="py-3 px-4 font-semibold text-center">Pendentes</th>
-                  <th className="py-3 px-4 font-semibold text-center">% Entregue</th>
-                  <th className="py-3 px-4 font-semibold text-right">Valor Comprado (R$)</th>
-                  <th className="py-3 px-4 font-semibold text-right">Valor Entregue</th>
-                  <th className="py-3 px-4 font-semibold text-right">Valor Pendente</th>
-                  <th className="py-3 px-4 font-semibold text-right">Orçamento CISS</th>
-                  <th className="py-3 px-4 font-semibold text-right">Saldo Verba</th>
-                  <th className="py-3 px-4 font-semibold text-center">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {compradores.map((comp, idx) => {
-                  const percEnt = comp.TOTAL_PEDIDOS > 0 ? (comp.PEDIDOS_ENTREGUES / comp.TOTAL_PEDIDOS) * 100 : 0;
-                  const saldo = comp.ORCADO > 0 ? comp.ORCADO - comp.VALOR_TOTAL_COMPRADO : 0;
-                  return (
-                    <tr key={comp.IDUSUARIO || idx} className="hover:bg-white/[0.02] transition">
-                      <td className="py-3.5 px-4 font-semibold text-slate-200 flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: cores[idx % cores.length] }}
-                        />
-                        {comp.COMPRADOR}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-100">
-                        {comp.TOTAL_PEDIDOS}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-400">
-                        {comp.PEDIDOS_ENTREGUES}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-mono font-bold text-amber-400">
-                        {comp.PEDIDOS_PENDENTES}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-emerald-500 rounded-full"
-                              style={{ width: `${Math.min(percEnt, 100)}%` }}
-                            />
-                          </div>
-                          <span className="font-mono text-[10px] text-slate-400">
-                            {percEnt.toFixed(0)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-indigo-400">
-                        {fmtMoeda(comp.VALOR_TOTAL_COMPRADO)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-emerald-400">
-                        {fmtMoeda(comp.VALOR_ENTREGUE)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-amber-400">
-                        {fmtMoeda(comp.VALOR_PENDENTE)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono text-purple-400">
-                        {comp.ORCADO > 0 ? fmtMoeda(comp.ORCADO) : '-'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold">
-                        {comp.ORCADO > 0 ? (
-                          <span className={saldo >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                            {fmtMoeda(saldo)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">-</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          onClick={() => {
-                            setFiltroComprador(String(comp.IDUSUARIO));
-                            setActiveTab('pedidos');
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition"
-                        >
-                          Ver Pedidos
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {compradores.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="py-8 text-center text-slate-500">
-                      Nenhum dado encontrado para o período selecionado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          {/* COLUNA LATERAL (DIREITA - 4 COLS): PAINEL DE BATERIAS DE ORÇAMENTO */}
+          <div className="xl:col-span-4 flex flex-col gap-4 sticky top-4">
+            {/* Header do Painel Lateral */}
+            <div className="glass-strong rounded-2xl p-4 border border-white/10 flex items-center justify-between bg-gradient-to-r from-slate-900 to-emerald-950/30">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                  <BatteryCharging className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-white">Nível das Baterias</h4>
+                  <p className="text-[10px] text-slate-400">Saldo restante descontado em tempo real</p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {compradores.length} COMPRADORES
+              </span>
+            </div>
+
+            {/* Bateria Consolidada da Rede */}
+            {kpis.totalOrcado > 0 && (
+              <BatteryBudgetGauge
+                compradorNome="Bateria Geral da Rede"
+                idUsuario={0}
+                orcado={kpis.totalOrcado}
+                comprado={kpis.valorTotalComprado}
+                saldo={kpis.saldoOrcamento}
+                totalPedidos={kpis.totalPedidos}
+              />
+            )}
+
+            {/* Baterias Individuais por Comprador */}
+            <div className="flex flex-col gap-3">
+              {compradores.map((comp) => (
+                <BatteryBudgetGauge
+                  key={comp.IDUSUARIO}
+                  compradorNome={comp.COMPRADOR}
+                  idUsuario={comp.IDUSUARIO}
+                  orcado={comp.ORCADO}
+                  comprado={comp.VALOR_TOTAL_COMPRADO}
+                  saldo={comp.SALDO_ORCAMENTO}
+                  totalPedidos={comp.TOTAL_PEDIDOS}
+                  selected={String(filtroComprador) === String(comp.IDUSUARIO)}
+                  onVerPedidos={() => {
+                    setFiltroComprador(String(comp.IDUSUARIO));
+                    setActiveTab('pedidos');
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ABA NOVA: BATERIAS DE ORÇAMENTO (VISÃO DEDICADA AMPLA) */}
+      {activeTab === 'baterias' && (
+        <div className="flex flex-col gap-6">
+          <div className="glass-strong rounded-2xl p-6 border border-white/10 relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
+                  <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                    <BatteryCharging className="size-6 text-emerald-400" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white font-serif flex items-center gap-2">
+                    Monitoramento de Carga de Orçamento (Baterias de Compra)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Acompanhamento simultâneo do consumo da verba por comprador — a bateria descarrega conforme novos pedidos são digitados
+                  </p>
+                </div>
+              </div>
+
+              {/* Legenda de Cores da Bateria */}
+              <div className="flex items-center gap-3 text-xs bg-black/40 border border-white/10 px-3.5 py-2 rounded-xl">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  &gt; 45% (Confortável)
+                </span>
+                <span className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  20% a 45% (Atenção)
+                </span>
+                <span className="flex items-center gap-1.5 text-rose-400 font-semibold text-[11px]">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  &lt; 20% (Crítico / Esgotado)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Panorâmico de Baterias */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Bateria Master da Rede */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <BatteryBudgetGauge
+                compradorNome="Bateria Geral Consolidada da Rede (Todos os Compradores)"
+                idUsuario={0}
+                orcado={kpis.totalOrcado}
+                comprado={kpis.valorTotalComprado}
+                saldo={kpis.saldoOrcamento}
+                totalPedidos={kpis.totalPedidos}
+              />
+            </div>
+
+            {/* Baterias Individuais */}
+            {compradores.map((comp) => (
+              <BatteryBudgetGauge
+                key={comp.IDUSUARIO}
+                compradorNome={comp.COMPRADOR}
+                idUsuario={comp.IDUSUARIO}
+                orcado={comp.ORCADO}
+                comprado={comp.VALOR_TOTAL_COMPRADO}
+                saldo={comp.SALDO_ORCAMENTO}
+                totalPedidos={comp.TOTAL_PEDIDOS}
+                selected={String(filtroComprador) === String(comp.IDUSUARIO)}
+                onVerPedidos={() => {
+                  setFiltroComprador(String(comp.IDUSUARIO));
+                  setActiveTab('pedidos');
+                }}
+              />
+            ))}
           </div>
         </div>
       )}

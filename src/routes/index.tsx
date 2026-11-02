@@ -2,6 +2,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/executive/Sidebar";
 import { KpiCards } from "@/components/executive/KpiCards";
+import { PaymentMethodsCard } from "@/components/executive/PaymentMethodsCard";
+import { VendasPorBandeiraModule } from "@/components/executive/VendasPorBandeiraModule";
 import { DepartmentMarginPanel } from "@/components/executive/DepartmentMarginPanel";
 import { StoreRanking } from "@/components/executive/StoreRanking";
 import { CategoryBreakdown } from "@/components/executive/CategoryBreakdown";
@@ -27,6 +29,8 @@ import { MetasGerenciaisModule } from "@/components/executive/MetasGerenciaisMod
 import { SugestoesComprasModule } from "@/components/executive/SugestoesComprasModule";
 import { PainelGerenteMobileModule } from "@/components/executive/PainelGerenteMobileModule";
 import { PedidosCompradoresModule } from "@/components/executive/PedidosCompradoresModule";
+import { UserManagementModule } from "@/components/executive/UserManagementModule";
+import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
@@ -47,9 +51,24 @@ const get30DaysAgoStr = () => {
 };
 
 function Dashboard() {
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem("horus_session_user") : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [authChecked, setAuthChecked] = useState(true);
-  const [authenticated, setAuthenticated] = useState(true);
-  const [username, setUsername] = useState("cristiano");
+  const [authenticated, setAuthenticated] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' ? !!localStorage.getItem("horus_session_user") : false;
+    } catch {
+      return false;
+    }
+  });
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   
@@ -59,6 +78,10 @@ function Dashboard() {
     window.location.search.includes('mobile=true')
   );
   
+  const isSuperAdmin = currentUser?.role === "superadmin" || 
+    currentUser?.username?.toLowerCase() === "cristiano" || 
+    currentUser?.permissions?.includes("*");
+
   const [activeTab, setActiveTab] = useState(() => isMobileDevice ? "painel-gerente" : "visao-geral");
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
@@ -70,12 +93,21 @@ function Dashboard() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
+  // Redireciona para o primeiro módulo liberado caso o usuário não tenha acesso à aba atual
   useEffect(() => {
-    // Sincronização inicial de lojas e estoque
+    if (!currentUser || isSuperAdmin) return;
+    const perms = Array.isArray(currentUser.permissions) ? currentUser.permissions : [];
+    if (perms.length > 0 && !perms.includes(activeTab)) {
+      setActiveTab(perms[0]);
+    }
+  }, [currentUser, activeTab, isSuperAdmin]);
+
+  useEffect(() => {
+    if (!authenticated) return;
     const performSync = () => {
       Promise.all([
-        fetch('/api/empresas').then(res => res.json()).then(data => { if (!data.error) setDbLojas(data); }),
-        fetch('/api/estoque').then(res => res.json()).then(data => { if (!data.error) setDbEstoque(data); })
+        fetch('/api/empresas').then(res => res.json()).then(data => { if (!data.error && Array.isArray(data)) setDbLojas(data); }),
+        fetch('/api/estoque').then(res => res.json()).then(data => { if (!data.error && Array.isArray(data)) setDbEstoque(data); })
       ]).then(() => {
         const date = new Date();
         const formatted = date.toLocaleString('pt-BR', {
@@ -92,32 +124,27 @@ function Dashboard() {
       });
     };
 
-    performSync(); // Run immediately
-    const interval = setInterval(performSync, 5 * 60 * 1000); // Sync every 5 minutes
-
+    performSync();
+    const interval = setInterval(performSync, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [authenticated]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      toast.error("Informe usuário e senha.");
+      return;
+    }
     setAuthLoading(true);
 
     try {
-      if (username.toLowerCase() === "cristiano") {
-        if (password !== "91126395") {
-          throw new Error("Senha de administrador incorreta.");
-        }
-        // Super Admin bypass
-        setPassword("");
-        setAuthenticated(true);
-        toast.success("Acesso liberado: Super Admin Cristiano");
-        return;
-      }
+      const cleanUser = username.trim().toLowerCase();
+      const cleanPass = password.trim();
 
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: cleanUser, password: cleanPass }),
       });
       const data = await res.json();
 
@@ -125,10 +152,15 @@ function Dashboard() {
         throw new Error(data.error || "Falha ao entrar");
       }
 
-      setPassword("");
+      try {
+        localStorage.setItem("horus_session_user", JSON.stringify(data.user));
+      } catch (_) {}
+
+      setCurrentUser(data.user);
       setAuthenticated(true);
-      toast.success("Acesso liberado");
-    } catch (err) {
+      setPassword("");
+      toast.success(`Acesso liberado: Bem-vindo, ${data.user.nome || data.user.username}!`);
+    } catch (err: any) {
       toast.error(err instanceof Error ? err.message : "Falha ao entrar");
     } finally {
       setAuthLoading(false);
@@ -136,10 +168,15 @@ function Dashboard() {
   };
 
   const logout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    try {
+      localStorage.removeItem("horus_session_user");
+    } catch (_) {}
+    setCurrentUser(null);
     setAuthenticated(false);
     setDbLojas([]);
     setDbEstoque([]);
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    toast.info("Você saiu do sistema.");
   };
 
   if (!authChecked) {
@@ -183,6 +220,8 @@ function Dashboard() {
               </Button>
             </div>
             <Sidebar 
+              currentUser={currentUser}
+              onLogout={logout}
               activeTab={activeTab} 
               setActiveTab={setActiveTab} 
               selectedStore={selectedStore} 
@@ -315,6 +354,7 @@ function Dashboard() {
         {activeTab === "visao-geral" && (
           <div className="flex flex-col gap-4">
             <KpiCards selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+            <PaymentMethodsCard selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-4">
                 <DepartmentMarginPanel mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
@@ -369,6 +409,20 @@ function Dashboard() {
 
               </div>
             </div>
+        )}
+
+        {/* Vendas por Bandeira de Cartão Tab */}
+        {activeTab === "vendas-bandeira" && (
+          <VendasPorBandeiraModule 
+            selectedStore={selectedStore} 
+            startDate={startDate} 
+            endDate={endDate} 
+          />
+        )}
+
+        {/* Contas a Pagar / Boletos Tab */}
+        {activeTab === "contas-pagar" && (
+          <ContasPagarModule selectedStore={selectedStore} />
         )}
 
         {/* Metas Gerenciais de Vendas Tab */}
@@ -432,9 +486,9 @@ function Dashboard() {
           />
         )}
 
-        {/* Compras Tab */}
+        {/* Setor de Compras Tab com Gestão de Orçamentos e Baterias */}
         {activeTab === "compras" && (
-          <PurchasesModule 
+          <PedidosCompradoresModule 
             selectedStore={selectedStore} 
             globalStartDate={startDate} 
             globalEndDate={endDate} 
@@ -521,6 +575,11 @@ function Dashboard() {
         )}
 
         {/* Gestão de Pedidos & Orçamentos (Compradores) Tab */}
+        {/* Gestão de Usuários & Permissões (Exclusivo Cristiano / Super Admin) */}
+        {activeTab === "gestao-usuarios" && (
+          <UserManagementModule currentUser={currentUser} />
+        )}
+
         {activeTab === "pedidos-compradores" && (
           <PedidosCompradoresModule
             selectedStore={selectedStore}
@@ -530,7 +589,7 @@ function Dashboard() {
         )}
 
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "pedidos-compradores" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
+        {activeTab !== "visao-geral" && activeTab !== "gestao-usuarios" && activeTab !== "pedidos-compradores" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>

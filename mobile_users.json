@@ -1,12 +1,105 @@
 [
   {
     "id": "admin-1",
-    "nome": "Cristiano (Administrador)",
+    "nome": "Cristiano",
     "username": "cristiano",
     "password": "91126395",
     "idEmpresa": "todas",
-    "role": "admin",
+    "role": "superadmin",
     "status": "APROVADO",
+    "permissions": [
+      "*"
+    ],
     "createdAt": "2026-10-15T13:20:56.228Z"
+  },
+  {
+    "id": "usr-1792525745823",
+    "nome": "ewerton",
+    "username": "ewerton",
+    "password": "123456",
+    "role": "user",
+    "permissions": [
+      "visao-geral",
+      "vendas-bandeira",
+      "pedidos-compradores",
+      "sugestoes-compras",
+      "gerencial",
+      "promocoes",
+      "validade-critica",
+      "entradas",
+      "auditor-fiscal",
+      "comercial",
+      "campanhas",
+      "estoque",
+      "rupturas",
+      "compras",
+      "metas-vendas",
+      "contas-pagar"
+    ],
+    "idEmpresa": "todas",
+    "status": "APROVADO",
+    "createdAt": "2026-10-20T19:49:05.823Z",
+    "updatedAt": "2026-11-02T16:05:00.000Z"
+  },
+  {
+    "id": "usr-1792525778989",
+    "nome": "mycherlanne",
+    "username": "mycherlanne",
+    "password": "123456",
+    "role": "user",
+    "permissions": [
+      "visao-geral",
+      "vendas-bandeira",
+      "pedidos-compradores",
+      "sugestoes-compras",
+      "painel-gerente",
+      "metas-vendas",
+      "gerencial",
+      "promocoes",
+      "validade-critica",
+      "entradas",
+      "auditor-fiscal",
+      "comercial",
+      "campanhas",
+      "estoque",
+      "rupturas",
+      "compras",
+      "rh",
+      "rastreamento",
+      "multiempresa",
+      "configuracoes",
+      "cybertech-admin",
+      "contas-pagar"
+    ],
+    "idEmpresa": "todas",
+    "status": "APROVADO",
+    "createdAt": "2026-10-20T19:49:38.990Z",
+    "updatedAt": "2026-11-02T16:05:00.000Z"
+  },
+  {
+    "id": "usr-albuquerque-admin",
+    "nome": "Gestão Albuquerque",
+    "username": "albuquerque",
+    "password": "123",
+    "role": "admin",
+    "permissions": [
+      "*"
+    ],
+    "idEmpresa": "todas",
+    "status": "APROVADO",
+    "createdAt": "2026-11-02T16:05:00.000Z"
+  },
+  {
+    "id": "usr-albuquerque-default",
+    "nome": "Administrador Albuquerque",
+    "username": "admin",
+    "password": "admin",
+    "role": "admin",
+    "permissions": [
+      "*"
+    ],
+    "idEmpresa": "todas",
+    "status": "APROVADO",
+    "createdAt": "2026-11-02T16:05:00.000Z"
   }
 ]

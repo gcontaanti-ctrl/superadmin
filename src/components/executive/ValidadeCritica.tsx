@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { AlertCircle, AlertTriangle, Clock, Search, ShieldAlert, Store, User, Filter, PackageSearch, RefreshCw, Printer, AlertOctagon, Download } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Clock, Search, ShieldAlert, Store, User, Filter, PackageSearch, RefreshCw, Printer, AlertOctagon, Download, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 interface ValidadeItem {
+  idProduto?: number;
   loja: string;
   produto: string;
   notaFiscal: string;
@@ -158,11 +159,16 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
   const filteredItems = useMemo(() => {
     if (!itens) return [];
     if (!searchTerm) return itens;
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
     return itens.filter(item => 
-      item.produto.toLowerCase().includes(term) || 
-      item.notaFiscal.toLowerCase().includes(term) ||
-      item.loja.toLowerCase().includes(term)
+      (item.produto && item.produto.toLowerCase().includes(term)) || 
+      (item.notaFiscal && item.notaFiscal.toLowerCase().includes(term)) ||
+      (item.loja && item.loja.toLowerCase().includes(term)) ||
+      String(item.idProduto || '').includes(term) ||
+      (item.usuarioEntrada && item.usuarioEntrada.toLowerCase().includes(term)) ||
+      (item.usuarioLiberou && item.usuarioLiberou.toLowerCase().includes(term)) ||
+      (item.dataValidade && String(item.dataValidade).includes(term)) ||
+      String(item.diasRestantes).includes(term)
     );
   }, [itens, searchTerm]);
 
@@ -212,8 +218,7 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
   }, [remessas]);
 
   const handlePrint = () => {
-    // Basic print logic omitted for brevity, keeping only the user alert
-    toast.error("Impressão não configurada para esta aba no momento.");
+    window.print();
   };
 
   const exportStoreToTxt = (storeName: string, items: AvariaItem[]) => {
@@ -264,52 +269,43 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
         </div>
       )}
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-strong p-6 rounded-2xl border border-white/5">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
-              {activeTab === 'vencimentos' ? <ShieldAlert className="w-6 h-6 text-rose-500" /> : <AlertOctagon className="w-6 h-6 text-rose-500" />}
-            </div>
-            {activeTab === 'vencimentos' ? 'Central de Validade Crítica' : 'Controle de Avarias e Trocas'}
-          </h2>
-          <p className="text-slate-400 mt-2 text-sm max-w-2xl">
-            {activeTab === 'vencimentos' 
-              ? 'Monitoramento de produtos recebidos com vencimento próximo. Antecipe perdas e tome ações rápidas.'
-              : 'Visualização de lançamentos de avarias da sessão e área de troca. Restrito para lançamentos a partir de Abril/2026.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => activeTab === 'vencimentos' ? refetch() : refetchAvarias()} 
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" /> Atualizar
-          </button>
-        </div>
-      </div>
+      {/* Visualização de Tela Interativa (Ocultada na Impressão) */}
+      <div className="print-hidden space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-strong p-6 rounded-2xl border border-white/5">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
+              <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                {activeTab === 'vencimentos' ? <ShieldAlert className="w-6 h-6 text-rose-500" /> : <AlertOctagon className="w-6 h-6 text-rose-500" />}
+              </div>
+              {activeTab === 'vencimentos' ? 'Central de Validade Crítica' : 'Controle de Avarias e Trocas'}
+            </h2>
+            <p className="text-slate-400 mt-2 text-sm max-w-2xl">
+              {activeTab === 'vencimentos' 
+                ? 'Monitoramento de produtos recebidos com vencimento próximo. Antecipe perdas e tome ações rápidas.'
+                : 'Visualização de lançamentos de avarias da sessão e área de troca. Restrito para lançamentos a partir de Abril/2026.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button 
+              onClick={() => activeTab === 'vencimentos' ? refetch() : refetchAvarias()} 
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-medium transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" /> Atualizar
+            </button>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-xl w-max">
-        <button
-          onClick={() => setActiveTab('vencimentos')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'vencimentos' ? 'bg-rose-500/20 text-rose-300' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-        >
-          Validade Crítica (Vencimentos)
-        </button>
-        <button
-          onClick={() => setActiveTab('avarias')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'avarias' ? 'bg-rose-500/20 text-rose-300' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-        >
-          Avarias e Área de Troca
-        </button>
-        <button
-          onClick={() => setActiveTab('remessas')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'remessas' ? 'bg-rose-500/20 text-rose-300' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
-        >
-          Remessas Pendentes (Sem NF)
-        </button>
-      </div>
+            {/* Botão de Impressão de Relatório */}
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+              title="Imprimir relatório executivo com os produtos em lista e informações de validade ao lado"
+            >
+              <Printer className="w-4 h-4" /> Imprimir Relatório
+            </button>
+          </div>
+        </div>
+
+
 
       {activeTab === 'vencimentos' && (
         <>
@@ -459,6 +455,7 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
                   <tr className="bg-black/20 text-slate-400 font-medium text-xs uppercase tracking-wider border-b border-white/5">
                     <th className="px-5 py-4">Produto</th>
                     <th className="px-5 py-4">Local / NF</th>
+                    <th className="px-5 py-4 text-center">Validade Digitada</th>
                     <th className="px-5 py-4 text-center">Dias Restantes</th>
                     <th className="px-5 py-4 text-right">Qtd</th>
                     <th className="px-5 py-4 text-right">Custo Unit.</th>
@@ -468,16 +465,16 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {isLoading ? (
-                    <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">Carregando...</td></tr>
+                    <tr><td colSpan={8} className="px-5 py-8 text-center text-slate-500">Carregando...</td></tr>
                   ) : error ? (
-                    <tr><td colSpan={7} className="px-5 py-8 text-center text-rose-500 bg-rose-500/5">Falha ao carregar dados</td></tr>
+                    <tr><td colSpan={8} className="px-5 py-8 text-center text-rose-500 bg-rose-500/5">Falha ao carregar dados</td></tr>
                   ) : groupedItems.length === 0 ? (
-                    <tr><td colSpan={7} className="px-5 py-12 text-center text-slate-500">Nenhum produto encontrado.</td></tr>
+                    <tr><td colSpan={8} className="px-5 py-12 text-center text-slate-500">Nenhum produto encontrado.</td></tr>
                   ) : (
                     groupedItems.map(([storeName, items]) => (
                       <React.Fragment key={storeName}>
                         <tr className="bg-white/[0.03]">
-                          <td colSpan={7} className="px-5 py-3 font-semibold text-slate-300 border-t border-white/5">
+                          <td colSpan={8} className="px-5 py-3 font-semibold text-slate-300 border-t border-white/5">
                             <Store className="w-4 h-4 inline-block mr-2 text-slate-400" /> {storeName} <span className="text-xs font-normal text-slate-500 ml-2">({items.length} itens)</span>
                           </td>
                         </tr>
@@ -486,22 +483,53 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
                           const isAlerta = item.diasRestantes > 5 && item.diasRestantes <= 10;
                           const isAtencao = item.diasRestantes > 10 && item.diasRestantes <= 15;
                           const isAviso = item.diasRestantes > 15 && item.diasRestantes <= 20;
+                          const valDataFormatada = item.dataValidade 
+                            ? String(item.dataValidade).split('T')[0].split('-').reverse().join('/') 
+                            : '-';
 
                           return (
                           <tr key={`${storeName}-${idx}`} className="hover:bg-white/[0.02] transition-colors">
                             <td className="px-5 py-4 pl-10">
                               <div className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full shadow-sm ${isCritico ? 'bg-rose-500 shadow-rose-500/50 animate-pulse' : isAlerta ? 'bg-orange-500' : isAtencao ? 'bg-amber-500' : isAviso ? 'bg-cyan-500' : 'bg-slate-500'}`}></div>
+                                <div className={`w-2 h-2 rounded-full shadow-sm shrink-0 ${isCritico ? 'bg-rose-500 shadow-rose-500/50 animate-pulse' : isAlerta ? 'bg-orange-500' : isAtencao ? 'bg-amber-500' : isAviso ? 'bg-cyan-500' : 'bg-slate-500'}`}></div>
                                 <div className="flex flex-col">
                                   <span className="font-semibold text-slate-200">{item.produto}</span>
+                                  {item.idProduto && (
+                                    <span className="text-[11px] font-mono text-cyan-400 font-bold mt-0.5">
+                                      Cód. Interno: {item.idProduto}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
                             <td className="px-5 py-4">
-                              <span className="text-xs text-slate-400 font-mono mt-1">NF: #{item.notaFiscal}</span>
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-xs text-emerald-400 font-mono font-bold">NF: #{item.notaFiscal}</span>
+                                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-mono">
+                                  <span>{item.dataEntrada ? String(item.dataEntrada).split('T')[0].split('-').reverse().join('/') : '-'}</span>
+                                  {item.horaEntrada && (
+                                    <span className="text-cyan-400 bg-cyan-500/10 px-1 rounded border border-cyan-500/20">
+                                      {item.horaEntrada}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="px-5 py-4 text-center">
-                              {item.diasRestantes} dias
+                              <span className={`inline-flex items-center gap-1.5 font-mono font-bold text-xs px-2.5 py-1 rounded-lg border shadow-sm ${
+                                isCritico ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' :
+                                isAlerta ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                                isAtencao ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                                'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                              }`}>
+                                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                                {valDataFormatada}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <span className="font-mono text-xs text-slate-300">
+                                {item.diasRestantes} dias
+                              </span>
                             </td>
                             <td className="px-5 py-4 text-right">
                               {item.qtdRecebida} un
@@ -773,6 +801,162 @@ export function ValidadeCritica({ selectedStore }: { selectedStore?: string }) {
           </div>
         </div>
       )}
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* RELATÓRIO EXECUTIVO EXCLUSIVO PARA IMPRESSÃO DE VALIDADE (print-only)     */}
+      {/* ========================================================================= */}
+      <div className="print-only text-black bg-white p-6 font-sans">
+        {/* Cabeçalho do Relatório */}
+        <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-xl tracking-tight uppercase text-slate-900">
+                HORUS ANALYTICS
+              </span>
+              <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold border border-slate-300 text-slate-700">
+                PREVENÇÃO DE PERDAS
+              </span>
+            </div>
+            <h1 className="text-lg font-bold text-slate-900 mt-1">
+              RELATÓRIO DE PRODUTOS COM VALIDADE CRÍTICA
+            </h1>
+            <p className="text-xs text-slate-600 mt-0.5">
+              Unidade / Loja: <strong>{selectedStore && selectedStore !== 'todas' ? `Loja 0${selectedStore}` : 'Todas as Lojas (Consolidado)'}</strong>
+              {' | '}Faixa de Vencimento: <strong>{minDias} a {maxDias === 'todos' ? 'Todos os dias' : `${maxDias} dias restantes`}</strong>
+              {searchTerm.trim() && <> | Filtro: <strong>"{searchTerm}"</strong></>}
+            </p>
+          </div>
+
+          <div className="text-right text-[11px] text-slate-500">
+            <div>Emissão: <strong>{new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</strong></div>
+            <div>Total de Itens: <strong>{filteredItems.length} produtos</strong></div>
+            <div>Situação: <strong className="text-rose-700 font-bold">Atenção Imediata</strong></div>
+          </div>
+        </div>
+
+        {/* Resumo Financeiro em Cards Compactos */}
+        <div className="grid grid-cols-4 gap-3 mb-5 text-center text-xs">
+          <div className="border border-slate-300 rounded p-2 bg-slate-50">
+            <div className="text-slate-500 font-medium text-[10px] uppercase">Total de Itens</div>
+            <div className="text-base font-bold text-slate-900">{filteredItems.length}</div>
+          </div>
+          <div className="border border-slate-300 rounded p-2 bg-rose-50 border-rose-200">
+            <div className="text-rose-700 font-medium text-[10px] uppercase">Risco Crítico (≤ 5 dias)</div>
+            <div className="text-base font-bold text-rose-800">
+              {filteredItems.filter(i => i.diasRestantes <= 5).length}
+            </div>
+          </div>
+          <div className="border border-slate-300 rounded p-2 bg-orange-50 border-orange-200">
+            <div className="text-orange-700 font-medium text-[10px] uppercase">Alerta (6 a 10 dias)</div>
+            <div className="text-base font-bold text-orange-800">
+              {filteredItems.filter(i => i.diasRestantes > 5 && i.diasRestantes <= 10).length}
+            </div>
+          </div>
+          <div className="border-2 border-slate-900 rounded p-2 bg-slate-100">
+            <div className="text-slate-700 font-bold text-[10px] uppercase">CUSTO TOTAL EM RISCO</div>
+            <div className="text-base font-extrabold text-slate-950">
+              {filteredItems.reduce((acc, i) => acc + (i.valorTotal || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
+          </div>
+        </div>
+
+        {/* Tabela de Produtos Formatada em Lista com Informações ao Lado */}
+        <table className="w-full text-left text-[10px] border-collapse border border-slate-300">
+          <thead>
+            <tr className="bg-slate-200 text-slate-900 font-bold uppercase border-b border-slate-300 text-[9px]">
+              <th className="p-1.5 border border-slate-300 text-center w-16">Cód. Interno</th>
+              <th className="p-1.5 border border-slate-300">Descrição do Produto</th>
+              <th className="p-1.5 border border-slate-300 w-24">Loja</th>
+              <th className="p-1.5 border border-slate-300 w-28">NF / Entrada</th>
+              <th className="p-1.5 border border-slate-300 text-center w-24">Validade Digitada</th>
+              <th className="p-1.5 border border-slate-300 text-center w-20">Dias Restantes</th>
+              <th className="p-1.5 border border-slate-300 text-right w-16">Qtd</th>
+              <th className="p-1.5 border border-slate-300 text-right w-20">Custo Unit.</th>
+              <th className="p-1.5 border border-slate-300 text-right w-24">Custo Total (R$)</th>
+              <th className="p-1.5 border border-slate-300 w-32">Responsáveis</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan={10} className="p-4 text-center text-slate-500 italic">
+                  Nenhum produto encontrado nos filtros selecionados.
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item, idx) => {
+                const valFormatada = item.dataValidade 
+                  ? String(item.dataValidade).split('T')[0].split('-').reverse().join('/') 
+                  : '-';
+                const isCritico = item.diasRestantes <= 5;
+
+                return (
+                  <tr key={`print-val-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="p-1.5 border border-slate-300 text-center font-mono font-bold text-slate-900">
+                      {item.idProduto || '—'}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 font-semibold text-slate-900">
+                      <div>{item.produto}</div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-slate-700">
+                      {item.loja}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 font-mono text-[9px]">
+                      <div className="font-bold text-slate-900">NF: #{item.notaFiscal}</div>
+                      <div className="text-slate-500">
+                        {item.dataEntrada ? String(item.dataEntrada).split('T')[0].split('-').reverse().join('/') : '-'}
+                        {item.horaEntrada ? ` às ${item.horaEntrada}` : ''}
+                      </div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-center font-mono font-bold">
+                      {valFormatada}
+                    </td>
+                    <td className={`p-1.5 border border-slate-300 text-center font-bold text-[9px] ${isCritico ? 'text-rose-700 font-extrabold' : 'text-slate-800'}`}>
+                      {item.diasRestantes} dias {isCritico ? '(CRÍTICO)' : ''}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-right font-mono">
+                      {item.qtdRecebida} un
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-right font-mono text-slate-700">
+                      {item.custoUnitario ? item.custoUnitario.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-slate-950 whitespace-nowrap">
+                      {item.valorTotal ? item.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-[9px] text-slate-600">
+                      <div>Entrada: <strong className="text-slate-800">{item.usuarioEntrada || '—'}</strong></div>
+                      {item.usuarioLiberou && (
+                        <div>Liberou: <strong className="text-slate-800">{item.usuarioLiberou}</strong></div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+          {filteredItems.length > 0 && (
+            <tfoot>
+              <tr className="bg-slate-200 font-bold border-t-2 border-slate-900 text-slate-900">
+                <td colSpan={8} className="p-2 border border-slate-300 text-right uppercase">
+                  Custo Total Consolidado em Risco:
+                </td>
+                <td className="p-2 border border-slate-300 text-right font-mono text-xs font-extrabold whitespace-nowrap">
+                  {filteredItems.reduce((acc, i) => acc + (i.valorTotal || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </td>
+                <td className="p-2 border border-slate-300"></td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+
+        {/* Rodapé do Relatório */}
+        <div className="mt-4 pt-3 border-t border-slate-300 flex items-center justify-between text-[10px] text-slate-500">
+          <div>Horus Analytics — Relatório Gerencial de Prevenção e Auditoria de Validade</div>
+          <div>Página 1 de 1</div>
+        </div>
+      </div>
 
     </div>
   );

@@ -14,7 +14,7 @@ export function CybertechAdminModule() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/config/db")
+    fetch("/api/config/db")
       .then(r => r.json())
       .then(data => {
         if (data && data.database) {
@@ -41,7 +41,7 @@ export function CybertechAdminModule() {
         pwd: dbConfig.password,
         protocol: "TCPIP"
       };
-      const res = await fetch("http://localhost:3001/api/config/db/test", {
+      const res = await fetch("/api/config/db/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -67,7 +67,7 @@ export function CybertechAdminModule() {
       protocol: "TCPIP"
     };
     try {
-      const res = await fetch("http://localhost:3001/api/config/db", {
+      const res = await fetch("/api/config/db", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

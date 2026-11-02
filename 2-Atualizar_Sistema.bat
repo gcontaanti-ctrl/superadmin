@@ -50,10 +50,36 @@ copy /Y "%~dp0utils_text_cleaner.cjs" "%DEST%\" >nul 2>&1
 copy /Y "%~dp0package.json" "%DEST%\" >nul 2>&1
 copy /Y "%~dp0install-service.js" "%DEST%\" >nul 2>&1
 copy /Y "%~dp0uninstall-service.js" "%DEST%\" >nul 2>&1
-if exist "%~dp0campanhas.json" copy /Y "%~dp0campanhas.json" "%DEST%\" >nul 2>&1
-if exist "%~dp0metas_data.json" copy /Y "%~dp0metas_data.json" "%DEST%\" >nul 2>&1
-if exist "%~dp0mobile_users.json" copy /Y "%~dp0mobile_users.json" "%DEST%\" >nul 2>&1
-if exist "%~dp0cliente-config.env" copy /Y "%~dp0cliente-config.env" "%DEST%\" >nul 2>&1
+
+:: ===================================================================
+:: PROTECAO DE DADOS DO CLIENTE (NUNCA SOBRESCREVE DADOS JA EXISTENTES!)
+:: ===================================================================
+if not exist "%DEST%\cliente-config.env" (
+    if exist "%~dp0cliente-config.template.env" (
+        copy /Y "%~dp0cliente-config.template.env" "%DEST%\cliente-config.env" >nul 2>&1
+    ) else if exist "%~dp0cliente-config.env" (
+        copy /Y "%~dp0cliente-config.env" "%DEST%\cliente-config.env" >nul 2>&1
+    )
+)
+
+if not exist "%DEST%\campanhas.json" (
+    if exist "%~dp0campanhas.template.json" (
+        copy /Y "%~dp0campanhas.template.json" "%DEST%\campanhas.json" >nul 2>&1
+    ) else (
+        echo [] > "%DEST%\campanhas.json"
+    )
+)
+
+if not exist "%DEST%\metas_data.json" (
+    echo [] > "%DEST%\metas_data.json"
+)
+
+if not exist "%DEST%\mobile_users.json" (
+    if exist "%~dp0mobile_users.template.json" (
+        copy /Y "%~dp0mobile_users.template.json" "%DEST%\mobile_users.json" >nul 2>&1
+    )
+)
+:: ===================================================================
 
 :: Copia scripts utilitarios
 copy /Y "%~dp0Ver_IP_e_Links_de_Acesso.bat" "%DEST%\" >nul 2>&1

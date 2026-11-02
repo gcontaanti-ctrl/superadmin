@@ -101,7 +101,7 @@ export function FiscalXmlSpedCompareSubModule({ startDate, endDate }: FiscalXmlS
     setXmlModalOpen(true);
     setSelectedXml(null);
     try {
-      const res = await fetch(`http://localhost:3001/api/fiscal/xml-nfe?numNota=${numNota}&idEmpresa=${idEmpresa}`);
+      const res = await fetch(`/api/fiscal/xml-nfe?numNota=${numNota}&idEmpresa=${idEmpresa}`);
       const data = await res.json();
       if (data.xml) setSelectedXml(data.xml);
       else toast.error("XML não encontrado no banco.");

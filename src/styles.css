@@ -171,3 +171,28 @@
   color: transparent;
   animation: shimmer 3s linear infinite;
 }
+
+/* Regras de Impressão de Relatórios */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    background-image: none !important;
+  }
+  header, nav, aside, .no-print, .print-hidden {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  @page {
+    margin: 0.8cm;
+    size: landscape;
+  }
+}
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+

@@ -35,15 +35,14 @@ copy /Y "install-service.js" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "uninstall-service.js" "%TEMP_DIR%\" >nul 2>&1
 copy /Y "package.json" "%TEMP_DIR%\" >nul 2>&1
 
-:: 4. Configuracoes e banco de dados
-if exist ".runtime" (
-    mkdir "%TEMP_DIR%\.runtime" >nul 2>&1
-    xcopy /E /Y /I /Q ".runtime\*" "%TEMP_DIR%\.runtime\" >nul 2>&1
-)
-copy /Y "cliente-config.env" "%TEMP_DIR%\" >nul 2>&1
-if exist "campanhas.json" copy /Y "campanhas.json" "%TEMP_DIR%\" >nul 2>&1
-if exist "metas_data.json" copy /Y "metas_data.json" "%TEMP_DIR%\" >nul 2>&1
-if exist "mobile_users.json" copy /Y "mobile_users.json" "%TEMP_DIR%\" >nul 2>&1
+:: 4. Configuracoes e banco de dados (MODELOS LIMPOS - SEM DADOS DO ALBUQUERQUE)
+copy /Y "cliente-config.template.env" "%TEMP_DIR%\cliente-config.env" >nul 2>&1
+copy /Y "cliente-config.template.env" "%TEMP_DIR%\" >nul 2>&1
+copy /Y "campanhas.template.json" "%TEMP_DIR%\campanhas.json" >nul 2>&1
+copy /Y "campanhas.template.json" "%TEMP_DIR%\" >nul 2>&1
+copy /Y "mobile_users.template.json" "%TEMP_DIR%\mobile_users.json" >nul 2>&1
+copy /Y "mobile_users.template.json" "%TEMP_DIR%\" >nul 2>&1
+echo [] > "%TEMP_DIR%\metas_data.json"
 
 :: 5. Pasta Public (App Mobile e Simulador)
 if exist "public" (

@@ -28,6 +28,7 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"TODOS" | "APROVADO" | "PENDENTE">("TODOS");
   const [dbLojas, setDbLojas] = useState<any[]>([]);
 
   // Modal / Form state
@@ -55,6 +56,24 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
       toast.error(err.message || "Erro ao carregar usuários.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveUser = async (username: string, action: "APROVAR" | "REJEITAR") => {
+    try {
+      const res = await fetch("/api/system/users/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, action })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Falha ao processar solicitação");
+      }
+      toast.success(action === "APROVAR" ? `Acesso de @${username} aprovado com sucesso!` : `Acesso de @${username} recusado.`);
+      loadUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao processar.");
     }
   };
 
@@ -176,10 +195,14 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const pendingUsers = users.filter(u => u.status === "PENDENTE");
+
+  const filteredUsers = users.filter(u => {
+    const matchSearch = u.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.username.toLowerCase().includes(searchTerm.toLowerCase());
+    if (statusFilter === "TODOS") return matchSearch;
+    return matchSearch && u.status === statusFilter;
+  });
 
   return (
     <div className="flex flex-col gap-5 h-full">
@@ -197,7 +220,7 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Crie os usuários da sua equipe e defina exatamente quais módulos e informações cada um pode acessar.
+              Crie os usuários da sua equipe, aprove solicitações de novos gerentes e defina exatamente quais módulos cada um pode acessar.
             </p>
           </div>
         </div>
@@ -223,7 +246,7 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="glass-strong rounded-xl p-4 border border-white/5 bg-black/20 flex items-center justify-between">
           <div>
             <p className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Total de Usuários</p>
@@ -248,8 +271,20 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
 
         <div className="glass-strong rounded-xl p-4 border border-white/5 bg-black/20 flex items-center justify-between">
           <div>
+            <p className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Pendentes p/ Aprovação</p>
+            <h3 className={`text-2xl font-bold mt-1 ${pendingUsers.length > 0 ? 'text-amber-400 animate-pulse' : 'text-slate-400'}`}>
+              {pendingUsers.length}
+            </h3>
+          </div>
+          <div className={`size-10 rounded-xl border grid place-items-center ${pendingUsers.length > 0 ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' : 'bg-white/5 border-white/10 text-slate-500'}`}>
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="glass-strong rounded-xl p-4 border border-white/5 bg-black/20 flex items-center justify-between">
+          <div>
             <p className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">Super Administrador</p>
-            <h3 className="text-sm font-bold text-cyan-300 mt-1 truncate">Cristiano (Acesso Total)</h3>
+            <h3 className="text-sm font-bold text-cyan-300 mt-1 truncate">Cristiano (Total)</h3>
           </div>
           <div className="size-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 grid place-items-center text-cyan-400">
             <Shield className="w-5 h-5" />
@@ -257,19 +292,111 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
         </div>
       </div>
 
+      {/* Destaque: Solicitações de Acesso Pendentes para Aprovação de Cristiano */}
+      {pendingUsers.length > 0 && (
+        <div className="glass-strong rounded-2xl p-4 border border-amber-500/30 bg-amber-500/10 shadow-[0_0_30px_rgba(245,158,11,0.12)] flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+              <span className="size-2.5 rounded-full bg-amber-400 animate-ping" />
+              <span>Solicitações de Acesso Pendentes para sua Aprovação ({pendingUsers.length})</span>
+            </div>
+            <span className="text-[11px] text-amber-300/80">
+              Novos gerentes aguardando sua liberação para acessar o sistema
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {pendingUsers.map((u) => {
+              const foundLoja = dbLojas.find(l => String(l.IDEMPRESA) === String(u.idEmpresa));
+              const nomeLoja = u.idEmpresa === "todas" ? "Todas as Lojas" : (foundLoja?.DESCREMPRESA || `Filial ${u.idEmpresa}`);
+              return (
+                <div key={u.id || u.username} className="bg-slate-950/85 border border-amber-500/25 rounded-xl p-3.5 flex flex-col justify-between gap-3 shadow-lg">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-100 text-sm truncate">{u.nome}</h4>
+                        <p className="text-xs text-cyan-400 font-mono">@{u.username}</p>
+                      </div>
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                        AGUARDANDO
+                      </span>
+                    </div>
+
+                    <div className="mt-2 text-xs text-slate-300 flex items-center gap-1.5 bg-black/40 px-2.5 py-1 rounded-lg border border-white/5">
+                      <Store className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">{nomeLoja}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+                    <Button 
+                      onClick={() => handleApproveUser(u.username, "APROVAR")}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-8 flex-1 shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5 mr-1" /> Aprovar Acesso
+                    </Button>
+                    <Button 
+                      onClick={() => openEditModal(u)}
+                      variant="outline"
+                      className="border-white/10 text-cyan-400 hover:bg-white/5 text-xs h-8 px-2.5"
+                      title="Editar Permissões antes de Aprovar"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button 
+                      onClick={() => handleApproveUser(u.username, "REJEITAR")}
+                      variant="outline"
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs h-8 px-2.5"
+                      title="Recusar Solicitação"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Search & List */}
       <div className="flex-1 glass-strong rounded-2xl p-5 border border-white/5 flex flex-col gap-4 overflow-hidden">
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input 
-              type="text"
-              placeholder="Buscar por nome ou usuário..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/60"
-            />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 sm:w-64 max-w-sm">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input 
+                type="text"
+                placeholder="Buscar por nome ou usuário..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/60"
+              />
+            </div>
+
+            {/* Status Filter Chips */}
+            <div className="flex items-center bg-black/40 border border-white/10 p-1 rounded-xl text-xs">
+              <button
+                onClick={() => setStatusFilter("TODOS")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${statusFilter === "TODOS" ? "bg-cyan-500/20 text-cyan-300" : "text-slate-400 hover:text-slate-200"}`}
+              >
+                Todos ({users.length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("APROVADO")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${statusFilter === "APROVADO" ? "bg-emerald-500/20 text-emerald-300" : "text-slate-400 hover:text-slate-200"}`}
+              >
+                Ativos ({users.filter(u => u.status === "APROVADO").length})
+              </button>
+              <button
+                onClick={() => setStatusFilter("PENDENTE")}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${statusFilter === "PENDENTE" ? "bg-amber-500/20 text-amber-300 font-bold" : "text-slate-400 hover:text-slate-200"}`}
+              >
+                Pendentes ({pendingUsers.length})
+              </button>
+            </div>
           </div>
+
           <span className="text-xs text-slate-400 font-medium">
             Exibindo {filteredUsers.length} de {users.length} usuários
           </span>
@@ -350,18 +477,32 @@ export function UserManagementModule({ currentUser }: UserManagementModuleProps)
 
                     <td className="py-3 px-4">
                       {u.status === "APROVADO" ? (
-                        <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                           <CheckCircle2 className="w-3 h-3" /> ATIVO
                         </span>
+                      ) : u.status === "PENDENTE" ? (
+                        <span className="inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2.5 py-0.5 rounded-full animate-pulse">
+                          <AlertTriangle className="w-3 h-3 text-amber-400" /> PENDENTE
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          <XCircle className="w-3 h-3" /> BLOQUEADO
+                        <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                          <XCircle className="w-3 h-3" /> RECUSADO
                         </span>
                       )}
                     </td>
 
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {u.status === "PENDENTE" && (
+                          <Button 
+                            onClick={() => handleApproveUser(u.username, "APROVAR")} 
+                            size="sm" 
+                            className="h-7 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                          >
+                            <Check className="w-3.5 h-3.5 mr-1" />
+                            Aprovar
+                          </Button>
+                        )}
                         <Button 
                           onClick={() => openEditModal(u)} 
                           variant="ghost" 

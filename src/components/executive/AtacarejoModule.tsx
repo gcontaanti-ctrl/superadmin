@@ -98,6 +98,7 @@ interface AtacarejoModuleProps {
   selectedStore: string;
   startDate: string;
   endDate: string;
+  dbLojas?: any[];
 }
 
 type SortField =
@@ -130,7 +131,8 @@ type SortDirection = "asc" | "desc";
 export function AtacarejoModule({
   selectedStore,
   startDate,
-  endDate
+  endDate,
+  dbLojas
 }: AtacarejoModuleProps) {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -168,39 +170,23 @@ export function AtacarejoModule({
       let json: ApiResponse;
       try {
         const res = await fetch(`/api/vendas/atacarejo?${params.toString()}`);
-        if (!res.ok) throw new Error("Fallback para snapshot");
-        json = await res.json();
-      } catch {
-        // Fallback robusto com dados reais consolidados do DB2
-        if (selectedLojaFilter && selectedLojaFilter !== "todas") {
-          const empId = Number(selectedLojaFilter);
-          const loja = (atacarejoSnapshot.lojas as any[]).find((l: any) => l.id === empId);
-          const produtosFiltrados = (atacarejoSnapshot.produtos as any[]).filter((p: any) => p);
-          const recentesFiltrados = (atacarejoSnapshot.recentes as any[]).filter((r: any) => r.idEmpresa === empId);
-
-          if (loja) {
-            json = {
-              periodo: atacarejoSnapshot.periodo,
-              idEmpresa: selectedLojaFilter,
-              metricas: {
-                totalFaturado: loja.totalFaturado,
-                totalDesconto: loja.totalDesconto,
-                totalQtd: loja.qtdTotal,
-                totalCupons: loja.totalCupons,
-                totalLucro: loja.totalLucro,
-                margemMediaPct: loja.margemMediaPct,
-                ticketMedio: loja.totalCupons > 0 ? Math.round((loja.totalFaturado / loja.totalCupons) * 100) / 100 : 0
-              },
-              lojas: [loja],
-              produtos: produtosFiltrados,
-              recentes: recentesFiltrados
-            };
-          } else {
-            json = atacarejoSnapshot as unknown as ApiResponse;
-          }
+        if (!res.ok) throw new Error("Falha na rota /api/vendas/atacarejo");
+        const respJson = await res.json();
+        if (respJson && !respJson.error) {
+          json = respJson;
         } else {
-          json = atacarejoSnapshot as unknown as ApiResponse;
+          throw new Error(respJson?.error || "Dados não encontrados");
         }
+      } catch (e) {
+        console.warn("Consulta direta falhou, utilizando estado vazio controlado:", e);
+        json = {
+          periodo: { startDate: startDate || "", endDate: endDate || "" },
+          idEmpresa: selectedLojaFilter,
+          metricas: { totalFaturado: 0, totalDesconto: 0, totalQtd: 0, totalCupons: 0, totalLucro: 0, margemMediaPct: 0, ticketMedio: 0 },
+          lojas: [],
+          produtos: [],
+          recentes: []
+        };
       }
 
       setData(json);
@@ -475,12 +461,20 @@ export function AtacarejoModule({
                 onChange={(e) => setSelectedLojaFilter(e.target.value)}
                 className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer pr-1"
               >
-                <option value="todas" className="bg-slate-900 text-white">Todas as Lojas</option>
-                {data?.lojas?.map((loja) => (
-                  <option key={loja.id} value={String(loja.id)} className="bg-slate-900 text-white">
-                    {loja.nome}
-                  </option>
-                ))}
+                <option value="todas" className="bg-slate-900 text-white">🏢 Todas as Lojas</option>
+                {dbLojas && dbLojas.length > 0 ? (
+                  dbLojas.map((loja: any) => (
+                    <option key={loja.IDEMPRESA} value={String(loja.IDEMPRESA)} className="bg-slate-900 text-white">
+                      {loja.IDEMPRESA} - {String(loja.DESCREMPRESA || '').trim()}
+                    </option>
+                  ))
+                ) : (
+                  data?.lojas?.map((loja) => (
+                    <option key={loja.id} value={String(loja.id)} className="bg-slate-900 text-white">
+                      {loja.id} - {loja.nome}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -688,84 +682,110 @@ export function AtacarejoModule({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-200">
-                {sortedAndFilteredProdutos.map((p, index) => {
-                  return (
-                    <tr
-                      key={p.id}
-                      className="hover:bg-white/[0.03] transition-colors"
-                    >
-                      <td className="py-3 px-4 font-mono text-slate-500 text-center w-10">
-                        {index + 1}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div
-                          onClick={() => handleProductFilter(p.nome)}
-                          className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
-                          title="Clique para filtrar apenas este produto"
-                        >
-                          <span>{p.nome}</span>
-                          <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
-                        </div>
-                        <div className="text-[10px] text-slate-500">Cód {p.id}</div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span
-                          onClick={() => handleSecaoFilter(p.secao)}
-                          className="text-[10px] bg-slate-800/60 hover:bg-slate-700/80 cursor-pointer px-2 py-0.5 rounded-md text-slate-300 hover:text-white transition-colors"
-                          title="Clique para filtrar produtos desta seção"
-                        >
-                          {p.secao}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span
-                          onClick={() => handleRegraFilter(p.regraCiss || `A partir de ${p.qtdMinima || 2}`)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
-                          title="Clique para filtrar produtos com esta mesma regra"
-                        >
-                          <Tag className="size-3 text-indigo-400 shrink-0" />
-                          <span>{p.regraCiss || `A partir de ${p.qtdMinima || 2} un`}</span>
-                        </span>
-                        {p.percDesconto ? (
-                          <div className="text-[10px] text-amber-400 font-medium mt-0.5">
-                            {p.percDesconto.toFixed(1)}% desc.
+                {sortedAndFilteredProdutos.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Package className="size-8 text-slate-600" />
+                        <span className="font-semibold text-slate-300">Nenhum produto encontrado</span>
+                        <p className="text-xs text-slate-500 max-w-sm">
+                          {searchTerm 
+                            ? `Nenhum resultado corresponde ao filtro "${searchTerm}".`
+                            : "Não foram localizadas vendas com regra de atacarejo para os filtros atuais."}
+                        </p>
+                        {searchTerm && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSearchTerm("")}
+                            className="mt-2 text-xs border-white/10 hover:bg-white/5 text-indigo-300"
+                          >
+                            Limpar Filtro "{searchTerm}"
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  sortedAndFilteredProdutos.map((p, index) => {
+                    return (
+                      <tr
+                        key={p.id}
+                        className="hover:bg-white/[0.03] transition-colors"
+                      >
+                        <td className="py-3 px-4 font-mono text-slate-500 text-center w-10">
+                          {index + 1}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div
+                            onClick={() => handleProductFilter(p.nome)}
+                            className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
+                            title="Clique para filtrar apenas este produto"
+                          >
+                            <span>{p.nome}</span>
+                            <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
                           </div>
-                        ) : null}
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium">
-                        {fmtNumber(p.qtdVendida)} un
-                      </td>
-                      <td className="py-3 px-4 text-right text-slate-400">
-                        {fmtCurrency(p.precoVarejoMedio)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-emerald-400">
-                        {fmtCurrency(p.precoAtacarejoMedio)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-amber-400">
-                        {fmtCurrency(p.totalDesconto)}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-white">
-                        {fmtCurrency(p.totalFaturado)}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <span
-                          className={`font-semibold px-2 py-0.5 rounded text-[10px] ${
-                            p.margemMediaPct >= 20
-                              ? "bg-emerald-500/15 text-emerald-300"
-                              : p.margemMediaPct >= 12
-                              ? "bg-cyan-500/15 text-cyan-300"
-                              : "bg-amber-500/15 text-amber-300"
-                          }`}
-                        >
-                          {p.margemMediaPct.toFixed(1)}%
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-100">
-                        {fmtCurrency(p.totalLucro)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                          <div className="text-[10px] text-slate-500">Cód {p.id}</div>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span
+                            onClick={() => handleSecaoFilter(p.secao)}
+                            className="text-[10px] bg-slate-800/60 hover:bg-slate-700/80 cursor-pointer px-2 py-0.5 rounded-md text-slate-300 hover:text-white transition-colors"
+                            title="Clique para filtrar produtos desta seção"
+                          >
+                            {p.secao}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span
+                            onClick={() => handleRegraFilter(p.regraCiss || `A partir de ${p.qtdMinima || 2}`)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                            title="Clique para filtrar produtos com esta mesma regra"
+                          >
+                            <Tag className="size-3 text-indigo-400 shrink-0" />
+                            <span>{p.regraCiss || `A partir de ${p.qtdMinima || 2} un`}</span>
+                          </span>
+                          {p.percDesconto ? (
+                            <div className="text-[10px] text-amber-400 font-medium mt-0.5">
+                              {p.percDesconto.toFixed(1)}% desc.
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium">
+                          {fmtNumber(p.qtdVendida)} un
+                        </td>
+                        <td className="py-3 px-4 text-right text-slate-400">
+                          {fmtCurrency(p.precoVarejoMedio)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold text-emerald-400">
+                          {fmtCurrency(p.precoAtacarejoMedio)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-amber-400">
+                          {fmtCurrency(p.totalDesconto)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-white">
+                          {fmtCurrency(p.totalFaturado)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span
+                            className={`font-semibold px-2 py-0.5 rounded text-[10px] ${
+                              p.margemMediaPct >= 20
+                                ? "bg-emerald-500/15 text-emerald-300"
+                                : p.margemMediaPct >= 12
+                                ? "bg-cyan-500/15 text-cyan-300"
+                                : "bg-amber-500/15 text-amber-300"
+                            }`}
+                          >
+                            {p.margemMediaPct.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-semibold text-slate-100">
+                          {fmtCurrency(p.totalLucro)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
@@ -775,50 +795,60 @@ export function AtacarejoModule({
       {/* TAB 2: VISÃO POR LOJA */}
       {viewTab === "lojas" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {data?.lojas?.map((loja) => {
-            return (
-              <div
-                key={loja.id}
-                className="glass-strong rounded-2xl p-5 border border-white/10 relative overflow-hidden bg-gradient-to-b from-slate-900/90 to-slate-950/80 flex flex-col justify-between gap-4"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/15 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
-                      Unidade {loja.id}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {loja.percentualTotal}% do faturamento
-                    </span>
+          {!data?.lojas || data.lojas.length === 0 ? (
+            <div className="col-span-full py-16 text-center text-slate-400 glass-strong rounded-2xl border border-white/10 p-8">
+              <Store className="size-10 text-slate-600 mx-auto mb-3" />
+              <h3 className="text-base font-semibold text-slate-200">Nenhuma loja com vendas no atacarejo</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                Não foram localizadas vendas registradas de atacarejo nas lojas para o filtro ou período selecionado.
+              </p>
+            </div>
+          ) : (
+            data.lojas.map((loja) => {
+              return (
+                <div
+                  key={loja.id}
+                  className="glass-strong rounded-2xl p-5 border border-white/10 relative overflow-hidden bg-gradient-to-b from-slate-900/90 to-slate-950/80 flex flex-col justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-bold uppercase text-indigo-400 bg-indigo-500/15 px-2.5 py-0.5 rounded-full border border-indigo-500/30">
+                        Unidade {loja.id}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {loja.percentualTotal}% do faturamento
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white mb-1">
+                      {loja.nome}
+                    </h3>
+                    <div className="text-2xl font-bold text-emerald-400 mt-2">
+                      {fmtCurrency(loja.totalFaturado)}
+                    </div>
                   </div>
-                  <h3 className="text-base font-bold text-white mb-1">
-                    {loja.nome}
-                  </h3>
-                  <div className="text-2xl font-bold text-emerald-400 mt-2">
-                    {fmtCurrency(loja.totalFaturado)}
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/10 text-xs">
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase">Volume Vendido</span>
-                    <span className="font-semibold text-white">{fmtNumber(loja.qtdTotal)} un</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase">Cupons c/ Atacarejo</span>
-                    <span className="font-semibold text-white">{fmtNumber(loja.totalCupons)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase">Desconto Concedido</span>
-                    <span className="font-semibold text-amber-400">{fmtCurrency(loja.totalDesconto)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase">Margem Média</span>
-                    <span className="font-semibold text-cyan-400">{loja.margemMediaPct.toFixed(1)}%</span>
+                  <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-white/10 text-xs">
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Volume Vendido</span>
+                      <span className="font-semibold text-white">{fmtNumber(loja.qtdTotal)} un</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Cupons c/ Atacarejo</span>
+                      <span className="font-semibold text-white">{fmtNumber(loja.totalCupons)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Desconto Concedido</span>
+                      <span className="font-semibold text-amber-400">{fmtCurrency(loja.totalDesconto)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase">Margem Média</span>
+                      <span className="font-semibold text-cyan-400">{loja.margemMediaPct.toFixed(1)}%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       )}
 
@@ -864,66 +894,92 @@ export function AtacarejoModule({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-200">
-                {sortedRecentes.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.03] transition-colors">
-                    <td className="py-3 px-4 font-medium text-slate-300">
-                      <span
-                        onClick={() => setSelectedLojaFilter(String(r.idEmpresa))}
-                        className="hover:text-cyan-300 cursor-pointer transition-colors"
-                        title="Clique para filtrar por esta loja"
-                      >
-                        {r.nomeLoja}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-cyan-400">
-                      #{r.idPlanilha}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div
-                        onClick={() => handleProductFilter(r.nomeProduto)}
-                        className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
-                        title="Clique para filtrar apenas este produto"
-                      >
-                        <span>{r.nomeProduto}</span>
-                        <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
+                {sortedRecentes.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Clock className="size-8 text-slate-600" />
+                        <span className="font-semibold text-slate-300">Nenhuma operação recente encontrada</span>
+                        <p className="text-xs text-slate-500 max-w-sm">
+                          {searchTerm
+                            ? `Nenhuma venda corresponde ao filtro "${searchTerm}".`
+                            : "Não foram encontradas vendas recentes com desconto de atacarejo para os filtros atuais."}
+                        </p>
+                        {searchTerm && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSearchTerm("")}
+                            className="mt-2 text-xs border-white/10 hover:bg-white/5 text-indigo-300"
+                          >
+                            Limpar Filtro "{searchTerm}"
+                          </Button>
+                        )}
                       </div>
-                      <div className="text-[10px] text-slate-500">Cód {r.idProduto}</div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        onClick={() => handleRegraFilter(r.regraCiss || `A partir de ${r.qtdMinima || 2}`)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
-                        title="Clique para filtrar vendas com esta mesma regra"
-                      >
-                        <Tag className="size-3 text-indigo-400 shrink-0" />
-                        <span>{r.regraCiss || `A partir de ${r.qtdMinima || 2} un`}</span>
-                      </span>
-                      {r.percDesconto ? (
-                        <div className="text-[10px] text-amber-400 font-medium mt-0.5">
-                          {r.percDesconto.toFixed(1)}% desc.
-                        </div>
-                      ) : null}
-                    </td>
-                    <td className="py-3 px-4 text-right font-medium">
-                      {r.qtdVendida} un
-                    </td>
-                    <td className="py-3 px-4 text-right text-slate-400">
-                      {fmtCurrency(r.precoVarejo)}
-                    </td>
-                    <td className="py-3 px-4 text-right text-amber-400">
-                      -{fmtCurrency(r.descontoAtacarejo)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-emerald-400">
-                      {fmtCurrency(r.totalFaturado)}
-                    </td>
-                    <td className="py-3 px-4 text-right font-semibold text-cyan-300">
-                      {r.margemPct.toFixed(1)}%
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-slate-400 text-[11px]">
-                      {r.dataHora ? r.dataHora.slice(0, 19).replace("T", " ") : "-"}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  sortedRecentes.map((r, i) => (
+                    <tr key={i} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="py-3 px-4 font-medium text-slate-300">
+                        <span
+                          onClick={() => setSelectedLojaFilter(String(r.idEmpresa))}
+                          className="hover:text-cyan-300 cursor-pointer transition-colors"
+                          title="Clique para filtrar por esta loja"
+                        >
+                          {r.nomeLoja}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-mono text-cyan-400">
+                        #{r.idPlanilha}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div
+                          onClick={() => handleProductFilter(r.nomeProduto)}
+                          className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
+                          title="Clique para filtrar apenas este produto"
+                        >
+                          <span>{r.nomeProduto}</span>
+                          <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
+                        </div>
+                        <div className="text-[10px] text-slate-500">Cód {r.idProduto}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          onClick={() => handleRegraFilter(r.regraCiss || `A partir de ${r.qtdMinima || 2}`)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                          title="Clique para filtrar vendas com esta mesma regra"
+                        >
+                          <Tag className="size-3 text-indigo-400 shrink-0" />
+                          <span>{r.regraCiss || `A partir de ${r.qtdMinima || 2} un`}</span>
+                        </span>
+                        {r.percDesconto ? (
+                          <div className="text-[10px] text-amber-400 font-medium mt-0.5">
+                            {r.percDesconto.toFixed(1)}% desc.
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="py-3 px-4 text-right font-medium">
+                        {r.qtdVendida} un
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-400">
+                        {fmtCurrency(r.precoVarejo)}
+                      </td>
+                      <td className="py-3 px-4 text-right text-amber-400">
+                        -{fmtCurrency(r.descontoAtacarejo)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-400">
+                        {fmtCurrency(r.totalFaturado)}
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-cyan-300">
+                        {r.margemPct.toFixed(1)}%
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono text-slate-400 text-[11px]">
+                        {r.dataHora ? r.dataHora.slice(0, 19).replace("T", " ") : "-"}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

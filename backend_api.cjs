@@ -522,7 +522,10 @@ app.post('/api/auth/login', (req, res) => {
 
   if (found) {
     if (found.status === 'PENDENTE') {
-      return res.status(403).json({ error: 'Cadastro pendente de aprovacao pelo administrador.' });
+      return res.status(403).json({ error: 'Seu cadastro está aguardando aprovação do administrador Cristiano. Por favor, aguarde a liberação do acesso.' });
+    }
+    if (found.status === 'REJEITADO') {
+      return res.status(403).json({ error: 'Cadastro recusado pelo administrador Cristiano. Entre em contato com a diretoria.' });
     }
     userObj = {
       id: found.id,
@@ -721,6 +724,150 @@ app.post('/api/mobile/users/approve', (req, res) => {
     status: newStatus,
     message: `Usuário ${user.nome} (${user.username}) foi ${newStatus === 'APROVADO' ? 'APROVADO com sucesso' : 'REJEITADO'}.`
   });
+});
+
+// Alias /api/auth/register e /api/system/users/register para o formulário de cadastro na tela de login
+app.post(['/api/auth/register', '/api/system/users/register'], (req, res) => {
+  const { nome, username, password, idEmpresa } = req.body || {};
+
+  if (!nome || !username || !password) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios (Nome, Usuário e Senha).' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = loadMobileUsers();
+
+  const existing = users.find(u => String(u.username).trim().toLowerCase() === cleanUser);
+  if (existing) {
+    return res.status(400).json({ error: 'Este nome de usuário já está em uso. Por favor, escolha outro.' });
+  }
+
+  const newUser = {
+    id: 'user-' + Date.now(),
+    nome: String(nome).trim(),
+    username: cleanUser,
+    password: String(password).trim(),
+    idEmpresa: idEmpresa || 'todas',
+    role: 'gerente',
+    status: 'PENDENTE',
+    permissions: [
+      'visao-geral',
+      'atacarejo',
+      'vendas-bandeira',
+      'estoque',
+      'rupturas',
+      'sugestoes-compras',
+      'pedidos-compradores',
+      'painel-gerente'
+    ],
+    createdAt: new Date().toISOString()
+  };
+
+  users.push(newUser);
+  saveMobileUsers(users);
+
+  return res.json({
+    success: true,
+    status: 'PENDENTE',
+    message: 'Solicitação de cadastro enviada com sucesso! O seu acesso foi encaminhado para aprovação de Cristiano.'
+  });
+});
+
+// Endpoints do Módulo de Gestão de Usuários (Painel Administrativo do Cristiano)
+app.get('/api/system/users', (req, res) => {
+  const users = loadMobileUsers();
+  res.json(users);
+});
+
+app.post('/api/system/users/save', (req, res) => {
+  const { id, nome, username, password, idEmpresa, status, role, permissions } = req.body || {};
+  if (!nome || !username) {
+    return res.status(400).json({ error: 'Nome e usuário são obrigatórios.' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = loadMobileUsers();
+
+  const existingIndex = users.findIndex(u => 
+    (id && u.id === id) || 
+    String(u.username).trim().toLowerCase() === cleanUser
+  );
+
+  if (existingIndex !== -1) {
+    const current = users[existingIndex];
+    users[existingIndex] = {
+      ...current,
+      nome: String(nome).trim(),
+      username: cleanUser,
+      password: password ? String(password).trim() : current.password,
+      idEmpresa: idEmpresa || current.idEmpresa || 'todas',
+      status: status || current.status || 'APROVADO',
+      role: role || current.role || 'user',
+      permissions: Array.isArray(permissions) ? permissions : (current.permissions || ['*']),
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    const newUser = {
+      id: id || 'usr-' + Date.now(),
+      nome: String(nome).trim(),
+      username: cleanUser,
+      password: password ? String(password).trim() : '123456',
+      idEmpresa: idEmpresa || 'todas',
+      status: status || 'APROVADO',
+      role: role || (cleanUser === 'cristiano' ? 'superadmin' : 'user'),
+      permissions: Array.isArray(permissions) ? permissions : ['visao-geral'],
+      createdAt: new Date().toISOString()
+    };
+    users.push(newUser);
+  }
+
+  saveMobileUsers(users);
+  res.json({ success: true, message: 'Usuário salvo com sucesso.' });
+});
+
+app.post('/api/system/users/approve', (req, res) => {
+  const { username, action } = req.body || {};
+  if (!username) {
+    return res.status(400).json({ error: 'Usuário é obrigatório.' });
+  }
+
+  const cleanUser = String(username).trim().toLowerCase();
+  const users = loadMobileUsers();
+  const user = users.find(u => String(u.username).trim().toLowerCase() === cleanUser);
+
+  if (!user) {
+    return res.status(404).json({ error: 'Usuário não encontrado.' });
+  }
+
+  const newStatus = action && action.toUpperCase() === 'REJEITAR' ? 'REJEITADO' : 'APROVADO';
+  user.status = newStatus;
+  user.updatedAt = new Date().toISOString();
+  saveMobileUsers(users);
+
+  res.json({
+    success: true,
+    status: newStatus,
+    message: `Usuário ${user.nome} (${user.username}) foi ${newStatus === 'APROVADO' ? 'APROVADO com sucesso' : 'REJEITADO'}.`
+  });
+});
+
+app.post('/api/system/users/delete', (req, res) => {
+  const { id, username } = req.body || {};
+  const cleanUser = String(username || '').trim().toLowerCase();
+  if (cleanUser === 'cristiano' || cleanUser === 'admin') {
+    return res.status(403).json({ error: 'Este usuário administrativo não pode ser removido.' });
+  }
+
+  let users = loadMobileUsers();
+  const initialLen = users.length;
+  users = users.filter(u => u.id !== id && String(u.username).trim().toLowerCase() !== cleanUser);
+
+  if (users.length === initialLen) {
+    return res.status(404).json({ error: 'Usuário não encontrado.' });
+  }
+
+  saveMobileUsers(users);
+  res.json({ success: true, message: 'Usuário removido com sucesso.' });
 });
 
 
@@ -1515,7 +1662,7 @@ app.post('/api/mobile/users/approve', (req, res) => {
 
   // ─────────────────────────────────────────────
   // VENDAS ATACAREJO (PREÇO ATACAREJO POR QUANTIDADE)
-  // Fontes: DBA.VENDA_ATACAREJO + DBA.PRODUTO_DESCONTO_QTDE + DBA.PRODUTO + DBA.ESTOQUE_ANALITICO
+  // Fontes: DBA.VENDA_ATACAREJO + DBA.PRODUTO_DESCONTO_QTDE + DBA.PRODUTO + DBA.VW_GEA_EMPRESA
   // ─────────────────────────────────────────────
   app.get('/api/vendas/atacarejo', async (req, res) => {
     try {
@@ -1543,13 +1690,22 @@ app.post('/api/mobile/users/approve', (req, res) => {
             AVG(VA.VALPRECOVAREJO) AS PRECO_VAREJO_MEDIO,
             AVG(VA.VALPRECOVAREJO - (VA.VALDESCONTOATACAREJO / NULLIF(VA.QTDVENDA, 0))) AS PRECO_ATACAREJO_MEDIO,
             COUNT(DISTINCT VA.IDPLANILHA) AS TOTAL_CUPONS,
-            AVG(COALESCE(EA.PERMARGEMLUCRO, 18.5)) AS MARGEM_MEDIA_PCT,
-            SUM(COALESCE(EA.VALLUCRO, (VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 0.185)) AS TOTAL_LUCRO
+            AVG(CASE 
+              WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+              THEN (CASE WHEN (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) < 4.5 THEN 4.5 ELSE (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) END)
+              ELSE 18.5 
+            END) AS MARGEM_MEDIA_PCT,
+            SUM((VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 
+              (CASE 
+                WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+                THEN (CASE WHEN (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) < 0.045 THEN 0.045 ELSE (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) END)
+                ELSE 0.185 
+              END)
+            ) AS TOTAL_LUCRO
           FROM DBA.VENDA_ATACAREJO VA
           JOIN DBA.PRODUTO_DESCONTO_QTDE PDQ ON PDQ.IDCONTADOR = VA.IDCONTADORATACAREJO AND PDQ.IDEMPRESA = VA.IDEMPRESA
           JOIN DBA.PRODUTO P ON P.IDPRODUTO = PDQ.IDPRODUTO
           LEFT JOIN DBA.SECAO S ON S.IDSECAO = P.IDSECAO
-          LEFT JOIN DBA.ESTOQUE_ANALITICO EA ON EA.IDPLANILHA = VA.IDPLANILHA AND EA.IDEMPRESA = VA.IDEMPRESA AND EA.IDPRODUTO = PDQ.IDPRODUTO
           WHERE DATE(VA.DTALTERACAO) BETWEEN ? AND ?
         `;
         const paramsProd = [startD, endD];
@@ -1573,11 +1729,20 @@ app.post('/api/mobile/users/approve', (req, res) => {
             SUM(VA.QTDVENDA) AS QTD_TOTAL,
             SUM(VA.VALDESCONTOATACAREJO) AS TOTAL_DESCONTO,
             SUM(VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) AS TOTAL_FATURADO,
-            AVG(COALESCE(EA.PERMARGEMLUCRO, 18.5)) AS MARGEM_MEDIA_PCT,
-            SUM(COALESCE(EA.VALLUCRO, (VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 0.185)) AS TOTAL_LUCRO
+            AVG(CASE 
+              WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+              THEN (CASE WHEN (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) < 4.5 THEN 4.5 ELSE (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) END)
+              ELSE 18.5 
+            END) AS MARGEM_MEDIA_PCT,
+            SUM((VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 
+              (CASE 
+                WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+                THEN (CASE WHEN (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) < 0.045 THEN 0.045 ELSE (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) END)
+                ELSE 0.185 
+              END)
+            ) AS TOTAL_LUCRO
           FROM DBA.VENDA_ATACAREJO VA
           JOIN DBA.PRODUTO_DESCONTO_QTDE PDQ ON PDQ.IDCONTADOR = VA.IDCONTADORATACAREJO AND PDQ.IDEMPRESA = VA.IDEMPRESA
-          LEFT JOIN DBA.ESTOQUE_ANALITICO EA ON EA.IDPLANILHA = VA.IDPLANILHA AND EA.IDEMPRESA = VA.IDEMPRESA AND EA.IDPRODUTO = PDQ.IDPRODUTO
           LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = VA.IDEMPRESA
           WHERE DATE(VA.DTALTERACAO) BETWEEN ? AND ?
         `;
@@ -1608,13 +1773,22 @@ app.post('/api/mobile/users/approve', (req, res) => {
             VA.VALPRECOVAREJO,
             VA.VALDESCONTOATACAREJO,
             (VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) AS TOTAL_FATURADO,
-            COALESCE(EA.PERMARGEMLUCRO, 18.5) AS MARGEM_LUCRO_PCT,
-            COALESCE(EA.VALLUCRO, (VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 0.185) AS VAL_LUCRO,
+            (CASE 
+              WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+              THEN (CASE WHEN (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) < 4.5 THEN 4.5 ELSE (18.5 - ((VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO)) * 100)) END)
+              ELSE 18.5 
+            END) AS MARGEM_LUCRO_PCT,
+            ((VA.QTDVENDA * VA.VALPRECOVAREJO - VA.VALDESCONTOATACAREJO) * 
+              (CASE 
+                WHEN (VA.QTDVENDA * VA.VALPRECOVAREJO) > 0 
+                THEN (CASE WHEN (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) < 0.045 THEN 0.045 ELSE (0.185 - (VA.VALDESCONTOATACAREJO / (VA.QTDVENDA * VA.VALPRECOVAREJO))) END)
+                ELSE 0.185 
+              END)
+            ) AS VAL_LUCRO,
             VA.DTALTERACAO
           FROM DBA.VENDA_ATACAREJO VA
           JOIN DBA.PRODUTO_DESCONTO_QTDE PDQ ON PDQ.IDCONTADOR = VA.IDCONTADORATACAREJO AND PDQ.IDEMPRESA = VA.IDEMPRESA
           JOIN DBA.PRODUTO P ON P.IDPRODUTO = PDQ.IDPRODUTO
-          LEFT JOIN DBA.ESTOQUE_ANALITICO EA ON EA.IDPLANILHA = VA.IDPLANILHA AND EA.IDEMPRESA = VA.IDEMPRESA AND EA.IDPRODUTO = PDQ.IDPRODUTO
           LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = VA.IDEMPRESA
           WHERE DATE(VA.DTALTERACAO) BETWEEN ? AND ?
         `;
@@ -1630,12 +1804,12 @@ app.post('/api/mobile/users/approve', (req, res) => {
         `;
         const recentesRaw = await queryDB(sqlRecentes, paramsRec);
 
-        if (produtosRaw && produtosRaw.length > 0) {
-          const totalFaturado = lojasRaw.reduce((acc, l) => acc + Number(l.TOTAL_FATURADO || 0), 0);
-          const totalDesconto = lojasRaw.reduce((acc, l) => acc + Number(l.TOTAL_DESCONTO || 0), 0);
-          const totalQtd = lojasRaw.reduce((acc, l) => acc + Number(l.QTD_TOTAL || 0), 0);
-          const totalCupons = lojasRaw.reduce((acc, l) => acc + Number(l.TOTAL_CUPONS || 0), 0);
-          const totalLucro = lojasRaw.reduce((acc, l) => acc + Number(l.TOTAL_LUCRO || 0), 0);
+        if (produtosRaw) {
+          const totalFaturado = (lojasRaw || []).reduce((acc, l) => acc + Number(l.TOTAL_FATURADO || 0), 0);
+          const totalDesconto = (lojasRaw || []).reduce((acc, l) => acc + Number(l.TOTAL_DESCONTO || 0), 0);
+          const totalQtd = (lojasRaw || []).reduce((acc, l) => acc + Number(l.QTD_TOTAL || 0), 0);
+          const totalCupons = (lojasRaw || []).reduce((acc, l) => acc + Number(l.TOTAL_CUPONS || 0), 0);
+          const totalLucro = (lojasRaw || []).reduce((acc, l) => acc + Number(l.TOTAL_LUCRO || 0), 0);
           const margemMediaPct = totalFaturado > 0 ? (totalLucro / totalFaturado) * 100 : 0;
 
           payload = {
@@ -1650,9 +1824,9 @@ app.post('/api/mobile/users/approve', (req, res) => {
               margemMediaPct: Math.round(margemMediaPct * 10) / 10,
               ticketMedio: totalCupons > 0 ? Math.round((totalFaturado / totalCupons) * 100) / 100 : 0
             },
-            lojas: lojasRaw.map(l => ({
+            lojas: (lojasRaw || []).map(l => ({
               id: Number(l.IDEMPRESA),
-              nome: l.NOME_LOJA.trim(),
+              nome: String(l.NOME_LOJA || '').trim(),
               totalCupons: Number(l.TOTAL_CUPONS || 0),
               qtdTotal: Number(l.QTD_TOTAL || 0),
               totalDesconto: Math.round(Number(l.TOTAL_DESCONTO || 0) * 100) / 100,
@@ -1661,7 +1835,7 @@ app.post('/api/mobile/users/approve', (req, res) => {
               margemMediaPct: Math.round(Number(l.MARGEM_MEDIA_PCT || 0) * 10) / 10,
               percentualTotal: totalFaturado > 0 ? Math.round((Number(l.TOTAL_FATURADO || 0) / totalFaturado) * 1000) / 10 : 0
             })),
-            produtos: produtosRaw.map(p => ({
+            produtos: (produtosRaw || []).map(p => ({
               id: Number(p.IDPRODUTO),
               nome: p.NOME_PRODUTO,
               secao: p.SECAO,
@@ -1679,9 +1853,9 @@ app.post('/api/mobile/users/approve', (req, res) => {
               totalLucro: Math.round(Number(p.TOTAL_LUCRO || 0) * 100) / 100,
               percentualFaturamento: totalFaturado > 0 ? Math.round((Number(p.TOTAL_FATURADO || 0) / totalFaturado) * 1000) / 10 : 0
             })),
-            recentes: recentesRaw.map(r => ({
+            recentes: (recentesRaw || []).map(r => ({
               idEmpresa: Number(r.IDEMPRESA),
-              nomeLoja: r.NOME_LOJA.trim(),
+              nomeLoja: String(r.NOME_LOJA || '').trim(),
               idPlanilha: Number(r.IDPLANILHA),
               idProduto: Number(r.IDPRODUTO),
               nomeProduto: r.NOME_PRODUTO,
@@ -1700,17 +1874,27 @@ app.post('/api/mobile/users/approve', (req, res) => {
           };
         }
       } catch (dbErr) {
-        console.warn('DB2 Vendas Atacarejo direto falhou, carregando snapshot:', dbErr.message);
+        console.warn('DB2 Vendas Atacarejo direto falhou:', dbErr.message);
       }
 
       if (!payload) {
-        const snapPath = path.join(__dirname, 'src', 'data', 'albuquerque_atacarejo_snapshot.json');
-        if (fs.existsSync(snapPath)) {
-          payload = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+        const currentDb = (getDbConfig().database || '').toUpperCase();
+        if (currentDb === 'ALBUQUER') {
+          const snapPath = path.join(__dirname, 'src', 'data', 'albuquerque_atacarejo_snapshot.json');
+          if (fs.existsSync(snapPath)) {
+            payload = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+          }
         }
       }
 
-      res.json(payload || { error: 'Nenhum dado encontrado' });
+      res.json(payload || {
+        periodo: { startDate: startD, endDate: endD },
+        idEmpresa: idEmpresa || 'todas',
+        metricas: { totalFaturado: 0, totalDesconto: 0, totalQtd: 0, totalCupons: 0, totalLucro: 0, margemMediaPct: 0, ticketMedio: 0 },
+        lojas: [],
+        produtos: [],
+        recentes: []
+      });
     } catch (err) {
       console.error('Erro /api/vendas/atacarejo:', err);
       res.status(500).json({ error: err.message });

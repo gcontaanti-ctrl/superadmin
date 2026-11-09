@@ -37,7 +37,8 @@ import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
   Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
-  Menu, X, Sparkles, Settings, Eye, LayoutDashboard, ShoppingBag, CreditCard, Wallet
+  Menu, X, Sparkles, Settings, Eye, LayoutDashboard, ShoppingBag, CreditCard, Wallet,
+  UserPlus, CheckCircle2, Clock, Store, ArrowLeft, AlertTriangle
 } from "lucide-react";
 import { nav } from "@/components/executive/Sidebar";
 
@@ -495,6 +496,7 @@ function Dashboard() {
             selectedStore={selectedStore} 
             startDate={startDate} 
             endDate={endDate} 
+            dbLojas={dbLojas}
           />
         )}
 
@@ -747,58 +749,279 @@ type LoginScreenProps = {
 };
 
 function LoginScreen({ username, setUsername, password, setPassword, loading, onSubmit }: LoginScreenProps) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [lojas, setLojas] = useState<any[]>([]);
+  
+  // Campos do formulário de solicitação de cadastro
+  const [regNome, setRegNome] = useState("");
+  const [regUser, setRegUser] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [regLoja, setRegLoja] = useState("todas");
+  const [regLoading, setRegLoading] = useState(false);
+  const [regSuccessMessage, setRegSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/empresas')
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setLojas(data); })
+      .catch(() => null);
+  }, []);
+
+  const handleRegisterSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!regNome.trim() || !regUser.trim() || !regPassword.trim()) {
+      toast.error("Preencha todos os campos obrigatórios.");
+      return;
+    }
+    if (regPassword.length < 4) {
+      toast.error("A senha deve ter no mínimo 4 caracteres.");
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      toast.error("A confirmação da senha não confere.");
+      return;
+    }
+
+    setRegLoading(true);
+    setRegSuccessMessage(null);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: regNome.trim(),
+          username: regUser.trim().toLowerCase(),
+          password: regPassword.trim(),
+          idEmpresa: regLoja
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Falha ao registrar solicitação");
+      }
+
+      setRegSuccessMessage(data.message || "Solicitação enviada com sucesso! Aguarde a aprovação do administrador Cristiano.");
+      toast.success("Solicitação enviada com sucesso!");
+      setUsername(regUser.trim().toLowerCase());
+      setPassword("");
+      setRegNome("");
+      setRegUser("");
+      setRegPassword("");
+      setRegConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao solicitar cadastro");
+    } finally {
+      setRegLoading(false);
+    }
+  };
+
   return (
     <div 
-      className="relative min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-4 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat transition-all duration-1000"
+      className="relative min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-3 sm:p-4 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat transition-all duration-1000"
       style={{ backgroundImage: "url('/bg-login.png')" }}
     >
-      {/* Overlay escuro para garantir que o formulário fique legível sobre a imagem */}
-      <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"></div>
+      {/* Overlay escuro */}
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
 
-      <form onSubmit={onSubmit} className="relative z-10 w-full max-w-sm rounded-[2rem] p-8 flex flex-col gap-6 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-slate-950/40 backdrop-blur-xl group overflow-hidden transition-all duration-500 hover:shadow-[0_0_100px_rgba(6,182,212,0.2)]">
+      <div className="relative z-10 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 flex flex-col gap-5 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-slate-950/50 backdrop-blur-xl group overflow-hidden transition-all duration-500 hover:shadow-[0_0_100px_rgba(6,182,212,0.2)]">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-        <div className="flex flex-col items-center gap-3 text-center mb-2">
-          <div className="size-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 grid place-items-center shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-transform duration-500 group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(6,182,212,0.5)]">
-            <Eye className="w-8 h-8 text-cyan-400" />
+        
+        {/* Logo Horus */}
+        <div className="flex flex-col items-center gap-2 text-center mb-1">
+          <div className="size-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 grid place-items-center shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-transform duration-500 group-hover:scale-105">
+            <Eye className="w-7 h-7 text-cyan-400" />
           </div>
           <div>
-            <h1 className="font-serif text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">HORUS</h1>
-            <p className="text-[12px] uppercase tracking-[0.3em] text-cyan-200 mt-0.5">Analytics</p>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
+              HORUS
+            </h1>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200 mt-0.5">Analytics</p>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="login-username" className="text-xs font-semibold text-slate-300">
-            Usuario
-          </label>
-          <input
-            id="login-username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            autoComplete="username"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-primary/60"
-          />
+        {/* Abas Alternadoras: Entrar vs Solicitar Cadastro */}
+        <div className="flex items-center bg-black/50 p-1 rounded-2xl border border-white/10 w-full shadow-inner">
+          <button
+            type="button"
+            onClick={() => { setMode("login"); setRegSuccessMessage(null); }}
+            className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${mode === "login" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            Entrar
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("register")}
+            className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${mode === "register" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md" : "text-slate-400 hover:text-slate-200"}`}
+          >
+            Solicitar Acesso
+          </button>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="login-password" className="text-xs font-semibold text-slate-300">
-            Senha
-          </label>
-          <input
-            id="login-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            type="password"
-            autoComplete="current-password"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-100 outline-none focus:border-primary/60"
-          />
-        </div>
+        {/* Feedback de Sucesso no Cadastro */}
+        {regSuccessMessage && (
+          <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-300 flex items-start gap-2.5 animate-in fade-in zoom-in-95">
+            <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-emerald-200">Solicitação Enviada!</p>
+              <p className="text-[11px] text-emerald-300/90 mt-0.5 leading-relaxed">{regSuccessMessage}</p>
+            </div>
+          </div>
+        )}
 
-        <Button type="submit" disabled={loading || !username || !password} className="w-full">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-          Entrar
-        </Button>
-      </form>
+        {/* MODO 1: ENTRAR */}
+        {mode === "login" ? (
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="login-username" className="text-xs font-semibold text-slate-300">
+                Usuário
+              </label>
+              <input
+                id="login-username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                placeholder="Seu usuário"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="login-password" className="text-xs font-semibold text-slate-300">
+                Senha
+              </label>
+              <input
+                id="login-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+              />
+            </div>
+
+            <Button type="submit" disabled={loading || !username || !password} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold h-10 rounded-xl mt-1">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
+              Entrar
+            </Button>
+
+            <div className="text-center pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setMode("register")}
+                className="text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors"
+              >
+                Gerente de loja sem acesso? Solicitar cadastro
+              </button>
+            </div>
+          </form>
+        ) : (
+          /* MODO 2: SOLICITAR CADASTRO DE GERENTE */
+          <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3.5">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-300">
+                Nome Completo do Gerente *
+              </label>
+              <input
+                type="text"
+                required
+                value={regNome}
+                onChange={(e) => setRegNome(e.target.value)}
+                placeholder="Ex: Carlos Roberto"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-300">
+                Usuário de Login desejado *
+              </label>
+              <input
+                type="text"
+                required
+                value={regUser}
+                onChange={(e) => setRegUser(e.target.value)}
+                placeholder="Ex: carlos.gerente"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-slate-300">
+                Sua Loja / Filial *
+              </label>
+              <select
+                value={regLoja}
+                onChange={(e) => setRegLoja(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 cursor-pointer"
+              >
+                <option value="todas">🏢 Todas as Lojas</option>
+                {lojas.map((l: any) => (
+                  <option key={l.IDEMPRESA} value={String(l.IDEMPRESA)}>
+                    {l.IDEMPRESA} - {String(l.DESCREMPRESA || '').trim()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-300">
+                  Senha *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="Mín. 4 dígitos"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-300">
+                  Confirmar Senha *
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={regConfirmPassword}
+                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                  placeholder="Repetir senha"
+                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+                />
+              </div>
+            </div>
+
+            <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-2.5 text-[10px] text-cyan-300 flex items-center gap-2">
+              <Clock className="size-4 text-cyan-400 shrink-0" />
+              <span>O cadastro ficará pendente até a aprovação de <strong>Cristiano</strong>.</span>
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={regLoading || !regNome || !regUser || !regPassword || !regConfirmPassword} 
+              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold h-10 rounded-xl"
+            >
+              {regLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+              Enviar Solicitação para Cristiano
+            </Button>
+
+            <div className="text-center pt-1 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1 mx-auto"
+              >
+                <ArrowLeft className="size-3.5" /> Voltar para o Login
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
       <Toaster position="bottom-right" theme="dark" closeButton />
     </div>
   );

@@ -1,0 +1,1275 @@
+{
+  "periodo": {
+    "startDate": "2026-10-10",
+    "endDate": "2026-11-09"
+  },
+  "idEmpresa": "todas",
+  "totalGeral": 1851881.57,
+  "resumo": [
+    {
+      "id": 104,
+      "nome": "TICKET CULTURA",
+      "valor": 612761.87,
+      "qtd": 18503,
+      "percentual": 33.1
+    },
+    {
+      "id": 195,
+      "nome": "Bandeira 195",
+      "valor": 206996.96,
+      "qtd": 36,
+      "percentual": 11.2
+    },
+    {
+      "id": 78,
+      "nome": "NAO INFORMADO",
+      "valor": 157744.29,
+      "qtd": 3252,
+      "percentual": 8.5
+    },
+    {
+      "id": 97,
+      "nome": "SODEXO PREMIUM PASS",
+      "valor": 143321.59,
+      "qtd": 2929,
+      "percentual": 7.7
+    },
+    {
+      "id": 72,
+      "nome": "MAXXCARD",
+      "valor": 90119.02,
+      "qtd": 2758,
+      "percentual": 4.9
+    },
+    {
+      "id": 77,
+      "nome": "NAO IDENTIFICADO NA OPERADORA",
+      "valor": 87609.86,
+      "qtd": 3554,
+      "percentual": 4.7
+    },
+    {
+      "id": 100,
+      "nome": "SODEXO_",
+      "valor": 78371.35,
+      "qtd": 1495,
+      "percentual": 4.2
+    },
+    {
+      "id": 30,
+      "nome": "CABAL CREDIT",
+      "valor": 77726.07,
+      "qtd": 2060,
+      "percentual": 4.2
+    },
+    {
+      "id": 196,
+      "nome": "Bandeira 196",
+      "valor": 75381.72,
+      "qtd": 27,
+      "percentual": 4.1
+    },
+    {
+      "id": 38,
+      "nome": "D0",
+      "valor": 67945.04,
+      "qtd": 2226,
+      "percentual": 3.7
+    },
+    {
+      "id": 81,
+      "nome": "PLANVALE",
+      "valor": 56666.01,
+      "qtd": 1351,
+      "percentual": 3.1
+    },
+    {
+      "id": 75,
+      "nome": "NAO IDENTIFICADA",
+      "valor": 26660.98,
+      "qtd": 974,
+      "percentual": 1.4
+    },
+    {
+      "id": 180,
+      "nome": "Bandeira 180",
+      "valor": 22865.58,
+      "qtd": 518,
+      "percentual": 1.2
+    },
+    {
+      "id": 32,
+      "nome": "CHARGEBACK",
+      "valor": 22076.13,
+      "qtd": 447,
+      "percentual": 1.2
+    },
+    {
+      "id": 74,
+      "nome": "NAO",
+      "valor": 21235.63,
+      "qtd": 395,
+      "percentual": 1.1
+    },
+    {
+      "id": 93,
+      "nome": "SODEXO",
+      "valor": 20297.55,
+      "qtd": 363,
+      "percentual": 1.1
+    },
+    {
+      "id": 164,
+      "nome": "Bandeira 164",
+      "valor": 14922.66,
+      "qtd": 107,
+      "percentual": 0.8
+    },
+    {
+      "id": 34,
+      "nome": "CONVERSAO DE MOEDAS",
+      "valor": 9791.57,
+      "qtd": 223,
+      "percentual": 0.5
+    },
+    {
+      "id": 49,
+      "nome": "ELO - TEF WEB",
+      "valor": 6092.06,
+      "qtd": 76,
+      "percentual": 0.3
+    },
+    {
+      "id": 92,
+      "nome": "SODEXHO",
+      "valor": 5373.87,
+      "qtd": 85,
+      "percentual": 0.3
+    },
+    {
+      "id": 201,
+      "nome": "Bandeira 201",
+      "valor": 3892.94,
+      "qtd": 50,
+      "percentual": 0.2
+    },
+    {
+      "id": 40,
+      "nome": "DACASA ESTABELECIMENTO",
+      "valor": 3539.05,
+      "qtd": 77,
+      "percentual": 0.2
+    },
+    {
+      "id": 162,
+      "nome": "Bandeira 162",
+      "valor": 3379.66,
+      "qtd": 76,
+      "percentual": 0.2
+    },
+    {
+      "id": 90,
+      "nome": "SICREDI DEBITO",
+      "valor": 3340.58,
+      "qtd": 35,
+      "percentual": 0.2
+    },
+    {
+      "id": 167,
+      "nome": "Bandeira 167",
+      "valor": 3240.22,
+      "qtd": 60,
+      "percentual": 0.2
+    },
+    {
+      "id": 169,
+      "nome": "Bandeira 169",
+      "valor": 3169.19,
+      "qtd": 42,
+      "percentual": 0.2
+    },
+    {
+      "id": 45,
+      "nome": "ECARDES",
+      "valor": 2638.55,
+      "qtd": 41,
+      "percentual": 0.1
+    },
+    {
+      "id": 33,
+      "nome": "COMPROCARD",
+      "valor": 2035.23,
+      "qtd": 38,
+      "percentual": 0.1
+    },
+    {
+      "id": 159,
+      "nome": "Bandeira 159",
+      "valor": 2026.08,
+      "qtd": 7,
+      "percentual": 0.1
+    },
+    {
+      "id": 172,
+      "nome": "Bandeira 172",
+      "valor": 1934.01,
+      "qtd": 23,
+      "percentual": 0.1
+    },
+    {
+      "id": 186,
+      "nome": "Bandeira 186",
+      "valor": 1821.99,
+      "qtd": 44,
+      "percentual": 0.1
+    },
+    {
+      "id": 132,
+      "nome": "Bandeira 132",
+      "valor": 1609.14,
+      "qtd": 11,
+      "percentual": 0.1
+    },
+    {
+      "id": 71,
+      "nome": "MASTERCARD_",
+      "valor": 1551.98,
+      "qtd": 15,
+      "percentual": 0.1
+    },
+    {
+      "id": 199,
+      "nome": "Bandeira 199",
+      "valor": 1193.72,
+      "qtd": 6,
+      "percentual": 0.1
+    },
+    {
+      "id": 73,
+      "nome": "N",
+      "valor": 1071.81,
+      "qtd": 24,
+      "percentual": 0.1
+    },
+    {
+      "id": 197,
+      "nome": "Bandeira 197",
+      "valor": 995.43,
+      "qtd": 13,
+      "percentual": 0.1
+    },
+    {
+      "id": 146,
+      "nome": "Bandeira 146",
+      "valor": 892.53,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 171,
+      "nome": "Bandeira 171",
+      "valor": 798.31,
+      "qtd": 16,
+      "percentual": 0
+    },
+    {
+      "id": 155,
+      "nome": "Bandeira 155",
+      "valor": 712.04,
+      "qtd": 3,
+      "percentual": 0
+    },
+    {
+      "id": 173,
+      "nome": "Bandeira 173",
+      "valor": 650.37,
+      "qtd": 24,
+      "percentual": 0
+    },
+    {
+      "id": 25,
+      "nome": "BANESCARD",
+      "valor": 634.98,
+      "qtd": 15,
+      "percentual": 0
+    },
+    {
+      "id": 4,
+      "nome": "ELO",
+      "valor": 543,
+      "qtd": 3,
+      "percentual": 0
+    },
+    {
+      "id": 175,
+      "nome": "Bandeira 175",
+      "valor": 530.54,
+      "qtd": 18,
+      "percentual": 0
+    },
+    {
+      "id": 209,
+      "nome": "Bandeira 209",
+      "valor": 461.56,
+      "qtd": 7,
+      "percentual": 0
+    },
+    {
+      "id": 117,
+      "nome": "VISA CREDITO INTERNACIONAL",
+      "valor": 435.12,
+      "qtd": 6,
+      "percentual": 0
+    },
+    {
+      "id": 202,
+      "nome": "Bandeira 202",
+      "valor": 418.93,
+      "qtd": 5,
+      "percentual": 0
+    },
+    {
+      "id": 200,
+      "nome": "Bandeira 200",
+      "valor": 413.92,
+      "qtd": 11,
+      "percentual": 0
+    },
+    {
+      "id": 203,
+      "nome": "Bandeira 203",
+      "valor": 394.31,
+      "qtd": 11,
+      "percentual": 0
+    },
+    {
+      "id": 128,
+      "nome": "Bandeira 128",
+      "valor": 375.59,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 94,
+      "nome": "SODEXO - ALIMENTACAO",
+      "valor": 371.74,
+      "qtd": 6,
+      "percentual": 0
+    },
+    {
+      "id": 174,
+      "nome": "Bandeira 174",
+      "valor": 369.91,
+      "qtd": 21,
+      "percentual": 0
+    },
+    {
+      "id": 148,
+      "nome": "Bandeira 148",
+      "valor": 316.82,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 177,
+      "nome": "Bandeira 177",
+      "valor": 296.7,
+      "qtd": 6,
+      "percentual": 0
+    },
+    {
+      "id": 1,
+      "nome": "AMEX",
+      "valor": 270.25,
+      "qtd": 6,
+      "percentual": 0
+    },
+    {
+      "id": 57,
+      "nome": "GOODCARD",
+      "valor": 225.42,
+      "qtd": 4,
+      "percentual": 0
+    },
+    {
+      "id": 69,
+      "nome": "MASTERCARD DEBITO",
+      "valor": 195.8,
+      "qtd": 7,
+      "percentual": 0
+    },
+    {
+      "id": 207,
+      "nome": "Bandeira 207",
+      "valor": 148.2,
+      "qtd": 5,
+      "percentual": 0
+    },
+    {
+      "id": 120,
+      "nome": "VISA_CREDITO",
+      "valor": 138.76,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 205,
+      "nome": "Bandeira 205",
+      "valor": 138.68,
+      "qtd": 3,
+      "percentual": 0
+    },
+    {
+      "id": 41,
+      "nome": "DH",
+      "valor": 119.95,
+      "qtd": 2,
+      "percentual": 0
+    },
+    {
+      "id": 179,
+      "nome": "Bandeira 179",
+      "valor": 110.42,
+      "qtd": 6,
+      "percentual": 0
+    },
+    {
+      "id": 181,
+      "nome": "Bandeira 181",
+      "valor": 102.67,
+      "qtd": 2,
+      "percentual": 0
+    },
+    {
+      "id": 198,
+      "nome": "Bandeira 198",
+      "valor": 96.41,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 7,
+      "nome": "MASTERCARD",
+      "valor": 75,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 163,
+      "nome": "Bandeira 163",
+      "valor": 62.6,
+      "qtd": 4,
+      "percentual": 0
+    },
+    {
+      "id": 184,
+      "nome": "Bandeira 184",
+      "valor": 38.89,
+      "qtd": 2,
+      "percentual": 0
+    },
+    {
+      "id": 192,
+      "nome": "Bandeira 192",
+      "valor": 29.18,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 204,
+      "nome": "Bandeira 204",
+      "valor": 25.48,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 166,
+      "nome": "Bandeira 166",
+      "valor": 20.98,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 89,
+      "nome": "SICREDI CREDITO",
+      "valor": 20.54,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 178,
+      "nome": "Bandeira 178",
+      "valor": 20,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 48,
+      "nome": "ELAVON",
+      "valor": 9.76,
+      "qtd": 2,
+      "percentual": 0
+    },
+    {
+      "id": 165,
+      "nome": "Bandeira 165",
+      "valor": 8.78,
+      "qtd": 1,
+      "percentual": 0
+    },
+    {
+      "id": 206,
+      "nome": "Bandeira 206",
+      "valor": 8.04,
+      "qtd": 1,
+      "percentual": 0
+    }
+  ],
+  "porLoja": [
+    {
+      "id": 2,
+      "nome": "Supermercados Albuquerque Canafistula",
+      "totalGeral": 1107597.82,
+      "percentualTotal": 59.8,
+      "bandeiras": [
+        {
+          "id": 104,
+          "nome": "TICKET CULTURA",
+          "valor": 355344.75,
+          "qtd": 9786,
+          "percentual": 32.1
+        },
+        {
+          "id": 195,
+          "nome": "Bandeira 195",
+          "valor": 206996.96,
+          "qtd": 36,
+          "percentual": 18.7
+        },
+        {
+          "id": 97,
+          "nome": "SODEXO PREMIUM PASS",
+          "valor": 143321.59,
+          "qtd": 2929,
+          "percentual": 12.9
+        },
+        {
+          "id": 100,
+          "nome": "SODEXO_",
+          "valor": 78371.35,
+          "qtd": 1495,
+          "percentual": 7.1
+        },
+        {
+          "id": 30,
+          "nome": "CABAL CREDIT",
+          "valor": 75753.27,
+          "qtd": 2010,
+          "percentual": 6.8
+        },
+        {
+          "id": 196,
+          "nome": "Bandeira 196",
+          "valor": 75381.72,
+          "qtd": 27,
+          "percentual": 6.8
+        },
+        {
+          "id": 38,
+          "nome": "D0",
+          "valor": 66482.28,
+          "qtd": 2161,
+          "percentual": 6
+        },
+        {
+          "id": 180,
+          "nome": "Bandeira 180",
+          "valor": 22865.58,
+          "qtd": 518,
+          "percentual": 2.1
+        },
+        {
+          "id": 93,
+          "nome": "SODEXO",
+          "valor": 20297.55,
+          "qtd": 363,
+          "percentual": 1.8
+        },
+        {
+          "id": 164,
+          "nome": "Bandeira 164",
+          "valor": 10873.17,
+          "qtd": 68,
+          "percentual": 1
+        },
+        {
+          "id": 32,
+          "nome": "CHARGEBACK",
+          "valor": 10469.97,
+          "qtd": 184,
+          "percentual": 0.9
+        },
+        {
+          "id": 34,
+          "nome": "CONVERSAO DE MOEDAS",
+          "valor": 8667.62,
+          "qtd": 205,
+          "percentual": 0.8
+        },
+        {
+          "id": 49,
+          "nome": "ELO - TEF WEB",
+          "valor": 6092.06,
+          "qtd": 76,
+          "percentual": 0.6
+        },
+        {
+          "id": 92,
+          "nome": "SODEXHO",
+          "valor": 5373.87,
+          "qtd": 85,
+          "percentual": 0.5
+        },
+        {
+          "id": 201,
+          "nome": "Bandeira 201",
+          "valor": 3892.94,
+          "qtd": 50,
+          "percentual": 0.4
+        },
+        {
+          "id": 90,
+          "nome": "SICREDI DEBITO",
+          "valor": 3340.58,
+          "qtd": 35,
+          "percentual": 0.3
+        },
+        {
+          "id": 167,
+          "nome": "Bandeira 167",
+          "valor": 3240.22,
+          "qtd": 60,
+          "percentual": 0.3
+        },
+        {
+          "id": 186,
+          "nome": "Bandeira 186",
+          "valor": 1821.99,
+          "qtd": 44,
+          "percentual": 0.2
+        },
+        {
+          "id": 132,
+          "nome": "Bandeira 132",
+          "valor": 1609.14,
+          "qtd": 11,
+          "percentual": 0.1
+        },
+        {
+          "id": 33,
+          "nome": "COMPROCARD",
+          "valor": 1402.16,
+          "qtd": 26,
+          "percentual": 0.1
+        },
+        {
+          "id": 199,
+          "nome": "Bandeira 199",
+          "valor": 1193.72,
+          "qtd": 6,
+          "percentual": 0.1
+        },
+        {
+          "id": 197,
+          "nome": "Bandeira 197",
+          "valor": 995.43,
+          "qtd": 13,
+          "percentual": 0.1
+        },
+        {
+          "id": 40,
+          "nome": "DACASA ESTABELECIMENTO",
+          "valor": 484.79,
+          "qtd": 12,
+          "percentual": 0
+        },
+        {
+          "id": 209,
+          "nome": "Bandeira 209",
+          "valor": 461.56,
+          "qtd": 7,
+          "percentual": 0
+        },
+        {
+          "id": 202,
+          "nome": "Bandeira 202",
+          "valor": 418.93,
+          "qtd": 5,
+          "percentual": 0
+        },
+        {
+          "id": 200,
+          "nome": "Bandeira 200",
+          "valor": 413.92,
+          "qtd": 11,
+          "percentual": 0
+        },
+        {
+          "id": 128,
+          "nome": "Bandeira 128",
+          "valor": 375.59,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 94,
+          "nome": "SODEXO - ALIMENTACAO",
+          "valor": 371.74,
+          "qtd": 6,
+          "percentual": 0
+        },
+        {
+          "id": 177,
+          "nome": "Bandeira 177",
+          "valor": 296.7,
+          "qtd": 6,
+          "percentual": 0
+        },
+        {
+          "id": 57,
+          "nome": "GOODCARD",
+          "valor": 225.42,
+          "qtd": 4,
+          "percentual": 0
+        },
+        {
+          "id": 25,
+          "nome": "BANESCARD",
+          "valor": 202.91,
+          "qtd": 7,
+          "percentual": 0
+        },
+        {
+          "id": 207,
+          "nome": "Bandeira 207",
+          "valor": 148.2,
+          "qtd": 5,
+          "percentual": 0
+        },
+        {
+          "id": 205,
+          "nome": "Bandeira 205",
+          "valor": 138.68,
+          "qtd": 3,
+          "percentual": 0
+        },
+        {
+          "id": 198,
+          "nome": "Bandeira 198",
+          "valor": 96.41,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 45,
+          "nome": "ECARDES",
+          "valor": 39.98,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 184,
+          "nome": "Bandeira 184",
+          "valor": 38.89,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 192,
+          "nome": "Bandeira 192",
+          "valor": 29.18,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 204,
+          "nome": "Bandeira 204",
+          "valor": 25.48,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 166,
+          "nome": "Bandeira 166",
+          "valor": 20.98,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 89,
+          "nome": "SICREDI CREDITO",
+          "valor": 20.54,
+          "qtd": 1,
+          "percentual": 0
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "nome": "Supermercados Albuquerque Primavera",
+      "totalGeral": 512038.23,
+      "percentualTotal": 27.6,
+      "bandeiras": [
+        {
+          "id": 104,
+          "nome": "TICKET CULTURA",
+          "valor": 161897.82,
+          "qtd": 5480,
+          "percentual": 31.6
+        },
+        {
+          "id": 78,
+          "nome": "NAO INFORMADO",
+          "valor": 115459.86,
+          "qtd": 2162,
+          "percentual": 22.5
+        },
+        {
+          "id": 77,
+          "nome": "NAO IDENTIFICADO NA OPERADORA",
+          "valor": 62279.05,
+          "qtd": 2262,
+          "percentual": 12.2
+        },
+        {
+          "id": 72,
+          "nome": "MAXXCARD",
+          "valor": 61302.92,
+          "qtd": 1781,
+          "percentual": 12
+        },
+        {
+          "id": 81,
+          "nome": "PLANVALE",
+          "valor": 41304.01,
+          "qtd": 876,
+          "percentual": 8.1
+        },
+        {
+          "id": 74,
+          "nome": "NAO",
+          "valor": 17340.37,
+          "qtd": 271,
+          "percentual": 3.4
+        },
+        {
+          "id": 75,
+          "nome": "NAO IDENTIFICADA",
+          "valor": 17069.86,
+          "qtd": 592,
+          "percentual": 3.3
+        },
+        {
+          "id": 32,
+          "nome": "CHARGEBACK",
+          "valor": 9441.5,
+          "qtd": 185,
+          "percentual": 1.8
+        },
+        {
+          "id": 164,
+          "nome": "Bandeira 164",
+          "valor": 3614.17,
+          "qtd": 33,
+          "percentual": 0.7
+        },
+        {
+          "id": 162,
+          "nome": "Bandeira 162",
+          "valor": 3379.66,
+          "qtd": 76,
+          "percentual": 0.7
+        },
+        {
+          "id": 169,
+          "nome": "Bandeira 169",
+          "valor": 3169.19,
+          "qtd": 42,
+          "percentual": 0.6
+        },
+        {
+          "id": 40,
+          "nome": "DACASA ESTABELECIMENTO",
+          "valor": 2250.9,
+          "qtd": 44,
+          "percentual": 0.4
+        },
+        {
+          "id": 159,
+          "nome": "Bandeira 159",
+          "valor": 2026.08,
+          "qtd": 7,
+          "percentual": 0.4
+        },
+        {
+          "id": 172,
+          "nome": "Bandeira 172",
+          "valor": 1934.01,
+          "qtd": 23,
+          "percentual": 0.4
+        },
+        {
+          "id": 71,
+          "nome": "MASTERCARD_",
+          "valor": 1267.9,
+          "qtd": 10,
+          "percentual": 0.2
+        },
+        {
+          "id": 73,
+          "nome": "N",
+          "valor": 1071.81,
+          "qtd": 24,
+          "percentual": 0.2
+        },
+        {
+          "id": 45,
+          "nome": "ECARDES",
+          "valor": 920.95,
+          "qtd": 8,
+          "percentual": 0.2
+        },
+        {
+          "id": 146,
+          "nome": "Bandeira 146",
+          "valor": 892.53,
+          "qtd": 1,
+          "percentual": 0.2
+        },
+        {
+          "id": 34,
+          "nome": "CONVERSAO DE MOEDAS",
+          "valor": 794.22,
+          "qtd": 7,
+          "percentual": 0.2
+        },
+        {
+          "id": 30,
+          "nome": "CABAL CREDIT",
+          "valor": 760,
+          "qtd": 9,
+          "percentual": 0.1
+        },
+        {
+          "id": 155,
+          "nome": "Bandeira 155",
+          "valor": 712.04,
+          "qtd": 3,
+          "percentual": 0.1
+        },
+        {
+          "id": 38,
+          "nome": "D0",
+          "valor": 559.49,
+          "qtd": 14,
+          "percentual": 0.1
+        },
+        {
+          "id": 175,
+          "nome": "Bandeira 175",
+          "valor": 530.54,
+          "qtd": 18,
+          "percentual": 0.1
+        },
+        {
+          "id": 33,
+          "nome": "COMPROCARD",
+          "valor": 446.41,
+          "qtd": 6,
+          "percentual": 0.1
+        },
+        {
+          "id": 203,
+          "nome": "Bandeira 203",
+          "valor": 394.31,
+          "qtd": 11,
+          "percentual": 0.1
+        },
+        {
+          "id": 148,
+          "nome": "Bandeira 148",
+          "valor": 316.82,
+          "qtd": 1,
+          "percentual": 0.1
+        },
+        {
+          "id": 1,
+          "nome": "AMEX",
+          "valor": 270.25,
+          "qtd": 6,
+          "percentual": 0.1
+        },
+        {
+          "id": 69,
+          "nome": "MASTERCARD DEBITO",
+          "valor": 138.62,
+          "qtd": 5,
+          "percentual": 0
+        },
+        {
+          "id": 41,
+          "nome": "DH",
+          "valor": 119.95,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 181,
+          "nome": "Bandeira 181",
+          "valor": 102.67,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 7,
+          "nome": "MASTERCARD",
+          "valor": 75,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 25,
+          "nome": "BANESCARD",
+          "valor": 63.25,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 163,
+          "nome": "Bandeira 163",
+          "valor": 62.6,
+          "qtd": 4,
+          "percentual": 0
+        },
+        {
+          "id": 4,
+          "nome": "ELO",
+          "valor": 41.43,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 178,
+          "nome": "Bandeira 178",
+          "valor": 20,
+          "qtd": 1,
+          "percentual": 0
+        },
+        {
+          "id": 206,
+          "nome": "Bandeira 206",
+          "valor": 8.04,
+          "qtd": 1,
+          "percentual": 0
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "nome": "Supermercados Albuquerque Itapu�",
+      "totalGeral": 232245.52,
+      "percentualTotal": 12.5,
+      "bandeiras": [
+        {
+          "id": 104,
+          "nome": "TICKET CULTURA",
+          "valor": 95519.3,
+          "qtd": 3237,
+          "percentual": 41.1
+        },
+        {
+          "id": 78,
+          "nome": "NAO INFORMADO",
+          "valor": 42284.43,
+          "qtd": 1090,
+          "percentual": 18.2
+        },
+        {
+          "id": 72,
+          "nome": "MAXXCARD",
+          "valor": 28816.1,
+          "qtd": 977,
+          "percentual": 12.4
+        },
+        {
+          "id": 77,
+          "nome": "NAO IDENTIFICADO NA OPERADORA",
+          "valor": 25330.81,
+          "qtd": 1292,
+          "percentual": 10.9
+        },
+        {
+          "id": 81,
+          "nome": "PLANVALE",
+          "valor": 15362,
+          "qtd": 475,
+          "percentual": 6.6
+        },
+        {
+          "id": 75,
+          "nome": "NAO IDENTIFICADA",
+          "valor": 9591.12,
+          "qtd": 382,
+          "percentual": 4.1
+        },
+        {
+          "id": 74,
+          "nome": "NAO",
+          "valor": 3895.26,
+          "qtd": 124,
+          "percentual": 1.7
+        },
+        {
+          "id": 32,
+          "nome": "CHARGEBACK",
+          "valor": 2164.66,
+          "qtd": 78,
+          "percentual": 0.9
+        },
+        {
+          "id": 45,
+          "nome": "ECARDES",
+          "valor": 1677.62,
+          "qtd": 31,
+          "percentual": 0.7
+        },
+        {
+          "id": 30,
+          "nome": "CABAL CREDIT",
+          "valor": 1212.8,
+          "qtd": 41,
+          "percentual": 0.5
+        },
+        {
+          "id": 38,
+          "nome": "D0",
+          "valor": 903.27,
+          "qtd": 51,
+          "percentual": 0.4
+        },
+        {
+          "id": 40,
+          "nome": "DACASA ESTABELECIMENTO",
+          "valor": 803.36,
+          "qtd": 21,
+          "percentual": 0.3
+        },
+        {
+          "id": 171,
+          "nome": "Bandeira 171",
+          "valor": 798.31,
+          "qtd": 16,
+          "percentual": 0.3
+        },
+        {
+          "id": 173,
+          "nome": "Bandeira 173",
+          "valor": 650.37,
+          "qtd": 24,
+          "percentual": 0.3
+        },
+        {
+          "id": 4,
+          "nome": "ELO",
+          "valor": 501.57,
+          "qtd": 2,
+          "percentual": 0.2
+        },
+        {
+          "id": 164,
+          "nome": "Bandeira 164",
+          "valor": 435.32,
+          "qtd": 6,
+          "percentual": 0.2
+        },
+        {
+          "id": 117,
+          "nome": "VISA CREDITO INTERNACIONAL",
+          "valor": 435.12,
+          "qtd": 6,
+          "percentual": 0.2
+        },
+        {
+          "id": 174,
+          "nome": "Bandeira 174",
+          "valor": 369.91,
+          "qtd": 21,
+          "percentual": 0.2
+        },
+        {
+          "id": 25,
+          "nome": "BANESCARD",
+          "valor": 368.82,
+          "qtd": 7,
+          "percentual": 0.2
+        },
+        {
+          "id": 34,
+          "nome": "CONVERSAO DE MOEDAS",
+          "valor": 329.73,
+          "qtd": 11,
+          "percentual": 0.1
+        },
+        {
+          "id": 71,
+          "nome": "MASTERCARD_",
+          "valor": 284.08,
+          "qtd": 5,
+          "percentual": 0.1
+        },
+        {
+          "id": 33,
+          "nome": "COMPROCARD",
+          "valor": 186.66,
+          "qtd": 6,
+          "percentual": 0.1
+        },
+        {
+          "id": 120,
+          "nome": "VISA_CREDITO",
+          "valor": 138.76,
+          "qtd": 1,
+          "percentual": 0.1
+        },
+        {
+          "id": 179,
+          "nome": "Bandeira 179",
+          "valor": 110.42,
+          "qtd": 6,
+          "percentual": 0
+        },
+        {
+          "id": 69,
+          "nome": "MASTERCARD DEBITO",
+          "valor": 57.18,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 48,
+          "nome": "ELAVON",
+          "valor": 9.76,
+          "qtd": 2,
+          "percentual": 0
+        },
+        {
+          "id": 165,
+          "nome": "Bandeira 165",
+          "valor": 8.78,
+          "qtd": 1,
+          "percentual": 0
+        }
+      ]
+    }
+  ]
+}

@@ -25,6 +25,10 @@ interface ProdutoItem {
   id: number;
   nome: string;
   secao: string;
+  regraCiss?: string;
+  qtdMinima?: number;
+  percDesconto?: number;
+  tipoDesconto?: string;
   qtdVendida: number;
   totalFaturado: number;
   totalDesconto: number;
@@ -54,6 +58,10 @@ interface VendaRecenteItem {
   idPlanilha: number;
   idProduto: number;
   nomeProduto: string;
+  regraCiss?: string;
+  qtdMinima?: number;
+  percDesconto?: number;
+  tipoDesconto?: string;
   qtdVendida: number;
   precoVarejo: number;
   descontoAtacarejo: number;
@@ -430,6 +438,7 @@ export function AtacarejoModule({
                   <th className="py-3 px-4">#</th>
                   <th className="py-3 px-4">Produto</th>
                   <th className="py-3 px-4 text-center">Seção</th>
+                  <th className="py-3 px-4">Regra CISS (Gatilho)</th>
                   <th className="py-3 px-4 text-right">Qtd Vendida</th>
                   <th className="py-3 px-4 text-right">Preço Varejo</th>
                   <th className="py-3 px-4 text-right">Preço Atacado</th>
@@ -457,6 +466,17 @@ export function AtacarejoModule({
                         <span className="text-[10px] bg-slate-800/60 px-2 py-0.5 rounded-md text-slate-300">
                           {p.secao}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 whitespace-nowrap shadow-sm">
+                          <Tag className="size-3 text-indigo-400 shrink-0" />
+                          <span>{p.regraCiss || `A partir de ${p.qtdMinima || 2} un`}</span>
+                        </span>
+                        {p.percDesconto ? (
+                          <div className="text-[10px] text-amber-400 font-medium mt-0.5">
+                            {p.percDesconto.toFixed(1)}% desc.
+                          </div>
+                        ) : null}
                       </td>
                       <td className="py-3 px-4 text-right font-medium">
                         {fmtNumber(p.qtdVendida)} un
@@ -569,6 +589,7 @@ export function AtacarejoModule({
                   <th className="py-3 px-4">Loja</th>
                   <th className="py-3 px-4">Cupom</th>
                   <th className="py-3 px-4">Produto</th>
+                  <th className="py-3 px-4">Regra CISS (Gatilho)</th>
                   <th className="py-3 px-4 text-right">Qtd</th>
                   <th className="py-3 px-4 text-right">Preço Varejo</th>
                   <th className="py-3 px-4 text-right">Desconto (R$)</th>
@@ -589,6 +610,17 @@ export function AtacarejoModule({
                     <td className="py-3 px-4">
                       <div className="font-semibold text-white">{r.nomeProduto}</div>
                       <div className="text-[10px] text-slate-500">Cód {r.idProduto}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 whitespace-nowrap shadow-sm">
+                        <Tag className="size-3 text-indigo-400 shrink-0" />
+                        <span>{r.regraCiss || `A partir de ${r.qtdMinima || 2} un`}</span>
+                      </span>
+                      {r.percDesconto ? (
+                        <div className="text-[10px] text-amber-400 font-medium mt-0.5">
+                          {r.percDesconto.toFixed(1)}% desc.
+                        </div>
+                      ) : null}
                     </td>
                     <td className="py-3 px-4 text-right font-medium">
                       {r.qtdVendida} un

@@ -98,7 +98,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <nav className="mt-2 flex flex-col gap-1 overflow-y-auto flex-1 pb-2 pr-1">
+      <nav className="mt-2 flex flex-col gap-1.5 overflow-y-auto flex-1 pb-4 pr-1">
         {allowedNav.map((item) => (
           <button
             key={item.id}
@@ -107,19 +107,21 @@ export function Sidebar({
               if (onItemClick) onItemClick();
             }}
             className={cn(
-              "group flex items-center gap-3 rounded-md px-3 py-2 text-xs transition text-left w-full cursor-pointer",
+              "group flex items-center gap-3 rounded-xl px-3.5 py-2.5 min-h-[42px] text-xs transition text-left w-full cursor-pointer",
               activeTab === item.id
-                ? "bg-primary/10 text-primary border-l-2 border-primary -ml-px font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-white/[0.03] border-l-2 border-transparent -ml-px"
+                ? "bg-cyan-500/15 text-cyan-300 font-semibold border-l-2 border-cyan-400 shadow-sm"
+                : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] border-l-2 border-transparent"
             )}
           >
-            <item.icon className={cn("size-4", activeTab === item.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-            <span className="truncate">{item.label}</span>
+            <item.icon className={cn("size-4 shrink-0", activeTab === item.id ? "text-cyan-400" : "text-slate-400 group-hover:text-slate-200")} />
+            <span className="truncate flex-1">{item.label}</span>
             {item.badge && (
               <span className={cn(
-                "ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0",
+                "ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0",
                 item.badge === "ADMIN" 
                   ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30" 
+                  : item.badge === "NOVO"
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                   : "bg-primary/20 text-primary"
               )}>
                 {item.badge}

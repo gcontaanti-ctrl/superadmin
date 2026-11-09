@@ -37,7 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
   Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
-  Menu, X, Sparkles, Settings, Eye
+  Menu, X, Sparkles, Settings, Eye, LayoutDashboard, ShoppingBag, CreditCard, Wallet
 } from "lucide-react";
 import { nav } from "@/components/executive/Sidebar";
 
@@ -74,17 +74,12 @@ function Dashboard() {
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   
-  const isMobileDevice = typeof window !== 'undefined' && (
-    window.innerWidth < 768 || 
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-    window.location.search.includes('mobile=true')
-  );
-  
   const isSuperAdmin = currentUser?.role === "superadmin" || 
     currentUser?.username?.toLowerCase() === "cristiano" || 
     currentUser?.permissions?.includes("*");
 
-  const [activeTab, setActiveTab] = useState(() => isMobileDevice ? "painel-gerente" : "visao-geral");
+  // Inicia sempre na Visão Geral completa, no celular e no computador
+  const [activeTab, setActiveTab] = useState("visao-geral");
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
   const [startDate, setStartDate] = useState<string>(get30DaysAgoStr());
@@ -258,33 +253,114 @@ function Dashboard() {
         </div>
       )}
       
-      <main className={`flex-1 flex flex-col gap-3 md:gap-4 w-full overflow-hidden ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pr-1 lg:pr-4'}`}>
+      <main className={`flex-1 flex flex-col gap-3 md:gap-4 w-full min-h-0 ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pr-0 md:pr-1 lg:pr-4 pb-24 md:pb-6'}`}>
         {/* Top Header */}
         {!isFullscreen && (
-          <header className="glass-strong rounded-2xl px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <Button
-              onClick={() => setIsMobileMenuOpen(true)}
-              variant="ghost"
-              size="icon"
-              className="text-slate-300 hover:text-white shrink-0 size-9"
-              title="Abrir Menu Lateral"
-            >
-              <Menu className="w-5 h-5" />
-            </Button>
-            <h2 className="hidden sm:flex items-center gap-2 text-xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 shrink-0">
-              HORUS <span className="font-sans font-light text-cyan-200 tracking-widest text-sm mt-1">ANALYTICS</span>
-            </h2>
-            <div className="hidden sm:block h-5 w-px bg-white/10 shrink-0" />
-            <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 mr-1 md:mr-2 shrink-0">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="hidden md:inline">Sincronizado DB2 {lastSyncTime ? `(${lastSyncTime})` : ""}</span>
-              <span className="md:hidden">DB2 OK</span>
+          <header className="glass-strong rounded-2xl px-3 md:px-6 py-2.5 md:py-4 flex items-center justify-between gap-2 md:gap-3">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <Button
+                onClick={() => setIsMobileMenuOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="text-slate-300 hover:text-white shrink-0 size-9 rounded-xl hover:bg-white/10"
+                title="Abrir Menu Completo (24 Módulos)"
+              >
+                <Menu className="w-5 h-5 text-cyan-400" />
+              </Button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="font-serif font-bold text-lg md:text-xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
+                  HORUS
+                </span>
+                <span className="font-sans font-light text-cyan-200 tracking-widest text-xs hidden sm:inline">
+                  ANALYTICS
+                </span>
+              </div>
+              <div className="hidden sm:block h-5 w-px bg-white/10 shrink-0" />
+              <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 mr-1 md:mr-2 shrink-0">
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="hidden md:inline">Sincronizado DB2 {lastSyncTime ? `(${lastSyncTime})` : ""}</span>
+                <span className="md:hidden">DB2 OK</span>
+              </div>
+
+              {/* Global Store Selector in Top Header (Desktop) */}
+              <div className="hidden lg:flex items-center gap-2 bg-black/45 px-2 md:px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0">
+                <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+                <select
+                  value={selectedStore}
+                  onChange={(e) => {
+                    setSelectedStore(e.target.value);
+                    const foundLoja = dbLojas.find((l: any) => String(l.IDEMPRESA) === e.target.value);
+                    const lojaNome = e.target.value === "todas" 
+                      ? "Todas as Lojas" 
+                      : String(foundLoja?.DESCREMPRESA || "").trim() || `Filial ${e.target.value}`;
+                    toast.success(`Filtrando painel por: ${lojaNome}`);
+                  }}
+                  className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold truncate"
+                >
+                  <option value="todas" className="bg-slate-900 text-slate-200">🏢 Todas as Lojas</option>
+                  {dbLojas.map((loja: any) => (
+                    <option key={loja.IDEMPRESA} value={loja.IDEMPRESA} className="bg-slate-900 text-slate-200">
+                      {loja.IDEMPRESA} - {String(loja.DESCREMPRESA || "").trim()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Global Date Range Selector (Desktop) */}
+              <div className="hidden lg:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0">
+                <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      toast.success(`Data inicial: ${e.target.value}`);
+                    }}
+                    className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark]" 
+                  />
+                  <span className="text-slate-500">até</span>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      toast.success(`Data final: ${e.target.value}`);
+                    }}
+                    className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark]" 
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Global Store Selector in Top Header */}
-            <div className="flex items-center gap-2 bg-black/45 px-2 md:px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0 max-w-[120px] md:max-w-none">
-              <Building2 className="w-3.5 h-3.5 text-primary shrink-0 hidden md:block" />
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="hidden sm:flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-xl text-xs font-semibold text-primary">
+                <Database className="w-3.5 h-3.5" />
+                <span>DB2</span>
+              </div>
+              <Button
+                onClick={() => setIsWhatsNewOpen(true)}
+                variant="outline"
+                className="border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs gap-1.5 rounded-xl h-8 px-2 sm:px-2.5 shrink-0"
+                title="Ver novidades da versão"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline font-medium">Novidades</span>
+                <span className="text-[10px] bg-cyan-400/20 text-cyan-200 px-1.5 py-0.2 rounded-full font-bold">v{SYSTEM_VERSION}</span>
+              </Button>
+              <Button onClick={logout} variant="outline" className="border-white/15 bg-white/5 text-xs h-8 px-2 sm:px-2.5">
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Sair</span>
+              </Button>
+            </div>
+          </header>
+        )}
+
+        {/* Mobile Dedicated Control Bar (Loja + Data) */}
+        {!isFullscreen && (
+          <div className="flex flex-col gap-2 lg:hidden w-full">
+            <div className="flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full">
+              <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
               <select
                 value={selectedStore}
                 onChange={(e) => {
@@ -295,21 +371,23 @@ function Dashboard() {
                     : String(foundLoja?.DESCREMPRESA || "").trim() || `Filial ${e.target.value}`;
                   toast.success(`Filtrando painel por: ${lojaNome}`);
                 }}
-                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[10px] md:text-[11px] font-semibold truncate w-full"
+                className="bg-transparent border-none text-slate-100 focus:outline-none cursor-pointer text-xs font-semibold w-full pr-2"
               >
-                <option value="todas" className="bg-slate-900 text-slate-200">🏢 Todas as Lojas</option>
+                <option value="todas" className="bg-slate-900 text-slate-100">🏢 Todas as Lojas</option>
                 {dbLojas.map((loja: any) => (
-                  <option key={loja.IDEMPRESA} value={loja.IDEMPRESA} className="bg-slate-900 text-slate-200">
+                  <option key={loja.IDEMPRESA} value={loja.IDEMPRESA} className="bg-slate-900 text-slate-100">
                     {loja.IDEMPRESA} - {String(loja.DESCREMPRESA || "").trim()}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Global Date Range Selector */}
-            <div className="hidden lg:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0">
-              <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-              <div className="flex items-center gap-1.5 text-xs text-slate-300">
+            <div className="flex items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full">
+              <div className="flex items-center gap-1.5 text-cyan-400 shrink-0">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-xs font-medium text-slate-300">Período:</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-slate-200">
                 <input 
                   type="date" 
                   value={startDate} 
@@ -317,9 +395,9 @@ function Dashboard() {
                     setStartDate(e.target.value);
                     toast.success(`Data inicial: ${e.target.value}`);
                   }}
-                  className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark]" 
+                  className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
                 />
-                <span className="text-slate-500">até</span>
+                <span className="text-slate-500 text-[10px]">até</span>
                 <input 
                   type="date" 
                   value={endDate} 
@@ -327,61 +405,26 @@ function Dashboard() {
                     setEndDate(e.target.value);
                     toast.success(`Data final: ${e.target.value}`);
                   }}
-                  className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark]" 
+                  className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
                 />
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-xl text-xs font-semibold text-primary">
-            <Database className="w-3.5 h-3.5" />
-            <span>Dados Reais (DB2)</span>
-          </div>
-          <Button
-            onClick={() => setIsWhatsNewOpen(true)}
-            variant="outline"
-            className="border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs gap-1.5 rounded-xl h-8 px-2.5 shrink-0"
-            title="Ver novidades da versão"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="hidden sm:inline font-medium">Novidades</span>
-            <span className="text-[10px] bg-cyan-400/20 text-cyan-200 px-1.5 py-0.2 rounded-full font-bold">v{SYSTEM_VERSION}</span>
-          </Button>
-          <Button onClick={logout} variant="outline" className="border-white/15 bg-white/5 text-xs">
-            <LogOut className="w-3.5 h-3.5" />
-            Sair
-          </Button>
-        </header>
-        )}
-
-        {/* Mobile Date Range Selector */}
-        {!isFullscreen && (
-          <div className="flex lg:hidden items-center justify-between gap-2 bg-black/45 px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full mb-1">
-            <div className="flex items-center gap-2 text-primary">
-              <Calendar className="w-4 h-4 shrink-0" />
-              <span className="text-xs font-semibold">Período:</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-300">
-              <input 
-                type="date" 
-                value={startDate} 
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  toast.success(`Data inicial: ${e.target.value}`);
-                }}
-                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[100px]" 
-              />
-              <span className="text-slate-500">até</span>
-              <input 
-                type="date" 
-                value={endDate} 
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  toast.success(`Data final: ${e.target.value}`);
-                }}
-                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[100px]" 
-              />
-            </div>
+            {/* Mobile Breadcrumb: Módulo Ativo */}
+            {activeTab !== "visao-geral" && (
+              <div className="flex items-center justify-between bg-cyan-950/40 border border-cyan-500/20 px-3 py-1.5 rounded-xl text-xs">
+                <div className="flex items-center gap-2 text-cyan-300 font-semibold truncate">
+                  <span className="size-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  <span className="truncate">Módulo: {nav.find(n => n.id === activeTab)?.label || activeTab}</span>
+                </div>
+                <button 
+                  onClick={() => setActiveTab("visao-geral")}
+                  className="text-[11px] text-cyan-200 hover:text-white bg-cyan-500/20 hover:bg-cyan-500/30 px-2.5 py-1 rounded-lg shrink-0 font-medium"
+                >
+                  Voltar ao Início
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -643,6 +686,49 @@ function Dashboard() {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar (Fixo para toque com polegar) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-white/10 px-2 py-1.5 flex items-center justify-around md:hidden shadow-[0_-8px_30px_rgba(0,0,0,0.8)]">
+        <button 
+          onClick={() => setActiveTab("visao-geral")}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${activeTab === "visao-geral" ? "text-cyan-400 font-bold bg-cyan-500/15" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          <LayoutDashboard className="size-5" />
+          <span className="text-[10px] font-medium tracking-tight">Visão Geral</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("atacarejo")}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${activeTab === "atacarejo" ? "text-indigo-400 font-bold bg-indigo-500/15" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          <ShoppingBag className="size-5" />
+          <span className="text-[10px] font-medium tracking-tight">Atacarejo</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("vendas-bandeira")}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${activeTab === "vendas-bandeira" ? "text-emerald-400 font-bold bg-emerald-500/15" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          <CreditCard className="size-5" />
+          <span className="text-[10px] font-medium tracking-tight">Bandeiras</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab("contas-pagar")}
+          className={`flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl transition-all ${activeTab === "contas-pagar" ? "text-amber-400 font-bold bg-amber-500/15" : "text-slate-400 hover:text-slate-200"}`}
+        >
+          <Wallet className="size-5" />
+          <span className="text-[10px] font-medium tracking-tight">A Pagar</span>
+        </button>
+
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="flex flex-col items-center gap-0.5 py-1 px-2.5 rounded-xl text-slate-300 hover:text-white"
+        >
+          <Menu className="size-5 text-cyan-400" />
+          <span className="text-[10px] font-medium tracking-tight">Mais (24)</span>
+        </button>
+      </nav>
 
       <WhatsNewModal isOpen={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
       <Toaster position="bottom-right" theme="dark" closeButton />

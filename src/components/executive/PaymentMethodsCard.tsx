@@ -213,7 +213,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
       </div>
 
       {/* Cards de Formas de Pagamento (Grid de 5 Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 md:gap-3">
         {resumo.map((item) => {
           const isConvenio = item.id === "convenio";
           return (
@@ -222,7 +222,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               onClick={() => {
                 if (isConvenio) setIsConvenioModalOpen(true);
               }}
-              className={`rounded-xl p-4 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${
+              className={`rounded-xl p-3 md:p-4 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${
                 isConvenio
                   ? "cursor-pointer hover:scale-[1.03] hover:border-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] group"
                   : "hover:scale-[1.02]"
@@ -230,29 +230,29 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               title={isConvenio ? "Clique para gerenciar baixas e pendências de convênios" : undefined}
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
                   {getIcon(item.id)}
-                  <span className="text-xs font-bold text-slate-200">{item.nome}</span>
+                  <span className="text-[11px] md:text-xs font-bold text-slate-200 truncate">{item.nome}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100">
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] md:text-xs font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100">
                     {item.percentual}%
                   </span>
                   {isConvenio && (
-                    <ArrowUpRight className="w-3.5 h-3.5 text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   )}
                 </div>
               </div>
 
               <div className="mt-1">
-                <div className="text-lg font-bold font-serif text-slate-100 tabular-nums">
+                <div className="text-sm md:text-lg font-bold font-serif text-slate-100 tabular-nums truncate">
                   {formatBRL(item.valor)}
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                  <span>{item.qtd.toLocaleString('pt-BR')} transações</span>
+                <div className="flex items-center justify-between text-[9px] md:text-[10px] text-slate-400 mt-1">
+                  <span className="truncate">{item.qtd.toLocaleString('pt-BR')} transações</span>
                   {item.troco !== undefined && item.troco < 0 && (
-                    <span className="text-emerald-300/80 font-mono" title={`Troco abatido: ${formatBRL(Math.abs(item.troco))}`}>
-                      Líquido
+                    <span className="text-emerald-300/80 font-mono shrink-0 ml-1" title={`Troco abatido: ${formatBRL(Math.abs(item.troco))}`}>
+                      Líq.
                     </span>
                   )}
                 </div>

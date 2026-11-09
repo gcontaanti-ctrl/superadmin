@@ -198,3 +198,4 @@ export function WhatsNewModal({ isOpen, onClose }: WhatsNewModalProps) {
     </div>
   );
 }
+

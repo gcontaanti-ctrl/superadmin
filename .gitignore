@@ -41,3 +41,5 @@ src/scripts/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

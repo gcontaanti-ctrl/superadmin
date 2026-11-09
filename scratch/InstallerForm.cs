@@ -4,6 +4,7 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Security.Principal;
@@ -158,20 +159,76 @@ namespace SmartCybertechInstaller
         {
             try
             {
-                var host = Dns.GetHostEntry(Dns.GetHostName());
-                foreach (var ip in host.AddressList)
+                string bestIp = null;
+                bool bestIsDhcp = false;
+
+                // Lista de nomes de adaptadores virtuais/VPN a ignorar (case-insensitive)
+                string[] blacklist = new string[] {
+                    "virtualbox", "vmware", "vmnet", "hyper-v", "vethernet",
+                    "openvpn", "tap-windows", "wintun", "radmin", "hamachi",
+                    "logmein", "bluetooth", "loopback", "teredo", "isatap",
+                    "6to4", "pseudo"
+                };
+
+                foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
                 {
-                    if (ip.AddressFamily == AddressFamily.InterNetwork && !ip.ToString().StartsWith("127.") && !ip.ToString().StartsWith("169.254"))
+                    // Somente interfaces ativas
+                    if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                    // Somente Ethernet ou Wi-Fi
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                    if (ni.NetworkInterfaceType == NetworkInterfaceType.Tunnel) continue;
+
+                    // Verifica se o nome do adaptador contem termos de blacklist
+                    string adapterName = ni.Name.ToLower() + " " + ni.Description.ToLower();
+                    bool isBlacklisted = false;
+                    foreach (string bl in blacklist)
                     {
-                        localIp = ip.ToString();
-                        break;
+                        if (adapterName.Contains(bl))
+                        {
+                            isBlacklisted = true;
+                            break;
+                        }
+                    }
+                    if (isBlacklisted)
+                    {
+                        Log("  [Ignorado] Adaptador virtual/VPN: " + ni.Name + " (" + ni.Description + ")");
+                        continue;
+                    }
+
+                    IPInterfaceProperties props = ni.GetIPProperties();
+                    foreach (UnicastIPAddressInformation addr in props.UnicastAddresses)
+                    {
+                        if (addr.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                        string ip = addr.Address.ToString();
+                        if (ip.StartsWith("127.") || ip.StartsWith("169.254.")) continue;
+
+                        // Detecta se veio por DHCP
+                        bool isDhcp = false;
+                        try { isDhcp = props.GetIPv4Properties().IsDhcpEnabled; }
+                        catch { }
+
+                        Log("  [Encontrado] " + ip + " via " + ni.Name + (isDhcp ? " (DHCP)" : " (Manual)"));
+
+                        // Prioriza DHCP sobre Manual
+                        if (bestIp == null || (isDhcp && !bestIsDhcp))
+                        {
+                            bestIp = ip;
+                            bestIsDhcp = isDhcp;
+                        }
                     }
                 }
-                Log("IP local detectado nesta máquina: " + localIp);
+
+                if (bestIp != null)
+                {
+                    localIp = bestIp;
+                }
+
+                Log(">>> IP da rede local selecionado: " + localIp + (bestIsDhcp ? " (DHCP - rede real)" : ""));
             }
-            catch
+            catch (Exception ex)
             {
                 localIp = "127.0.0.1";
+                Log("Erro detectando IP: " + ex.Message);
             }
         }
 

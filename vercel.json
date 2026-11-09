@@ -9,6 +9,16 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": ".*superatacado.*"
+        }
+      ],
+      "destination": "https://superatacado.cybertechapp.com.br/api/$1"
+    },
+    {
+      "source": "/api/(.*)",
       "destination": "https://albuquerque.cybertechapp.com.br/api/$1"
     },
     {

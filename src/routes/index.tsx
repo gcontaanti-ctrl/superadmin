@@ -31,6 +31,7 @@ import { PainelGerenteMobileModule } from "@/components/executive/PainelGerenteM
 import { PedidosCompradoresModule } from "@/components/executive/PedidosCompradoresModule";
 import { UserManagementModule } from "@/components/executive/UserManagementModule";
 import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
+import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
@@ -92,6 +93,19 @@ function Dashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
+
+  // Exibe novidades do sistema automaticamente se for o primeiro login pós-atualização
+  useEffect(() => {
+    if (authenticated) {
+      try {
+        const lastSeen = localStorage.getItem("horus_last_seen_version");
+        if (lastSeen !== SYSTEM_VERSION) {
+          setIsWhatsNewOpen(true);
+        }
+      } catch (_) {}
+    }
+  }, [authenticated]);
 
   // Redireciona para o primeiro módulo liberado caso o usuário não tenha acesso à aba atual
   useEffect(() => {
@@ -152,14 +166,24 @@ function Dashboard() {
         throw new Error(data.error || "Falha ao entrar");
       }
 
+      const userObj = data.user || {
+        id: "usr-" + cleanUser,
+        nome: cleanUser,
+        username: cleanUser,
+        role: "admin",
+        permissions: ["*"],
+        idEmpresa: "todas",
+        status: "APROVADO",
+      };
+
       try {
-        localStorage.setItem("horus_session_user", JSON.stringify(data.user));
+        localStorage.setItem("horus_session_user", JSON.stringify(userObj));
       } catch (_) {}
 
-      setCurrentUser(data.user);
+      setCurrentUser(userObj);
       setAuthenticated(true);
       setPassword("");
-      toast.success(`Acesso liberado: Bem-vindo, ${data.user.nome || data.user.username}!`);
+      toast.success(`Acesso liberado: Bem-vindo, ${userObj.nome || userObj.username}!`);
     } catch (err: any) {
       toast.error(err instanceof Error ? err.message : "Falha ao entrar");
     } finally {
@@ -312,6 +336,16 @@ function Dashboard() {
             <Database className="w-3.5 h-3.5" />
             <span>Dados Reais (DB2)</span>
           </div>
+          <Button
+            onClick={() => setIsWhatsNewOpen(true)}
+            variant="outline"
+            className="border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs gap-1.5 rounded-xl h-8 px-2.5 shrink-0"
+            title="Ver novidades da versão"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline font-medium">Novidades</span>
+            <span className="text-[10px] bg-cyan-400/20 text-cyan-200 px-1.5 py-0.2 rounded-full font-bold">v{SYSTEM_VERSION}</span>
+          </Button>
           <Button onClick={logout} variant="outline" className="border-white/15 bg-white/5 text-xs">
             <LogOut className="w-3.5 h-3.5" />
             Sair
@@ -600,6 +634,7 @@ function Dashboard() {
         )}
       </main>
 
+      <WhatsNewModal isOpen={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
       <Toaster position="bottom-right" theme="dark" closeButton />
     </div>
   </div>

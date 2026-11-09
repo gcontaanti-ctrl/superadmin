@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 
 export const nav = [
   { icon: LayoutDashboard, label: "Visão Geral", id: "visao-geral" },
+  { icon: ShoppingBag, label: "Vendas Atacarejo", id: "atacarejo", badge: "NOVO" },
   { icon: CreditCard, label: "Vendas por Bandeira", id: "vendas-bandeira", badge: "TEF" },
   { icon: Wallet, label: "Contas a Pagar", id: "contas-pagar", badge: "BOLETOS" },
   { icon: ShieldCheck, label: "Gestão Usuários", id: "gestao-usuarios", badge: "ADMIN", adminOnly: true },

@@ -20,6 +20,7 @@
     "role": "user",
     "permissions": [
       "visao-geral",
+      "atacarejo",
       "vendas-bandeira",
       "pedidos-compradores",
       "sugestoes-compras",
@@ -49,6 +50,7 @@
     "role": "user",
     "permissions": [
       "visao-geral",
+      "atacarejo",
       "vendas-bandeira",
       "pedidos-compradores",
       "sugestoes-compras",

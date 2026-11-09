@@ -2737,7 +2737,14 @@ app.get('/api/ranking-lojas', async (req, res) => {
 app.get('/api/empresas', async (req, res) => {
   try {
     const data = await queryDB("SELECT IDEMPRESA, NOMEFANTASIA AS DESCREMPRESA, CNPJ, CIDADE AS UF, 'S' AS FLAGLIBERADA FROM DBA.VW_GEA_EMPRESA WITH UR");
-    res.json(data);
+    const cleaned = (data || []).map(e => ({
+      ...e,
+      DESCREMPRESA: String(e.DESCREMPRESA || '')
+        .replace(/Itapu[\uFFFD\?]/gi, 'Itapuã')
+        .replace(/Canafistula/gi, 'Canafístula')
+        .trim()
+    }));
+    res.json(cleaned);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -16,7 +16,7 @@
   "lojas": [
     {
       "id": 2,
-      "nome": "Supermercados Albuquerque Canafistula",
+      "nome": "Supermercados Albuquerque Canafístula",
       "totalCupons": 1093,
       "qtdTotal": 9121,
       "totalDesconto": 2049.21,
@@ -38,7 +38,7 @@
     },
     {
       "id": 1,
-      "nome": "Supermercados Albuquerque Itapu�",
+      "nome": "Supermercados Albuquerque Itapuã",
       "totalCupons": 230,
       "qtdTotal": 1696,
       "totalDesconto": 410.24,
@@ -2657,7 +2657,7 @@
   "recentes": [
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 125949,
       "nomeProduto": "FEIJAO CARIOCA SUPER EXTRA SPECIAL 1KG",
@@ -2671,7 +2671,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 102657,
       "nomeProduto": "FLOCAO DE MILHO CORINGA 500G",
@@ -2685,7 +2685,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 103323,
       "nomeProduto": "MAC BRANDINI ESPAGUETE COMUM 500G",
@@ -2699,7 +2699,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 111860,
       "nomeProduto": "ARROZ PARB TIO VIEIRA 1KG",
@@ -2713,7 +2713,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 100083,
       "nomeProduto": "ACUCAR CRISTAL CAETE 1KG",
@@ -2727,7 +2727,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 272669,
       "nomeProduto": "BISC RECH TRELOSO MORANGO 120G",
@@ -2741,7 +2741,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1273017,
       "idProduto": 272618,
       "nomeProduto": "BISC RECH TRELOSO CHOCORESCO BAUNILHA 120G",
@@ -2769,7 +2769,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272967,
       "idProduto": 17786,
       "nomeProduto": "AGUA MINERAL VILLAGE  500ML",
@@ -2797,7 +2797,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272922,
       "idProduto": 111860,
       "nomeProduto": "ARROZ PARB TIO VIEIRA 1KG",
@@ -2811,7 +2811,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272922,
       "idProduto": 100083,
       "nomeProduto": "ACUCAR CRISTAL CAETE 1KG",
@@ -2825,7 +2825,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272922,
       "idProduto": 270534,
       "nomeProduto": "BISC VITARELLA MAIZENA TRADICIONAL 350G",
@@ -2839,7 +2839,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272922,
       "idProduto": 216157,
       "nomeProduto": "BISC VITARELLA MARIA TRADICIONAL 350G",
@@ -2853,7 +2853,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272856,
       "idProduto": 100231,
       "nomeProduto": "ARROZ PARB EMOCOES T-2 1KG",
@@ -2867,7 +2867,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272856,
       "idProduto": 272642,
       "nomeProduto": "BISC RECH TRELOSO CHOCOLATE 120G",
@@ -2881,7 +2881,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272837,
       "idProduto": 272642,
       "nomeProduto": "BISC RECH TRELOSO CHOCOLATE 120G",
@@ -2895,7 +2895,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272837,
       "idProduto": 272626,
       "nomeProduto": "BISC RECH TRELOSO CHOCORESCO CHOCOLATE 120G",
@@ -2909,7 +2909,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272826,
       "idProduto": 114313,
       "nomeProduto": "SARD GOMES DA COSTA OLEO 125G",
@@ -2951,7 +2951,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272800,
       "idProduto": 102657,
       "nomeProduto": "FLOCAO DE MILHO CORINGA 500G",
@@ -2965,7 +2965,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272800,
       "idProduto": 100732,
       "nomeProduto": "CAFE MOIDO MARATA ALMOFADA 250G",
@@ -2993,7 +2993,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272790,
       "idProduto": 416202,
       "nomeProduto": "SABAO EM  PO BEM TE VI COCO 400G",
@@ -3007,7 +3007,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272790,
       "idProduto": 100083,
       "nomeProduto": "ACUCAR CRISTAL CAETE 1KG",
@@ -3021,7 +3021,7 @@
     },
     {
       "idEmpresa": 1,
-      "nomeLoja": "Supermercados Albuquerque Itapu�",
+      "nomeLoja": "Supermercados Albuquerque Itapuã",
       "idPlanilha": 1272790,
       "idProduto": 100732,
       "nomeProduto": "CAFE MOIDO MARATA ALMOFADA 250G",
@@ -3035,7 +3035,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 410948,
       "nomeProduto": "BISC RECH TRELOSO FAR LACTEA 120G",
@@ -3049,7 +3049,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 275374,
       "nomeProduto": "BISC RECH TRELOSO BEM CASADO 120G",
@@ -3063,7 +3063,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 272642,
       "nomeProduto": "BISC RECH TRELOSO CHOCOLATE 120G",
@@ -3077,7 +3077,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 272626,
       "nomeProduto": "BISC RECH TRELOSO CHOCORESCO CHOCOLATE 120G",
@@ -3091,7 +3091,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 272618,
       "nomeProduto": "BISC RECH TRELOSO CHOCORESCO BAUNILHA 120G",
@@ -3105,7 +3105,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272764,
       "idProduto": 272600,
       "nomeProduto": "BISC RECH TRELOSO FLOCOS 120G",
@@ -3119,7 +3119,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272740,
       "idProduto": 115108,
       "nomeProduto": "LEITE CONDENSADO ITALAC 395G",
@@ -3133,7 +3133,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272740,
       "idProduto": 111860,
       "nomeProduto": "ARROZ PARB TIO VIEIRA 1KG",
@@ -3147,7 +3147,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272740,
       "idProduto": 102657,
       "nomeProduto": "FLOCAO DE MILHO CORINGA 500G",
@@ -3161,7 +3161,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272740,
       "idProduto": 114047,
       "nomeProduto": "CREME DE LEITE ITALAC 200G",
@@ -3203,7 +3203,7 @@
     },
     {
       "idEmpresa": 2,
-      "nomeLoja": "Supermercados Albuquerque Canafistula",
+      "nomeLoja": "Supermercados Albuquerque Canafístula",
       "idPlanilha": 1272711,
       "idProduto": 102657,
       "nomeProduto": "FLOCAO DE MILHO CORINGA 500G",

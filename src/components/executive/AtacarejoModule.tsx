@@ -15,7 +15,11 @@ import {
   Boxes,
   Store,
   Tag,
-  CheckCircle2
+  CheckCircle2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -96,6 +100,33 @@ interface AtacarejoModuleProps {
   endDate: string;
 }
 
+type SortField =
+  | "id"
+  | "nome"
+  | "secao"
+  | "regraCiss"
+  | "qtdVendida"
+  | "precoVarejoMedio"
+  | "precoAtacarejoMedio"
+  | "totalDesconto"
+  | "totalFaturado"
+  | "margemMediaPct"
+  | "totalLucro";
+
+type RecenteSortField =
+  | "nomeLoja"
+  | "idPlanilha"
+  | "nomeProduto"
+  | "regraCiss"
+  | "qtdVendida"
+  | "precoVarejo"
+  | "descontoAtacarejo"
+  | "totalFaturado"
+  | "margemPct"
+  | "dataHora";
+
+type SortDirection = "asc" | "desc";
+
 export function AtacarejoModule({
   selectedStore,
   startDate,
@@ -106,6 +137,14 @@ export function AtacarejoModule({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLojaFilter, setSelectedLojaFilter] = useState<string>("todas");
   const [viewTab, setViewTab] = useState<"ranking" | "lojas" | "recentes">("ranking");
+
+  // Ordenação do Ranking de Produtos
+  const [sortField, setSortField] = useState<SortField>("totalFaturado");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  // Ordenação das Vendas Recentes
+  const [recSortField, setRecSortField] = useState<RecenteSortField>("dataHora");
+  const [recSortDir, setRecSortDir] = useState<SortDirection>("desc");
 
   // Sincronizar com filtro do topo
   useEffect(() => {
@@ -188,18 +227,114 @@ export function AtacarejoModule({
     return new Intl.NumberFormat("pt-BR").format(val || 0);
   };
 
-  // Filtragem de produtos por busca
-  const filteredProdutos = useMemo(() => {
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection(["nome", "secao", "regraCiss"].includes(field) ? "asc" : "desc");
+    }
+  };
+
+  const handleRecSort = (field: RecenteSortField) => {
+    if (recSortField === field) {
+      setRecSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setRecSortField(field);
+      setRecSortDir(["nomeLoja", "nomeProduto", "regraCiss"].includes(field) ? "asc" : "desc");
+    }
+  };
+
+  const handleProductFilter = (nome: string) => {
+    setSearchTerm(nome);
+    toast.info(`Filtrando pelo produto: "${nome}"`);
+  };
+
+  const handleSecaoFilter = (secao: string) => {
+    setSearchTerm(secao);
+    toast.info(`Filtrando pela seção: "${secao}"`);
+  };
+
+  const handleRegraFilter = (regra: string) => {
+    setSearchTerm(regra);
+    toast.info(`Filtrando pela regra: "${regra}"`);
+  };
+
+  // Filtragem e Ordenação de produtos
+  const sortedAndFilteredProdutos = useMemo(() => {
     if (!data?.produtos) return [];
-    if (!searchTerm.trim()) return data.produtos;
-    const term = searchTerm.toLowerCase();
-    return data.produtos.filter(
-      (p) =>
-        p.nome.toLowerCase().includes(term) ||
-        String(p.id).includes(term) ||
-        p.secao.toLowerCase().includes(term)
-    );
-  }, [data, searchTerm]);
+    let list = [...data.produtos];
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.nome.toLowerCase().includes(term) ||
+          String(p.id).includes(term) ||
+          p.secao.toLowerCase().includes(term) ||
+          (p.regraCiss && p.regraCiss.toLowerCase().includes(term))
+      );
+    }
+
+    list.sort((a, b) => {
+      let valA: any = a[sortField];
+      let valB: any = b[sortField];
+
+      if (sortField === "regraCiss") {
+        valA = a.qtdMinima || 0;
+        valB = b.qtdMinima || 0;
+      }
+
+      if (typeof valA === "string") {
+        const cmp = String(valA).localeCompare(String(valB || ""), "pt-BR", { sensitivity: "base" });
+        return sortDirection === "asc" ? cmp : -cmp;
+      }
+
+      const numA = Number(valA || 0);
+      const numB = Number(valB || 0);
+      return sortDirection === "asc" ? numA - numB : numB - numA;
+    });
+
+    return list;
+  }, [data, searchTerm, sortField, sortDirection]);
+
+  // Filtragem e Ordenação de Vendas Recentes
+  const sortedRecentes = useMemo(() => {
+    if (!data?.recentes) return [];
+    let list = [...data.recentes];
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      list = list.filter(
+        (r) =>
+          r.nomeProduto.toLowerCase().includes(term) ||
+          String(r.idProduto).includes(term) ||
+          r.nomeLoja.toLowerCase().includes(term) ||
+          String(r.idPlanilha).includes(term) ||
+          (r.regraCiss && r.regraCiss.toLowerCase().includes(term))
+      );
+    }
+
+    list.sort((a, b) => {
+      let valA: any = a[recSortField];
+      let valB: any = b[recSortField];
+
+      if (recSortField === "regraCiss") {
+        valA = a.qtdMinima || 0;
+        valB = b.qtdMinima || 0;
+      }
+
+      if (typeof valA === "string") {
+        const cmp = String(valA).localeCompare(String(valB || ""), "pt-BR", { sensitivity: "base" });
+        return recSortDir === "asc" ? cmp : -cmp;
+      }
+
+      const numA = Number(valA || 0);
+      const numB = Number(valB || 0);
+      return recSortDir === "asc" ? numA - numB : numB - numA;
+    });
+
+    return list;
+  }, [data, searchTerm, recSortField, recSortDir]);
 
   // Exportar para CSV
   const exportCsv = () => {
@@ -207,9 +342,9 @@ export function AtacarejoModule({
       toast.info("Não há dados para exportar.");
       return;
     }
-    let csv = "ID;Produto;Secao;Qtd Vendida;Preco Varejo;Preco Atacado;Faturado;Desconto;Margem Pct;Lucro\n";
-    data.produtos.forEach((p) => {
-      csv += `${p.id};"${p.nome}";"${p.secao}";${p.qtdVendida};${p.precoVarejoMedio.toFixed(2).replace(".", ",")};${p.precoAtacarejoMedio.toFixed(2).replace(".", ",")};${p.totalFaturado.toFixed(2).replace(".", ",")};${p.totalDesconto.toFixed(2).replace(".", ",")};${p.margemMediaPct.toFixed(2).replace(".", ",")};${p.totalLucro.toFixed(2).replace(".", ",")}\n`;
+    let csv = "ID;Produto;Secao;Regra CISS;Qtd Vendida;Preco Varejo;Preco Atacado;Faturado;Desconto;Margem Pct;Lucro\n";
+    sortedAndFilteredProdutos.forEach((p) => {
+      csv += `${p.id};"${p.nome}";"${p.secao}";"${p.regraCiss || ""}";${p.qtdVendida};${p.precoVarejoMedio.toFixed(2).replace(".", ",")};${p.precoAtacarejoMedio.toFixed(2).replace(".", ",")};${p.totalFaturado.toFixed(2).replace(".", ",")};${p.totalDesconto.toFixed(2).replace(".", ",")};${p.margemMediaPct.toFixed(2).replace(".", ",")};${p.totalLucro.toFixed(2).replace(".", ",")}\n`;
     });
 
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -230,6 +365,78 @@ export function AtacarejoModule({
     totalLucro: 0,
     margemMediaPct: 0,
     ticketMedio: 0
+  };
+
+  const renderHeader = (
+    label: string,
+    field: SortField,
+    align: "left" | "center" | "right" = "left"
+  ) => {
+    const isActive = sortField === field;
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={`py-3 px-4 cursor-pointer select-none transition-colors group ${
+          align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
+        } ${isActive ? "text-cyan-400 bg-white/[0.05]" : "hover:text-white hover:bg-white/[0.02]"}`}
+        title={`Clique para ordenar por ${label} (${
+          isActive && sortDirection === "asc" ? "Decrescente" : "Crescente"
+        })`}
+      >
+        <div
+          className={`inline-flex items-center gap-1.5 ${
+            align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start"
+          }`}
+        >
+          <span>{label}</span>
+          {isActive ? (
+            sortDirection === "asc" ? (
+              <ArrowUp className="size-3 text-cyan-400 shrink-0" />
+            ) : (
+              <ArrowDown className="size-3 text-cyan-400 shrink-0" />
+            )
+          ) : (
+            <ArrowUpDown className="size-3 text-slate-600 group-hover:text-slate-400 shrink-0 transition-colors" />
+          )}
+        </div>
+      </th>
+    );
+  };
+
+  const renderRecHeader = (
+    label: string,
+    field: RecenteSortField,
+    align: "left" | "center" | "right" = "left"
+  ) => {
+    const isActive = recSortField === field;
+    return (
+      <th
+        onClick={() => handleRecSort(field)}
+        className={`py-3 px-4 cursor-pointer select-none transition-colors group ${
+          align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
+        } ${isActive ? "text-cyan-400 bg-white/[0.05]" : "hover:text-white hover:bg-white/[0.02]"}`}
+        title={`Clique para ordenar por ${label} (${
+          isActive && recSortDir === "asc" ? "Decrescente" : "Crescente"
+        })`}
+      >
+        <div
+          className={`inline-flex items-center gap-1.5 ${
+            align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start"
+          }`}
+        >
+          <span>{label}</span>
+          {isActive ? (
+            recSortDir === "asc" ? (
+              <ArrowUp className="size-3 text-cyan-400 shrink-0" />
+            ) : (
+              <ArrowDown className="size-3 text-cyan-400 shrink-0" />
+            )
+          ) : (
+            <ArrowUpDown className="size-3 text-slate-600 group-hover:text-slate-400 shrink-0 transition-colors" />
+          )}
+        </div>
+      </th>
+    );
   };
 
   return (
@@ -294,19 +501,18 @@ export function AtacarejoModule({
               onClick={exportCsv}
               className="bg-black/40 border-white/10 hover:bg-white/5 text-slate-300 text-xs gap-1.5 rounded-xl h-8"
             >
-              <Download className="size-3.5 text-indigo-400" />
+              <Download className="size-3.5 text-emerald-400" />
               Exportar
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Cards de Métricas Principais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4">
-        {/* Faturamento Atacarejo */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Faturamento Atacarejo</span>
+      {/* Grid de Métricas Principais */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="glass-strong rounded-2xl p-4 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400">Faturamento Atacarejo</span>
             <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
               <DollarSign className="size-4" />
             </div>
@@ -314,16 +520,16 @@ export function AtacarejoModule({
           <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
             {fmtCurrency(metricas.totalFaturado)}
           </div>
-          <div className="text-[11px] text-emerald-400 mt-1 flex items-center gap-1">
-            <span>Ticket Médio: {fmtCurrency(metricas.ticketMedio)}</span>
+          <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+            <span>Ticket Médio:</span>
+            <span className="text-emerald-400 font-semibold">{fmtCurrency(metricas.ticketMedio)}</span>
           </div>
         </div>
 
-        {/* Quantidade Vendida */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Volume Total Vendido</span>
-            <div className="size-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+        <div className="glass-strong rounded-2xl p-4 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400">Volume Total Vendido</span>
+            <div className="size-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
               <Boxes className="size-4" />
             </div>
           </div>
@@ -331,14 +537,14 @@ export function AtacarejoModule({
             {fmtNumber(metricas.totalQtd)} un
           </div>
           <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-            <span>{fmtNumber(metricas.totalCupons)} cupons com atacarejo</span>
+            <span className="text-blue-400 font-medium">{fmtNumber(metricas.totalCupons)}</span>
+            <span>cupons com atacarejo</span>
           </div>
         </div>
 
-        {/* Desconto Concedido */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Desconto Atacarejo</span>
+        <div className="glass-strong rounded-2xl p-4 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400">Desconto Atacarejo</span>
             <div className="size-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Tag className="size-4" />
             </div>
@@ -351,10 +557,9 @@ export function AtacarejoModule({
           </div>
         </div>
 
-        {/* Margem Média & Lucro */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
-          <div className="flex items-center justify-between text-slate-400 mb-2">
-            <span className="text-xs font-medium">Margem Média Real</span>
+        <div className="glass-strong rounded-2xl p-4 border border-white/10 relative overflow-hidden bg-gradient-to-br from-slate-900/90 to-slate-950/80">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-400">Margem Média Real</span>
             <div className="size-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
               <TrendingUp className="size-4" />
             </div>
@@ -403,16 +608,39 @@ export function AtacarejoModule({
           </button>
         </div>
 
-        {viewTab === "ranking" && (
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por produto ou código..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
-            />
+        {(viewTab === "ranking" || viewTab === "recentes") && (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {searchTerm && (
+              <div className="flex items-center gap-1.5 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs px-2.5 py-1 rounded-xl shrink-0">
+                <span>Filtro: <strong>{searchTerm}</strong></span>
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="hover:text-white text-indigo-400 p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                  title="Limpar filtro"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            )}
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar produto, seção ou regra..."
+                className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  title="Limpar"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -426,49 +654,75 @@ export function AtacarejoModule({
                 Produtos Mais Vendidos no Atacarejo
               </h2>
               <p className="text-xs text-slate-400">
-                {filteredProdutos.length} produtos localizados com venda de atacado no período
+                {sortedAndFilteredProdutos.length} produtos localizados • Clique nas colunas para ordenar ou nos nomes para filtrar
               </p>
             </div>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="text-xs text-indigo-400 hover:text-white hover:bg-white/5 h-8 gap-1.5"
+              >
+                <X className="size-3.5" />
+                Limpar Filtro
+              </Button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/70 text-slate-400 border-b border-white/5 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Produto</th>
-                  <th className="py-3 px-4 text-center">Seção</th>
-                  <th className="py-3 px-4">Regra CISS (Gatilho)</th>
-                  <th className="py-3 px-4 text-right">Qtd Vendida</th>
-                  <th className="py-3 px-4 text-right">Preço Varejo</th>
-                  <th className="py-3 px-4 text-right">Preço Atacado</th>
-                  <th className="py-3 px-4 text-right">Desconto (R$)</th>
-                  <th className="py-3 px-4 text-right">Faturamento</th>
-                  <th className="py-3 px-4 text-right">Margem Real</th>
-                  <th className="py-3 px-4 text-right">Lucro Bruto</th>
+                <tr className="border-b border-white/5 uppercase text-[10px] tracking-wider">
+                  <th className="py-3 px-4 text-center w-10">#</th>
+                  {renderHeader("Produto", "nome", "left")}
+                  {renderHeader("Seção", "secao", "center")}
+                  {renderHeader("Regra CISS (Gatilho)", "regraCiss", "left")}
+                  {renderHeader("Qtd Vendida", "qtdVendida", "right")}
+                  {renderHeader("Preço Varejo", "precoVarejoMedio", "right")}
+                  {renderHeader("Preço Atacado", "precoAtacarejoMedio", "right")}
+                  {renderHeader("Desconto (R$)", "totalDesconto", "right")}
+                  {renderHeader("Faturamento", "totalFaturado", "right")}
+                  {renderHeader("Margem Real", "margemMediaPct", "right")}
+                  {renderHeader("Lucro Bruto", "totalLucro", "right")}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-200">
-                {filteredProdutos.map((p, index) => {
+                {sortedAndFilteredProdutos.map((p, index) => {
                   return (
                     <tr
                       key={p.id}
-                      className="hover:bg-white/[0.02] transition-colors"
+                      className="hover:bg-white/[0.03] transition-colors"
                     >
                       <td className="py-3 px-4 font-mono text-slate-500 text-center w-10">
                         {index + 1}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-white">{p.nome}</div>
+                        <div
+                          onClick={() => handleProductFilter(p.nome)}
+                          className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
+                          title="Clique para filtrar apenas este produto"
+                        >
+                          <span>{p.nome}</span>
+                          <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
+                        </div>
                         <div className="text-[10px] text-slate-500">Cód {p.id}</div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className="text-[10px] bg-slate-800/60 px-2 py-0.5 rounded-md text-slate-300">
+                        <span
+                          onClick={() => handleSecaoFilter(p.secao)}
+                          className="text-[10px] bg-slate-800/60 hover:bg-slate-700/80 cursor-pointer px-2 py-0.5 rounded-md text-slate-300 hover:text-white transition-colors"
+                          title="Clique para filtrar produtos desta seção"
+                        >
                           {p.secao}
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 whitespace-nowrap shadow-sm">
+                        <span
+                          onClick={() => handleRegraFilter(p.regraCiss || `A partir de ${p.qtdMinima || 2}`)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                          title="Clique para filtrar produtos com esta mesma regra"
+                        >
                           <Tag className="size-3 text-indigo-400 shrink-0" />
                           <span>{p.regraCiss || `A partir de ${p.qtdMinima || 2} un`}</span>
                         </span>
@@ -577,42 +831,70 @@ export function AtacarejoModule({
                 Extrato Recente de Vendas Atacarejo
               </h2>
               <p className="text-xs text-slate-400">
-                Últimas operações que acionaram o desconto de atacado nos caixas
+                {sortedRecentes.length} operações registradas • Clique nas colunas para ordenar ou nos nomes para filtrar
               </p>
             </div>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchTerm("")}
+                className="text-xs text-indigo-400 hover:text-white hover:bg-white/5 h-8 gap-1.5"
+              >
+                <X className="size-3.5" />
+                Limpar Filtro
+              </Button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-950/70 text-slate-400 border-b border-white/5 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="py-3 px-4">Loja</th>
-                  <th className="py-3 px-4">Cupom</th>
-                  <th className="py-3 px-4">Produto</th>
-                  <th className="py-3 px-4">Regra CISS (Gatilho)</th>
-                  <th className="py-3 px-4 text-right">Qtd</th>
-                  <th className="py-3 px-4 text-right">Preço Varejo</th>
-                  <th className="py-3 px-4 text-right">Desconto (R$)</th>
-                  <th className="py-3 px-4 text-right">Total Faturado</th>
-                  <th className="py-3 px-4 text-right">Margem</th>
-                  <th className="py-3 px-4 text-right">Data / Hora</th>
+                <tr className="border-b border-white/5 uppercase text-[10px] tracking-wider">
+                  {renderRecHeader("Loja", "nomeLoja", "left")}
+                  {renderRecHeader("Cupom", "idPlanilha", "left")}
+                  {renderRecHeader("Produto", "nomeProduto", "left")}
+                  {renderRecHeader("Regra CISS (Gatilho)", "regraCiss", "left")}
+                  {renderRecHeader("Qtd", "qtdVendida", "right")}
+                  {renderRecHeader("Preço Varejo", "precoVarejo", "right")}
+                  {renderRecHeader("Desconto (R$)", "descontoAtacarejo", "right")}
+                  {renderRecHeader("Total Faturado", "totalFaturado", "right")}
+                  {renderRecHeader("Margem", "margemPct", "right")}
+                  {renderRecHeader("Data / Hora", "dataHora", "right")}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-200">
-                {data?.recentes?.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
+                {sortedRecentes.map((r, i) => (
+                  <tr key={i} className="hover:bg-white/[0.03] transition-colors">
                     <td className="py-3 px-4 font-medium text-slate-300">
-                      {r.nomeLoja}
+                      <span
+                        onClick={() => setSelectedLojaFilter(String(r.idEmpresa))}
+                        className="hover:text-cyan-300 cursor-pointer transition-colors"
+                        title="Clique para filtrar por esta loja"
+                      >
+                        {r.nomeLoja}
+                      </span>
                     </td>
                     <td className="py-3 px-4 font-mono text-cyan-400">
                       #{r.idPlanilha}
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-white">{r.nomeProduto}</div>
+                      <div
+                        onClick={() => handleProductFilter(r.nomeProduto)}
+                        className="font-semibold text-white hover:text-cyan-300 cursor-pointer transition-colors group flex items-center gap-1.5"
+                        title="Clique para filtrar apenas este produto"
+                      >
+                        <span>{r.nomeProduto}</span>
+                        <Search className="size-3 opacity-0 group-hover:opacity-100 text-cyan-400 transition-opacity shrink-0" />
+                      </div>
                       <div className="text-[10px] text-slate-500">Cód {r.idProduto}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 whitespace-nowrap shadow-sm">
+                      <span
+                        onClick={() => handleRegraFilter(r.regraCiss || `A partir de ${r.qtdMinima || 2}`)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 cursor-pointer transition-colors whitespace-nowrap shadow-sm"
+                        title="Clique para filtrar vendas com esta mesma regra"
+                      >
                         <Tag className="size-3 text-indigo-400 shrink-0" />
                         <span>{r.regraCiss || `A partir de ${r.qtdMinima || 2} un`}</span>
                       </span>
@@ -650,4 +932,3 @@ export function AtacarejoModule({
     </div>
   );
 }
-

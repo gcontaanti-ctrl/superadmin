@@ -823,19 +823,18 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#f8fafc] text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden select-none">
-      {/* Grafismo decorativo tecnológico: Canto Superior Esquerdo */}
+    <div className="relative min-h-screen w-full bg-[#ffffff] text-slate-800 flex items-center justify-center lg:justify-end lg:pr-16 xl:pr-32 p-4 sm:p-6 md:p-8 overflow-hidden select-none bg-cover bg-center lg:bg-[url('/login_seamless_bg.png')]">
+      {/* Grafismos decorativos nos cantos para Mobile/Tablet (onde a imagem de fundo widescreen nao se aplica) */}
       <img 
-        src="/cybertech_corner_top_left.png" 
+        src="/corner_top_left_hd.png" 
         alt="" 
-        className="absolute top-0 left-0 w-36 sm:w-56 md:w-72 lg:w-80 pointer-events-none select-none z-0 object-contain" 
+        className="lg:hidden absolute top-0 left-0 w-36 sm:w-52 pointer-events-none select-none z-0 object-contain" 
       />
 
-      {/* Grafismo decorativo tecnológico: Canto Inferior Direito */}
       <img 
-        src="/cybertech_corner_bottom_right.png" 
+        src="/corner_bottom_right_hd.png" 
         alt="" 
-        className="absolute bottom-0 right-0 w-36 sm:w-56 md:w-72 lg:w-80 pointer-events-none select-none z-0 object-contain" 
+        className="lg:hidden absolute bottom-0 right-0 w-36 sm:w-52 pointer-events-none select-none z-0 object-contain" 
       />
 
       {/* Botão de Tema Flutuante no Topo */}
@@ -843,29 +842,20 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
         <ThemeToggle />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 my-auto">
-        {/* Coluna Esquerda Desktop: A grande Águia CYBERTECH HORUS */}
-        <div className="hidden lg:flex flex-col items-center justify-center flex-1 max-w-lg select-none animate-in fade-in slide-in-from-left-6 duration-700">
+      <div className="relative z-10 w-full max-w-md my-auto animate-in fade-in zoom-in-95 duration-500">
+        {/* Topo no Mobile: A Águia Centralizada em Altíssima Definição */}
+        <div className="flex lg:hidden flex-col items-center justify-center text-center pt-2 mb-2">
           <img 
-            src="/cybertech_eagle_transparent.png" 
+            src="/cybertech_eagle_hd.png" 
             alt="CYBERTECH HORUS - SYSTEM AND APP DEVELOP" 
-            className="w-full max-w-[460px] object-contain drop-shadow-[0_15px_30px_rgba(0,102,255,0.18)] hover:scale-[1.02] transition-transform duration-500" 
+            className="w-full max-w-[280px] sm:max-w-[320px] object-contain drop-shadow-md" 
           />
         </div>
 
-        {/* Coluna Direita / Centro Mobile: O Card de Login */}
-        <div className="w-full max-w-md bg-white rounded-[2.5rem] p-6 sm:p-9 shadow-[0_20px_60px_-15px_rgba(0,102,255,0.10)] border border-slate-100 flex flex-col gap-5 relative z-10 animate-in fade-in zoom-in-95 duration-500">
+        {/* O Card de Login */}
+        <div className="w-full bg-white rounded-[2.5rem] p-6 sm:p-9 shadow-[0_25px_60px_-15px_rgba(0,102,255,0.15)] border border-slate-100 flex flex-col gap-5">
           
-          {/* Topo no Mobile: A Águia Centralizada */}
-          <div className="flex lg:hidden flex-col items-center justify-center text-center pt-1 mb-1">
-            <img 
-              src="/cybertech_eagle_transparent.png" 
-              alt="CYBERTECH HORUS" 
-              className="w-full max-w-[270px] sm:max-w-[300px] object-contain" 
-            />
-          </div>
-
-          {/* Topo no Desktop: Bem-vindo(a) ao + Mini Logo */}
+          {/* Topo do Card no Desktop: Bem-vindo(a) ao + Mini Logo */}
           <div className="hidden lg:flex flex-col items-center justify-center text-center mb-1">
             <span className="text-slate-600 text-sm font-medium">Bem-vindo(a) ao</span>
             <img 

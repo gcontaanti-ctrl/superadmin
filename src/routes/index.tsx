@@ -39,7 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
   Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
-  Menu, X, Sparkles, Settings, Eye, LayoutDashboard, ShoppingBag, CreditCard, Wallet,
+  Menu, X, Sparkles, Settings, Eye, EyeOff, User, Lock, LayoutDashboard, ShoppingBag, CreditCard, Wallet,
   UserPlus, CheckCircle2, Clock, Store, ArrowLeft, AlertTriangle
 } from "lucide-react";
 import { nav } from "@/components/executive/Sidebar";
@@ -754,6 +754,7 @@ type LoginScreenProps = {
 
 function LoginScreen({ username, setUsername, password, setPassword, loading, onSubmit }: LoginScreenProps) {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [showPassword, setShowPassword] = useState(false);
   const [lojas, setLojas] = useState<any[]>([]);
   
   // Campos do formulário de solicitação de cadastro
@@ -821,214 +822,267 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
   };
 
   return (
-    <div 
-      className="relative min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-3 sm:p-4 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat transition-all duration-1000"
-      style={{ backgroundImage: "url('/bg-login.png')" }}
-    >
-      {/* Botão de Tema Flutuante no Login */}
+    <div className="relative min-h-screen w-full bg-[#f8fafc] text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden select-none">
+      {/* Grafismo decorativo tecnológico: Canto Superior Esquerdo */}
+      <img 
+        src="/cybertech_corner_top_left.png" 
+        alt="" 
+        className="absolute top-0 left-0 w-36 sm:w-56 md:w-72 lg:w-80 pointer-events-none select-none z-0 object-contain" 
+      />
+
+      {/* Grafismo decorativo tecnológico: Canto Inferior Direito */}
+      <img 
+        src="/cybertech_corner_bottom_right.png" 
+        alt="" 
+        className="absolute bottom-0 right-0 w-36 sm:w-56 md:w-72 lg:w-80 pointer-events-none select-none z-0 object-contain" 
+      />
+
+      {/* Botão de Tema Flutuante no Topo */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
 
-      {/* Overlay escuro */}
-      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
-
-      <div className="relative z-10 w-full max-w-sm rounded-[2rem] p-6 sm:p-8 flex flex-col gap-5 border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.8)] bg-slate-950/50 backdrop-blur-xl group overflow-hidden transition-all duration-500 hover:shadow-[0_0_100px_rgba(6,182,212,0.2)]">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-        
-        {/* Logo Horus */}
-        <div className="flex flex-col items-center gap-2 text-center mb-1">
-          <div className="size-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 grid place-items-center shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-transform duration-500 group-hover:scale-105">
-            <Eye className="w-7 h-7 text-cyan-400" />
-          </div>
-          <div>
-            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
-              HORUS
-            </h1>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200 mt-0.5">Analytics</p>
-          </div>
+      <div className="relative z-10 w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 my-auto">
+        {/* Coluna Esquerda Desktop: A grande Águia CYBERTECH HORUS */}
+        <div className="hidden lg:flex flex-col items-center justify-center flex-1 max-w-lg select-none animate-in fade-in slide-in-from-left-6 duration-700">
+          <img 
+            src="/cybertech_eagle_transparent.png" 
+            alt="CYBERTECH HORUS - SYSTEM AND APP DEVELOP" 
+            className="w-full max-w-[460px] object-contain drop-shadow-[0_15px_30px_rgba(0,102,255,0.18)] hover:scale-[1.02] transition-transform duration-500" 
+          />
         </div>
 
-        {/* Abas Alternadoras: Entrar vs Solicitar Cadastro */}
-        <div className="flex items-center bg-black/50 p-1 rounded-2xl border border-white/10 w-full shadow-inner">
-          <button
-            type="button"
-            onClick={() => { setMode("login"); setRegSuccessMessage(null); }}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${mode === "login" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md" : "text-slate-400 hover:text-slate-200"}`}
-          >
-            Entrar
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("register")}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-xl transition-all ${mode === "register" ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md" : "text-slate-400 hover:text-slate-200"}`}
-          >
-            Solicitar Acesso
-          </button>
-        </div>
-
-        {/* Feedback de Sucesso no Cadastro */}
-        {regSuccessMessage && (
-          <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-300 flex items-start gap-2.5 animate-in fade-in zoom-in-95">
-            <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-emerald-200">Solicitação Enviada!</p>
-              <p className="text-[11px] text-emerald-300/90 mt-0.5 leading-relaxed">{regSuccessMessage}</p>
-            </div>
+        {/* Coluna Direita / Centro Mobile: O Card de Login */}
+        <div className="w-full max-w-md bg-white rounded-[2.5rem] p-6 sm:p-9 shadow-[0_20px_60px_-15px_rgba(0,102,255,0.10)] border border-slate-100 flex flex-col gap-5 relative z-10 animate-in fade-in zoom-in-95 duration-500">
+          
+          {/* Topo no Mobile: A Águia Centralizada */}
+          <div className="flex lg:hidden flex-col items-center justify-center text-center pt-1 mb-1">
+            <img 
+              src="/cybertech_eagle_transparent.png" 
+              alt="CYBERTECH HORUS" 
+              className="w-full max-w-[270px] sm:max-w-[300px] object-contain" 
+            />
           </div>
-        )}
 
-        {/* MODO 1: ENTRAR */}
-        {mode === "login" ? (
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="space-y-1.5">
-              <label htmlFor="login-username" className="text-xs font-semibold text-slate-300">
-                Usuário
-              </label>
-              <input
-                id="login-username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoComplete="username"
-                placeholder="Seu usuário"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
-              />
-            </div>
+          {/* Topo no Desktop: Bem-vindo(a) ao + Mini Logo */}
+          <div className="hidden lg:flex flex-col items-center justify-center text-center mb-1">
+            <span className="text-slate-600 text-sm font-medium">Bem-vindo(a) ao</span>
+            <img 
+              src="/cybertech_card_logo.png" 
+              alt="CYBERTECH HORUS" 
+              className="h-13 w-auto object-contain mt-1" 
+            />
+          </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="login-password" className="text-xs font-semibold text-slate-300">
-                Senha
-              </label>
-              <input
-                id="login-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                placeholder="••••••••"
-                autoComplete="current-password"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
-              />
-            </div>
-
-            <Button type="submit" disabled={loading || !username || !password} className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold h-10 rounded-xl mt-1">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
-              Entrar
-            </Button>
-
-            <div className="text-center pt-2 border-t border-white/5">
+          {/* Abas Alternadoras no Modo Cadastro */}
+          {mode === "register" && (
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 w-full shadow-inner">
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setRegSuccessMessage(null); }}
+                className="flex-1 py-1.5 text-xs font-bold rounded-xl transition-all text-slate-600 hover:text-slate-900"
+              >
+                Entrar
+              </button>
               <button
                 type="button"
                 onClick={() => setMode("register")}
-                className="text-xs text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors"
+                className="flex-1 py-1.5 text-xs font-bold rounded-xl transition-all bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md"
               >
-                Gerente de loja sem acesso? Solicitar cadastro
+                Solicitar Acesso
               </button>
             </div>
-          </form>
-        ) : (
-          /* MODO 2: SOLICITAR CADASTRO DE GERENTE */
-          <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3.5">
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-300">
-                Nome Completo do Gerente *
-              </label>
-              <input
-                type="text"
-                required
-                value={regNome}
-                onChange={(e) => setRegNome(e.target.value)}
-                placeholder="Ex: Carlos Roberto"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
-              />
-            </div>
+          )}
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-300">
-                Usuário de Login desejado *
-              </label>
-              <input
-                type="text"
-                required
-                value={regUser}
-                onChange={(e) => setRegUser(e.target.value)}
-                placeholder="Ex: carlos.gerente"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600 font-mono"
-              />
+          {/* Feedback de Sucesso no Cadastro */}
+          {regSuccessMessage && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs text-emerald-800 flex items-start gap-2.5 animate-in fade-in zoom-in-95">
+              <CheckCircle2 className="size-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-emerald-900">Solicitação Enviada!</p>
+                <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">{regSuccessMessage}</p>
+              </div>
             </div>
+          )}
 
-            <div className="space-y-1">
-              <label className="text-[11px] font-semibold text-slate-300">
-                Sua Loja / Filial *
-              </label>
-              <select
-                value={regLoja}
-                onChange={(e) => setRegLoja(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 cursor-pointer"
-              >
-                <option value="todas">🏢 Todas as Lojas</option>
-                {lojas.map((l: any) => (
-                  <option key={l.IDEMPRESA} value={String(l.IDEMPRESA)}>
-                    {l.IDEMPRESA} - {String(l.DESCREMPRESA || '').trim()}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-300">
-                  Senha *
-                </label>
+          {/* MODO 1: ENTRAR */}
+          {mode === "login" ? (
+            <form onSubmit={onSubmit} className="flex flex-col gap-4">
+              {/* Campo Usuário */}
+              <div className="relative flex items-center bg-white border border-slate-200/90 rounded-2xl px-4 py-3.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
+                <User className="size-5 text-blue-600 shrink-0 mr-3" />
                 <input
-                  type="password"
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="Mín. 4 dígitos"
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+                  id="login-username"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  autoComplete="username"
+                  placeholder="Usuário (ou 'caixa')"
+                  className="w-full bg-transparent text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-300">
-                  Confirmar Senha *
-                </label>
+              {/* Campo Senha com Olho */}
+              <div className="relative flex items-center bg-white border border-slate-200/90 rounded-2xl px-4 py-3.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all shadow-sm">
+                <Lock className="size-5 text-blue-600 shrink-0 mr-3" />
                 <input
-                  type="password"
-                  required
-                  value={regConfirmPassword}
-                  onChange={(e) => setRegConfirmPassword(e.target.value)}
-                  placeholder="Repetir senha"
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500/60 placeholder:text-slate-600"
+                  id="login-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Senha"
+                  autoComplete="current-password"
+                  className="w-full bg-transparent text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none pr-2"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-blue-600 focus:outline-none transition-colors p-1"
+                  title={showPassword ? "Ocultar senha" : "Ver senha"}
+                >
+                  {showPassword ? <EyeOff className="size-5 text-blue-600" /> : <Eye className="size-5" />}
+                </button>
               </div>
-            </div>
 
-            <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-2.5 text-[10px] text-cyan-300 flex items-center gap-2">
-              <Clock className="size-4 text-cyan-400 shrink-0" />
-              <span>O cadastro ficará pendente até a aprovação de <strong>Cristiano</strong>.</span>
-            </div>
-
-            <Button 
-              type="submit" 
-              disabled={regLoading || !regNome || !regUser || !regPassword || !regConfirmPassword} 
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold h-10 rounded-xl"
-            >
-              {regLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-              Enviar Solicitação para Cristiano
-            </Button>
-
-            <div className="text-center pt-1 border-t border-white/5">
+              {/* Botão Entrar Azul Vibrante */}
               <button
-                type="button"
-                onClick={() => setMode("login")}
-                className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1 mx-auto"
+                type="submit"
+                disabled={loading || !username || !password}
+                className="w-full bg-gradient-to-r from-[#0062ff] to-[#009bf5] hover:from-[#0051db] hover:to-[#0089e0] active:scale-[0.99] text-white font-bold h-12 rounded-2xl text-base shadow-[0_8px_20px_rgba(0,98,255,0.30)] hover:shadow-[0_10px_25px_rgba(0,98,255,0.40)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
               >
-                <ArrowLeft className="size-3.5" /> Voltar para o Login
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <LogIn className="size-5" />
+                    <span>Entrar</span>
+                  </>
+                )}
               </button>
-            </div>
-          </form>
-        )}
+
+              {/* Rodapé Decorativo com Frase */}
+              <div className="flex items-center gap-3 pt-2">
+                <div className="h-px bg-slate-200 flex-1" />
+                <span className="text-[11px] text-slate-400 font-medium tracking-tight whitespace-nowrap text-center">
+                  Tecnologia que impulsiona o seu negócio
+                </span>
+                <div className="h-px bg-slate-200 flex-1" />
+              </div>
+
+              <div className="text-center pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMode("register")}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                >
+                  Gerente de loja sem acesso? Solicitar cadastro
+                </button>
+              </div>
+            </form>
+          ) : (
+            /* MODO 2: SOLICITAR CADASTRO DE GERENTE */
+            <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Nome Completo do Gerente *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regNome}
+                  onChange={(e) => setRegNome(e.target.value)}
+                  placeholder="Ex: Carlos Roberto"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Usuário de Login desejado *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={regUser}
+                  onChange={(e) => setRegUser(e.target.value)}
+                  placeholder="Ex: carlos.gerente"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-700">
+                  Sua Loja / Filial *
+                </label>
+                <select
+                  value={regLoja}
+                  onChange={(e) => setRegLoja(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer"
+                >
+                  <option value="todas">🏢 Todas as Lojas</option>
+                  {lojas.map((l: any) => (
+                    <option key={l.IDEMPRESA} value={String(l.IDEMPRESA)}>
+                      {l.IDEMPRESA} - {String(l.DESCREMPRESA || '').trim()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Senha *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="Mín. 4 dígitos"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Confirmar Senha *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="Repetir senha"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 placeholder:text-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-2.5 text-[11px] text-blue-800 flex items-center gap-2">
+                <Clock className="size-4 text-blue-600 shrink-0" />
+                <span>O cadastro ficará pendente até a aprovação de <strong>Cristiano</strong>.</span>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={regLoading || !regNome || !regUser || !regPassword || !regConfirmPassword} 
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold h-11 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {regLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                <span>Enviar Solicitação para Cristiano</span>
+              </button>
+
+              <div className="text-center pt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="text-xs text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1 mx-auto font-medium"
+                >
+                  <ArrowLeft className="size-3.5" /> Voltar para o Login
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
 
       <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} closeButton />

@@ -131,6 +131,21 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
     }
   };
 
+  const getCardThemeClass = (id: string) => {
+    switch (id) {
+      case "dinheiro":
+        return "payment-card-dinheiro";
+      case "pix":
+        return "payment-card-pix";
+      case "debito":
+        return "payment-card-debito";
+      case "credito":
+        return "payment-card-credito";
+      default:
+        return "payment-card-convenio";
+    }
+  };
+
   const totalGeral = data?.totalGeral || 0;
   const resumo = data?.resumo || [];
   const porLoja = data?.porLoja || [];
@@ -160,16 +175,16 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="bg-black/40 border border-white/10 px-3.5 py-1.5 rounded-xl text-right">
-            <span className="text-[10px] text-slate-400 uppercase font-semibold block leading-tight">Total Recebido</span>
-            <span className="text-lg font-bold font-serif text-cyan-300 leading-tight">
+          <div className="bg-black/40 border border-white/10 px-3.5 py-1.5 rounded-xl text-right payment-total-received">
+            <span className="text-[10px] text-slate-400 uppercase font-semibold block leading-tight label-text">Total Recebido</span>
+            <span className="text-lg font-bold font-serif text-cyan-300 leading-tight value-text">
               {formatBRL(totalGeral)}
             </span>
           </div>
 
           <button
             onClick={() => setIsConvenioModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-100 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)] group"
+            className="flex items-center gap-1.5 text-xs font-semibold text-amber-300 hover:text-amber-100 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-2 rounded-xl border border-amber-500/30 transition-all shadow-[0_0_15px_rgba(245,158,11,0.15)] group btn-gestao-convenios"
             title="Abrir detalhamento de baixas e pendentes de Convênios"
           >
             <Users className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
@@ -178,7 +193,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
 
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-colors"
+            className="flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-colors btn-detalhar-modalidades"
           >
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
             <span>{showDetails ? "Ocultar Detalhes" : "Detalhar Modalidades"}</span>
@@ -194,7 +209,11 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
         </span>
         <button
           onClick={() => setSelectedLojaTab("todas")}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${selectedLojaTab === 'todas' ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5'}`}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+            selectedLojaTab === 'todas' 
+              ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)] store-tab-btn-active' 
+              : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5 store-tab-btn-inactive'
+          }`}
         >
           <Building2 className="w-3.5 h-3.5" />
           Todas as Lojas (Consolidado)
@@ -204,7 +223,11 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
           <button
             key={loja.id}
             onClick={() => setSelectedLojaTab(String(loja.id))}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${selectedLojaTab === String(loja.id) ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)]' : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5'}`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              selectedLojaTab === String(loja.id) 
+                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)] store-tab-btn-active' 
+                : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5 store-tab-btn-inactive'
+            }`}
           >
             <Store className="w-3.5 h-3.5" />
             Loja {loja.id} - {loja.nome}
@@ -222,7 +245,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               onClick={() => {
                 if (isConvenio) setIsConvenioModalOpen(true);
               }}
-              className={`rounded-xl p-3 md:p-4 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${
+              className={`rounded-xl p-3 md:p-4 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${getCardThemeClass(item.id)} ${
                 isConvenio
                   ? "cursor-pointer hover:scale-[1.03] hover:border-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] group"
                   : "hover:scale-[1.02]"
@@ -232,10 +255,10 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
                   {getIcon(item.id)}
-                  <span className="text-[11px] md:text-xs font-bold text-slate-200 truncate">{item.nome}</span>
+                  <span className="text-[11px] md:text-xs font-bold text-slate-200 truncate payment-title">{item.nome}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[10px] md:text-xs font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100">
+                  <span className="text-[10px] md:text-xs font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100 payment-pill">
                     {item.percentual}%
                   </span>
                   {isConvenio && (
@@ -245,7 +268,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               </div>
 
               <div className="mt-1">
-                <div className="text-sm md:text-lg font-bold font-serif text-slate-100 tabular-nums truncate">
+                <div className="text-sm md:text-lg font-bold font-serif text-slate-100 tabular-nums truncate payment-val">
                   {formatBRL(item.valor)}
                 </div>
                 <div className="flex items-center justify-between text-[9px] md:text-[10px] text-slate-400 mt-1">

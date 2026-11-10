@@ -11,8 +11,12 @@ import {
   ShieldCheck,
   Wifi,
   XCircle,
+  Sun,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTheme } from "@/context/ThemeContext";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +63,7 @@ const emptyConfig: DbConfig = {
 };
 
 export function DatabaseSettings() {
+  const { theme, isDark, setTheme } = useTheme();
   const [config, setConfig] = useState<DbConfig>(emptyConfig);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -174,6 +179,85 @@ export function DatabaseSettings() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Seção de Aparência e Tema do Sistema */}
+      <section className="glass-strong rounded-2xl p-5 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 grid place-items-center">
+              <Sparkles className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <h3 className="font-serif text-xl font-bold">Aparência & Identidade Visual</h3>
+              <p className="text-xs text-slate-400">
+                Escolha o tema global do HORUS ANALYTICS (Modo Escuro Midnight ou Modo Claro Executive)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1">
+          {/* Opção Modo Escuro */}
+          <div
+            onClick={() => {
+              setTheme("dark");
+              toast.success("Modo Escuro ativado");
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 flex items-start gap-3 ${
+              isDark
+                ? "bg-slate-900 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
+                : "bg-slate-900/50 border-slate-700/60 hover:border-slate-500"
+            }`}
+          >
+            <div className="size-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0 mt-0.5">
+              <Moon className="size-5 text-cyan-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-slate-100">Modo Escuro (Midnight Cyan)</span>
+                {isDark && (
+                  <span className="text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+                    Ativo
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Identidade visual clássica com fundo profundo, bordas neon e brilho ciano executivo.
+              </p>
+            </div>
+          </div>
+
+          {/* Opção Modo Claro */}
+          <div
+            onClick={() => {
+              setTheme("light");
+              toast.success("Modo Claro ativado");
+            }}
+            className={`p-4 rounded-xl border cursor-pointer transition-all duration-200 flex items-start gap-3 ${
+              !isDark
+                ? "bg-white border-blue-600 shadow-md ring-2 ring-blue-500/20"
+                : "bg-slate-900/40 border-slate-700/60 hover:border-slate-500"
+            }`}
+          >
+            <div className="size-9 rounded-lg bg-amber-400/10 border border-amber-400/30 flex items-center justify-center shrink-0 mt-0.5">
+              <Sun className="size-5 text-amber-500" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-slate-900">Modo Claro (Executive White)</span>
+                {!isDark && (
+                  <span className="text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-300 px-2 py-0.5 rounded-full">
+                    Ativo
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Visual executivo limpo com fundo suave, cards brancos, sombras discretas e tons pastéis nos recebimentos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="glass-strong rounded-2xl p-5 flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">

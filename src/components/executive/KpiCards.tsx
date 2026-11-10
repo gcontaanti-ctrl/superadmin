@@ -38,25 +38,25 @@ export function KpiCards({ selectedStore, startDate, endDate }: { selectedStore:
   return (
     <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 md:gap-4 transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
       {cards.map((c) => (
-        <div key={c.label} className="glass-strong rounded-2xl p-3 md:p-5 hover:bg-white/[0.03] transition relative overflow-hidden group">
+        <div key={c.label} className="glass-strong rounded-2xl p-3 md:p-5 hover:bg-white/[0.03] transition relative overflow-hidden group kpi-metric-card">
           {loading && (
              <div className="absolute top-2 right-2 flex items-center justify-center">
                 <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
              </div>
           )}
           <div className="flex items-center justify-between mb-2 md:mb-3">
-            <span className="text-[9px] md:text-[10px] tracking-executive text-muted-foreground uppercase font-bold truncate max-w-[85px] md:max-w-none">{c.label}</span>
+            <span className="text-[9px] md:text-[10px] tracking-executive text-muted-foreground uppercase font-bold truncate max-w-[85px] md:max-w-none kpi-label-text">{c.label}</span>
             <span className="text-[8px] md:text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 md:px-2 py-0.5 rounded flex items-center gap-0.5 md:gap-1 shrink-0">
               <ArrowUpRight className="w-2.5 h-2.5" /> {c.status}
             </span>
           </div>
           
           <div className="flex items-center gap-2.5 md:gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform shrink-0 kpi-icon-container">
               <c.icon className="w-4 h-4 md:w-5 md:h-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm md:text-xl font-bold font-serif text-slate-100 tabular-nums truncate">{c.value}</div>
+              <div className="text-sm md:text-xl font-bold font-serif text-slate-100 tabular-nums truncate kpi-value-text">{c.value}</div>
               <div className="text-[9px] md:text-[10px] text-slate-400 leading-none mt-0.5 md:mt-1 truncate">{c.desc}</div>
             </div>
           </div>

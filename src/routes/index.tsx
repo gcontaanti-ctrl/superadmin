@@ -33,6 +33,8 @@ import { UserManagementModule } from "@/components/executive/UserManagementModul
 import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
 import { AtacarejoModule } from "@/components/executive/AtacarejoModule";
 import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
+import { ThemeToggle } from "@/components/executive/ThemeToggle";
+import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
@@ -54,6 +56,7 @@ const get30DaysAgoStr = () => {
 };
 
 function Dashboard() {
+  const { theme, isDark } = useTheme();
   const [currentUser, setCurrentUser] = useState<any>(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem("horus_session_user") : null;
@@ -349,6 +352,7 @@ function Dashboard() {
                 <span className="hidden sm:inline font-medium">Novidades</span>
                 <span className="text-[10px] bg-cyan-400/20 text-cyan-200 px-1.5 py-0.2 rounded-full font-bold">v{SYSTEM_VERSION}</span>
               </Button>
+              <ThemeToggle />
               <Button onClick={logout} variant="outline" className="border-white/15 bg-white/5 text-xs h-8 px-2 sm:px-2.5">
                 <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden xs:inline">Sair</span>
@@ -733,7 +737,7 @@ function Dashboard() {
       </nav>
 
       <WhatsNewModal isOpen={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
-      <Toaster position="bottom-right" theme="dark" closeButton />
+      <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} closeButton />
     </div>
   </div>
   );
@@ -821,6 +825,11 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
       className="relative min-h-screen bg-slate-950 text-slate-100 grid place-items-center p-3 sm:p-4 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat transition-all duration-1000"
       style={{ backgroundImage: "url('/bg-login.png')" }}
     >
+      {/* Botão de Tema Flutuante no Login */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Overlay escuro */}
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"></div>
 
@@ -1022,7 +1031,7 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
         )}
       </div>
 
-      <Toaster position="bottom-right" theme="dark" closeButton />
+      <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} closeButton />
     </div>
   );
 }

@@ -98,6 +98,57 @@
   --shadow-glow: 0 0 0 1px oklch(0.75 0.14 195 / 0.25), 0 10px 30px -10px oklch(0.75 0.14 195 / 0.35);
 }
 
+/* DESIGN TOKENS - LIGHT MODE (HORUS ANALYTICS EXECUTIVE WHITE) */
+:root.light,
+html.light {
+  --background: #f4f7fc;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Executive Blue / Cyan */
+  --primary: #0284c7;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+  --accent: #f0f9ff;
+  --accent-foreground: #0284c7;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #10b981;
+  --warning: #f59e0b;
+
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: #38bdf8;
+
+  --chart-1: #0284c7;
+  --chart-2: #8b5cf6;
+  --chart-3: #10b981;
+  --chart-4: #f43f5e;
+  --chart-5: #64748b;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-border: #e2e8f0;
+
+  /* Glass tokens in Light Mode */
+  --glass-bg: #ffffff;
+  --glass-border: #e2e8f0;
+  --shadow-glass: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 4px 14px 0 rgba(2, 132, 199, 0.12);
+  --gradient-primary: linear-gradient(135deg, #0284c7, #2563eb);
+  --gradient-aurora: radial-gradient(ellipse 70% 50% at 15% 0%, rgba(2, 132, 199, 0.04), transparent 60%),
+                     radial-gradient(ellipse 60% 50% at 95% 5%, rgba(99, 102, 241, 0.03), transparent 60%);
+}
+
 @layer base {
   * { border-color: var(--color-border); }
   html, body {
@@ -195,4 +246,324 @@
     display: none !important;
   }
 }
+
+/* ============================================================
+   SISTEMA GLOBAL DE TEMA CLARO (LIGHT MODE) — HORUS ANALYTICS
+   ============================================================ */
+
+/* Transições suaves globais */
+html, body, .glass, .glass-strong {
+  transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
+}
+
+/* Fundo da Página e Texto Base */
+html.light,
+html.light body {
+  background-color: #f4f7fc !important;
+  color: #0f172a !important;
+  background-image: none !important;
+}
+
+/* Cards Glass em Modo Claro (Brancos, bordas discretas, sombras suaves) */
+html.light .glass,
+html.light .glass-strong {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Override de superfícies escuras para Modo Claro */
+html.light .bg-slate-950,
+html.light .bg-slate-900,
+html.light .bg-slate-900\/95,
+html.light .bg-slate-900\/90,
+html.light .bg-slate-900\/80,
+html.light .bg-slate-900\/70,
+html.light .bg-slate-900\/60,
+html.light .bg-slate-900\/50,
+html.light .bg-slate-900\/40,
+html.light .bg-slate-900\/30,
+html.light .bg-slate-800,
+html.light .bg-slate-800\/90,
+html.light .bg-slate-800\/80,
+html.light .bg-slate-800\/50,
+html.light .bg-black\/50,
+html.light .bg-black\/45,
+html.light .bg-black\/40,
+html.light .bg-black\/30,
+html.light .bg-black\/25,
+html.light .bg-black\/20 {
+  background-color: #ffffff !important;
+}
+
+/* Superfícies secundárias cinza muito claro */
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+html.light .bg-white\/15,
+html.light .bg-slate-800\/30,
+html.light .bg-slate-800\/20,
+html.light .bg-slate-900\/10 {
+  background-color: #f8fafc !important;
+}
+
+/* Bordas em Modo Claro */
+html.light .border-white\/5,
+html.light .border-white\/10,
+html.light .border-white\/15,
+html.light .border-white\/20,
+html.light .border-white\/25,
+html.light .border-white\/30,
+html.light .border-slate-800,
+html.light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Textos e Cores em Modo Claro */
+html.light .text-white,
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-300 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Inputs, Selects, Datepickers e Caixas de Texto */
+html.light input,
+html.light select,
+html.light textarea {
+  color-scheme: light !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  opacity: 0.6;
+}
+
+/* Tabelas em Modo Claro */
+html.light table thead tr {
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+html.light table thead th {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+html.light table tbody tr {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+html.light table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Sidebar e Menus Laterais / Modais */
+html.light aside {
+  background-color: #ffffff !important;
+  border-right-color: #e2e8f0 !important;
+}
+
+html.light aside nav button:hover,
+html.light aside nav a:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+html.light aside nav button[data-active="true"],
+html.light aside nav a[data-active="true"] {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+}
+
+/* Modais e Caixas de Diálogo */
+html.light [role="dialog"],
+html.light .dialog-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ============================================================
+   ESTILOS ESPECÍFICOS: CARDS DE FORMAS DE PAGAMENTO (LIGHT)
+   (Idênticos à imagem de referência oficial do HORUS ANALYTICS)
+   ============================================================ */
+
+/* Dinheiro (Verde Pastel) */
+html.light .payment-card-dinheiro {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+html.light .payment-card-dinheiro .payment-title {
+  color: #065f46 !important;
+}
+html.light .payment-card-dinheiro .payment-val {
+  color: #064e3b !important;
+}
+html.light .payment-card-dinheiro .payment-pill {
+  background-color: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+/* PIX (Ciano Pastel) */
+html.light .payment-card-pix {
+  background: #ecfeff !important;
+  border-color: #a5f3fc !important;
+}
+html.light .payment-card-pix .payment-title {
+  color: #155e75 !important;
+}
+html.light .payment-card-pix .payment-val {
+  color: #083344 !important;
+}
+html.light .payment-card-pix .payment-pill {
+  background-color: #cffafe !important;
+  border-color: #a5f3fc !important;
+  color: #155e75 !important;
+}
+
+/* Cartão Débito (Azul Pastel) */
+html.light .payment-card-debito {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+html.light .payment-card-debito .payment-title {
+  color: #1e40af !important;
+}
+html.light .payment-card-debito .payment-val {
+  color: #172554 !important;
+}
+html.light .payment-card-debito .payment-pill {
+  background-color: #dbeafe !important;
+  border-color: #bfdbfe !important;
+  color: #1e40af !important;
+}
+
+/* Cartão Crédito (Roxo Pastel) */
+html.light .payment-card-credito {
+  background: #faf5ff !important;
+  border-color: #e9d5ff !important;
+}
+html.light .payment-card-credito .payment-title {
+  color: #6b21a8 !important;
+}
+html.light .payment-card-credito .payment-val {
+  color: #3b0764 !important;
+}
+html.light .payment-card-credito .payment-pill {
+  background-color: #f3e8ff !important;
+  border-color: #e9d5ff !important;
+  color: #6b21a8 !important;
+}
+
+/* Convênios & Outros (Âmbar / Amarelo Pastel) */
+html.light .payment-card-convenio {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+html.light .payment-card-convenio .payment-title {
+  color: #92400e !important;
+}
+html.light .payment-card-convenio .payment-val {
+  color: #451a03 !important;
+}
+html.light .payment-card-convenio .payment-pill {
+  background-color: #fef3c7 !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+/* Pill Deep Navy "Total Recebido" */
+html.light .payment-total-received {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+html.light .payment-total-received .label-text {
+  color: #94a3b8 !important;
+}
+html.light .payment-total-received .value-text {
+  color: #38bdf8 !important;
+}
+
+/* Botões do Bloco de Formas de Pagamento */
+html.light .btn-gestao-convenios {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+html.light .btn-gestao-convenios:hover {
+  background-color: #fef3c7 !important;
+}
+
+html.light .btn-detalhar-modalidades {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+html.light .btn-detalhar-modalidades:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Abas de Lojas em Modo Claro */
+html.light .store-tab-btn-active {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2) !important;
+}
+
+html.light .store-tab-btn-inactive {
+  background-color: #ffffff !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+html.light .store-tab-btn-inactive:hover {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* KPI Cards no Modo Claro */
+html.light .kpi-metric-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+html.light .kpi-icon-container {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+}
+html.light .kpi-value-text {
+  color: #0f172a !important;
+}
+html.light .kpi-label-text {
+  color: #64748b !important;
+}
+
 

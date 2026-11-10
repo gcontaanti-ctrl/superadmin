@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>HORUS ANALYTICS</title>
     <meta name="description" content="Painel administrativo HORUS ANALYTICS" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem("horus_theme");
+          var isDark = saved ? saved === "dark" : true;
+          if (isDark) {
+            document.documentElement.classList.remove("light");
+            document.documentElement.classList.add("dark");
+            document.documentElement.setAttribute("data-theme", "dark");
+            document.documentElement.style.colorScheme = "dark";
+          } else {
+            document.documentElement.classList.remove("dark");
+            document.documentElement.classList.add("light");
+            document.documentElement.setAttribute("data-theme", "light");
+            document.documentElement.style.colorScheme = "light";
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

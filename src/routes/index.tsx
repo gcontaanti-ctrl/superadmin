@@ -753,6 +753,7 @@ type LoginScreenProps = {
 };
 
 function LoginScreen({ username, setUsername, password, setPassword, loading, onSubmit }: LoginScreenProps) {
+  const { theme, isDark } = useTheme();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [showPassword, setShowPassword] = useState(false);
   const [lojas, setLojas] = useState<any[]>([]);

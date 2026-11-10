@@ -6,6 +6,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 
+import { ThemeProvider } from "../context/ThemeContext";
 import { installApiFetchFallback } from "../lib/api-fetch-fallback";
 import "../styles.css";
 
@@ -79,7 +80,9 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <ThemeProvider>
+        <Outlet />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

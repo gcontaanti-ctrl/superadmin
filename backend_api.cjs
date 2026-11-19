@@ -1422,10 +1422,18 @@ app.post('/api/system/users/delete', (req, res) => {
   });
 
   // ─────────────────────────────────────────────
-  // VENDAS POR BANDEIRA DE CARTÃO
+  // VENDAS POR BANDEIRA DE CARTÃO (ENRIQUECIDO COM MODALIDADES, CONCILIAÇÃO, RECEBÍVEIS E CUPONS TEF)
   // Suporte a Albuquerque e Super Atacado
   // Fontes: CONTAS_RECEBER, FRCAIXA_TEF, IMPORTACAO_SITEF_CONCILIACAO
   // ─────────────────────────────────────────────
+  function fixStoreNameBandeira(nome, id) {
+    const s = String(nome || '').trim();
+    if (!s) return `Loja ${id}`;
+    return s
+      .replace(/Itapu[^\w\s]|Itapu\uFFFD/gi, 'Itapuã')
+      .replace(/Canafistula/gi, 'Canafístula');
+  }
+
   app.get('/api/vendas/bandeiras', async (req, res) => {
     try {
       const { idEmpresa, startDate, endDate } = req.query;
@@ -1436,8 +1444,10 @@ app.post('/api/system/users/delete', (req, res) => {
       const endD = endDate || hoje;
 
       let rows = [];
+      let rowsDia = [];
+      let rowsRecebiveis = [];
 
-      // Tentativa 1: DBA.CONTAS_RECEBER (DTMOVIMENTO)
+      // Tentativa 1: DBA.CONTAS_RECEBER (DTMOVIMENTO) com detalhamento completo
       try {
         let sql = `
           SELECT
@@ -1445,8 +1455,15 @@ app.post('/api/system/users/delete', (req, res) => {
             COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(CR.IDEMPRESA))) AS NOME_LOJA,
             CR.IDBANDEIRA,
             TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(CR.IDBANDEIRA)))) AS NOME_BANDEIRA,
+            COALESCE(CR.TIPOCARTAO, 'D') AS TIPOCARTAO,
+            CASE WHEN COALESCE(CR.NUMPARCELASADMINISTRADORA, 1) > 1 THEN 'PARCELADO' ELSE 'VISTA' END AS MODO_PARCELA,
+            MAX(COALESCE(CR.NUMPARCELASADMINISTRADORA, 1)) AS MAX_PARCELAS,
+            COALESCE(CR.FLAGBAIXADA, 'F') AS FLAGBAIXADA,
             COUNT(*) AS QTD,
-            SUM(CR.VALTITULO) AS TOTAL_VALOR
+            SUM(CR.VALTITULO) AS TOTAL_VALOR,
+            SUM(COALESCE(CR.SUMVALPAGAMENTOTITULO, 0)) AS TOTAL_PAGO,
+            SUM(COALESCE(CR.SUMVALDESCCONCEDIDOTITULO, 0) + COALESCE(CR.VALDESCONTOFINANCEIRO, 0)) AS TOTAL_TAXA,
+            AVG(CAST(DAYS(COALESCE(CR.DTVENCIMENTO, CR.DTMOVIMENTO)) - DAYS(CR.DTMOVIMENTO) AS DECIMAL(10,2))) AS PRAZO_MEDIO
           FROM DBA.CONTAS_RECEBER CR
           LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = CR.IDBANDEIRA
           LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = CR.IDEMPRESA
@@ -1460,16 +1477,66 @@ app.post('/api/system/users/delete', (req, res) => {
           params.push(parseInt(idEmpresa));
         }
         sql += `
-          GROUP BY CR.IDEMPRESA, E.NOMEFANTASIA, CR.IDBANDEIRA, B.DESCRICAO
+          GROUP BY
+            CR.IDEMPRESA,
+            E.NOMEFANTASIA,
+            CR.IDBANDEIRA,
+            B.DESCRICAO,
+            COALESCE(CR.TIPOCARTAO, 'D'),
+            CASE WHEN COALESCE(CR.NUMPARCELASADMINISTRADORA, 1) > 1 THEN 'PARCELADO' ELSE 'VISTA' END,
+            COALESCE(CR.FLAGBAIXADA, 'F')
           ORDER BY TOTAL_VALOR DESC
           WITH UR
         `;
         rows = await queryDB(sql, params);
+
+        // Evolução diária (Crédito vs Débito)
+        let sqlDia = `
+          SELECT
+            CHAR(CR.DTMOVIMENTO) AS DATA,
+            COUNT(*) AS QTD,
+            SUM(CR.VALTITULO) AS TOTAL,
+            SUM(CASE WHEN COALESCE(CR.TIPOCARTAO, 'D') = 'C' THEN CR.VALTITULO ELSE 0 END) AS CREDITO,
+            SUM(CASE WHEN COALESCE(CR.TIPOCARTAO, 'D') <> 'C' THEN CR.VALTITULO ELSE 0 END) AS DEBITO
+          FROM DBA.CONTAS_RECEBER CR
+          WHERE CR.DTMOVIMENTO BETWEEN ? AND ?
+            AND CR.IDBANDEIRA IS NOT NULL
+            AND CR.IDBANDEIRA > 0
+        `;
+        const paramsDia = [startD, endD];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          sqlDia += ' AND CR.IDEMPRESA = ?';
+          paramsDia.push(parseInt(idEmpresa));
+        }
+        sqlDia += ' GROUP BY CR.DTMOVIMENTO ORDER BY CR.DTMOVIMENTO ASC WITH UR';
+        rowsDia = await queryDB(sqlDia, paramsDia).catch(() => []);
+
+        // Cronograma de Recebíveis em Aberto (por DTVENCIMENTO)
+        let sqlRec = `
+          SELECT
+            CHAR(CR.DTVENCIMENTO) AS VENCIMENTO,
+            COUNT(*) AS QTD,
+            SUM(CR.VALTITULO) AS VALOR,
+            SUM(CASE WHEN COALESCE(CR.TIPOCARTAO, 'D') = 'C' THEN CR.VALTITULO ELSE 0 END) AS CREDITO,
+            SUM(CASE WHEN COALESCE(CR.TIPOCARTAO, 'D') <> 'C' THEN CR.VALTITULO ELSE 0 END) AS DEBITO
+          FROM DBA.CONTAS_RECEBER CR
+          WHERE CR.DTMOVIMENTO BETWEEN ? AND ?
+            AND CR.IDBANDEIRA IS NOT NULL
+            AND CR.IDBANDEIRA > 0
+            AND COALESCE(CR.FLAGBAIXADA, 'F') = 'F'
+        `;
+        const paramsRec = [startD, endD];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          sqlRec += ' AND CR.IDEMPRESA = ?';
+          paramsRec.push(parseInt(idEmpresa));
+        }
+        sqlRec += ' GROUP BY CR.DTVENCIMENTO ORDER BY CR.DTVENCIMENTO ASC FETCH FIRST 45 ROWS ONLY WITH UR';
+        rowsRecebiveis = await queryDB(sqlRec, paramsRec).catch(() => []);
       } catch (errDb1) {
         console.warn('Tentativa 1 bandeiras (CONTAS_RECEBER DTMOVIMENTO) falhou:', errDb1.message);
       }
 
-      // Tentativa 2: CONTAS_RECEBER com DTEMISSAO (usado em algumas filiais/instalações CISS)
+      // Tentativa 2: CONTAS_RECEBER com DTEMISSAO
       if (!rows || rows.length === 0) {
         try {
           let sqlEmissao = `
@@ -1503,7 +1570,7 @@ app.post('/api/system/users/delete', (req, res) => {
         }
       }
 
-      // Tentativa 3: DBA.FRCAIXA_TEF (vendas registradas no TEF no PDV)
+      // Tentativa 3: DBA.FRCAIXA_TEF
       if (!rows || rows.length === 0) {
         try {
           let sqlTef = `
@@ -1537,7 +1604,7 @@ app.post('/api/system/users/delete', (req, res) => {
         }
       }
 
-      // Tentativa 4: DBA.IMPORTACAO_SITEF_CONCILIACAO (vendas registradas pelo SiTef)
+      // Tentativa 4: DBA.IMPORTACAO_SITEF_CONCILIACAO
       if (!rows || rows.length === 0) {
         try {
           let sqlSitef = `
@@ -1571,86 +1638,270 @@ app.post('/api/system/users/delete', (req, res) => {
         }
       }
 
-      // Fallback dinâmico caso a base não tenha registros de cartão no período
-      if (!rows || rows.length === 0) {
-        rows = [
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 1, NOME_BANDEIRA: 'Mastercard Crédito', QTD: 420, TOTAL_VALOR: 284500.50 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 2, NOME_BANDEIRA: 'Mastercard Débito', QTD: 610, TOTAL_VALOR: 198300.20 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 3, NOME_BANDEIRA: 'Visa Crédito', QTD: 380, TOTAL_VALOR: 245100.80 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 4, NOME_BANDEIRA: 'Visa Débito', QTD: 520, TOTAL_VALOR: 176400.10 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 5, NOME_BANDEIRA: 'Elo Crédito', QTD: 140, TOTAL_VALOR: 82300.40 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 6, NOME_BANDEIRA: 'Elo Débito', QTD: 190, TOTAL_VALOR: 61200.00 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 7, NOME_BANDEIRA: 'Hipercard', QTD: 95, TOTAL_VALOR: 48900.70 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 8, NOME_BANDEIRA: 'Alelo Alimentação', QTD: 110, TOTAL_VALOR: 54200.30 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 9, NOME_BANDEIRA: 'Sodexo / Pluxee', QTD: 75, TOTAL_VALOR: 38100.00 },
-          { IDEMPRESA: 1, NOME_LOJA: 'Loja 1', IDBANDEIRA: 10, NOME_BANDEIRA: 'American Express', QTD: 35, TOTAL_VALOR: 27800.00 }
-        ];
-        if (idEmpresa && idEmpresa !== 'todas') {
-          rows = rows.filter(r => String(r.IDEMPRESA) === String(idEmpresa));
-        }
-      }
-
-      // Mapa por loja
+      // Mapa por loja e mapa consolidado por bandeira
       const mapaLojas = {};
-      // Mapa consolidado por bandeira
       const mapaBandeiras = {};
 
       let totalGeral = 0;
+      let totalQtd = 0;
+      let totalCreditoVista = 0, qtdCreditoVista = 0;
+      let totalCreditoParcelado = 0, qtdCreditoParcelado = 0, maxParcelasGeral = 1;
+      let totalDebito = 0, qtdDebito = 0;
+      let totalRecebido = 0, qtdRecebido = 0;
+      let totalAberto = 0, qtdAberto = 0;
+      let somaPrazoPonderado = 0;
 
-      rows.forEach(item => {
-        const idLoja = item.IDEMPRESA;
-        const nomeLoja = (item.NOME_LOJA || '').trim() || `Loja ${idLoja}`;
-        const idBandeira = item.IDBANDEIRA;
-        const nomeBandeira = (item.NOME_BANDEIRA || '').trim();
+      const initBandeiraObj = (id, nome) => ({
+        id,
+        nome,
+        valor: 0,
+        qtd: 0,
+        valorCredito: 0,
+        qtdCredito: 0,
+        valorCreditoVista: 0,
+        qtdCreditoVista: 0,
+        valorCreditoParcelado: 0,
+        qtdCreditoParcelado: 0,
+        maxParcelas: 1,
+        valorDebito: 0,
+        qtdDebito: 0,
+        valorRecebido: 0,
+        qtdRecebido: 0,
+        valorAberto: 0,
+        qtdAberto: 0,
+        taxaDesconto: 0,
+        _somaPrazo: 0,
+        _lojasMap: {}
+      });
+
+      (rows || []).forEach(item => {
+        const idLoja = Number(item.IDEMPRESA) || 1;
+        const nomeLoja = fixStoreNameBandeira(item.NOME_LOJA, idLoja);
+        const idBandeira = Number(item.IDBANDEIRA) || 0;
+        const nomeBandeira = (item.NOME_BANDEIRA || '').trim() || `Bandeira ${idBandeira}`;
         const valor = Number(item.TOTAL_VALOR) || 0;
         const qtd = Number(item.QTD) || 0;
+        const tipoCartao = String(item.TIPOCARTAO || 'D').trim().toUpperCase();
+        const modoParcela = String(item.MODO_PARCELA || 'VISTA').trim().toUpperCase();
+        const maxParc = Number(item.MAX_PARCELAS) || 1;
+        const flagBaixada = String(item.FLAGBAIXADA || 'T').trim().toUpperCase();
+        const taxa = Number(item.TOTAL_TAXA) || 0;
+        const prazo = Math.max(0, Number(item.PRAZO_MEDIO) || 0);
 
         totalGeral += valor;
+        totalQtd += qtd;
+        somaPrazoPonderado += prazo * qtd;
 
-        // Consolidado por bandeira
+        if (tipoCartao === 'C') {
+          if (modoParcela === 'PARCELADO') {
+            totalCreditoParcelado += valor;
+            qtdCreditoParcelado += qtd;
+            if (maxParc > maxParcelasGeral) maxParcelasGeral = maxParc;
+          } else {
+            totalCreditoVista += valor;
+            qtdCreditoVista += qtd;
+          }
+        } else {
+          totalDebito += valor;
+          qtdDebito += qtd;
+        }
+
+        if (flagBaixada === 'T') {
+          totalRecebido += valor;
+          qtdRecebido += qtd;
+        } else {
+          totalAberto += valor;
+          qtdAberto += qtd;
+        }
+
         const kb = String(idBandeira);
         if (!mapaBandeiras[kb]) {
-          mapaBandeiras[kb] = { id: idBandeira, nome: nomeBandeira, valor: 0, qtd: 0 };
+          mapaBandeiras[kb] = initBandeiraObj(idBandeira, nomeBandeira);
         }
-        mapaBandeiras[kb].valor += valor;
-        mapaBandeiras[kb].qtd += qtd;
+        const bObj = mapaBandeiras[kb];
+        bObj.valor += valor;
+        bObj.qtd += qtd;
+        bObj.taxaDesconto += taxa;
+        bObj._somaPrazo += prazo * qtd;
+        if (maxParc > bObj.maxParcelas) bObj.maxParcelas = maxParc;
+
+        if (tipoCartao === 'C') {
+          bObj.valorCredito += valor;
+          bObj.qtdCredito += qtd;
+          if (modoParcela === 'PARCELADO') {
+            bObj.valorCreditoParcelado += valor;
+            bObj.qtdCreditoParcelado += qtd;
+          } else {
+            bObj.valorCreditoVista += valor;
+            bObj.qtdCreditoVista += qtd;
+          }
+        } else {
+          bObj.valorDebito += valor;
+          bObj.qtdDebito += qtd;
+        }
+
+        if (flagBaixada === 'T') {
+          bObj.valorRecebido += valor;
+          bObj.qtdRecebido += qtd;
+        } else {
+          bObj.valorAberto += valor;
+          bObj.qtdAberto += qtd;
+        }
+
+        if (!bObj._lojasMap[idLoja]) {
+          bObj._lojasMap[idLoja] = { id: idLoja, nome: nomeLoja, valor: 0, qtd: 0 };
+        }
+        bObj._lojasMap[idLoja].valor += valor;
+        bObj._lojasMap[idLoja].qtd += qtd;
 
         // Por loja
         if (!mapaLojas[idLoja]) {
-          mapaLojas[idLoja] = { id: idLoja, nome: nomeLoja, totalGeral: 0, bandeiras: {} };
+          mapaLojas[idLoja] = {
+            id: idLoja,
+            nome: nomeLoja,
+            totalGeral: 0,
+            qtdGeral: 0,
+            valorCredito: 0,
+            valorDebito: 0,
+            valorRecebido: 0,
+            valorAberto: 0,
+            bandeiras: {}
+          };
         }
-        mapaLojas[idLoja].totalGeral += valor;
+        const lObj = mapaLojas[idLoja];
+        lObj.totalGeral += valor;
+        lObj.qtdGeral += qtd;
+        if (tipoCartao === 'C') lObj.valorCredito += valor;
+        else lObj.valorDebito += valor;
+        if (flagBaixada === 'T') lObj.valorRecebido += valor;
+        else lObj.valorAberto += valor;
 
-        const kbl = String(idBandeira);
-        if (!mapaLojas[idLoja].bandeiras[kbl]) {
-          mapaLojas[idLoja].bandeiras[kbl] = { id: idBandeira, nome: nomeBandeira, valor: 0, qtd: 0 };
+        if (!lObj.bandeiras[kb]) {
+          lObj.bandeiras[kb] = initBandeiraObj(idBandeira, nomeBandeira);
         }
-        mapaLojas[idLoja].bandeiras[kbl].valor += valor;
-        mapaLojas[idLoja].bandeiras[kbl].qtd += qtd;
+        const lb = lObj.bandeiras[kb];
+        lb.valor += valor;
+        lb.qtd += qtd;
+        lb._somaPrazo += prazo * qtd;
+        if (maxParc > lb.maxParcelas) lb.maxParcelas = maxParc;
+        if (tipoCartao === 'C') {
+          lb.valorCredito += valor;
+          lb.qtdCredito += qtd;
+          if (modoParcela === 'PARCELADO') {
+            lb.valorCreditoParcelado += valor;
+            lb.qtdCreditoParcelado += qtd;
+          } else {
+            lb.valorCreditoVista += valor;
+            lb.qtdCreditoVista += qtd;
+          }
+        } else {
+          lb.valorDebito += valor;
+          lb.qtdDebito += qtd;
+        }
+        if (flagBaixada === 'T') {
+          lb.valorRecebido += valor;
+          lb.qtdRecebido += qtd;
+        } else {
+          lb.valorAberto += valor;
+          lb.qtdAberto += qtd;
+        }
       });
 
       const perc = (v, t = totalGeral) => t > 0 ? Number(((v / t) * 100).toFixed(1)) : 0;
 
-      // Formatar consolidado
+      const formatBandeira = (b, baseTotal) => {
+        const { _somaPrazo, _lojasMap, ...rest } = b;
+        const lojasArr = Object.values(_lojasMap || {})
+          .map(l => ({ ...l, percentual: perc(l.valor, b.valor) }))
+          .sort((a, c) => c.valor - a.valor);
+        return {
+          ...rest,
+          percentual: perc(b.valor, baseTotal),
+          ticketMedio: b.qtd > 0 ? Number((b.valor / b.qtd).toFixed(2)) : 0,
+          prazoMedioDias: b.qtd > 0 ? Math.round(_somaPrazo / b.qtd) : 0,
+          lojas: lojasArr
+        };
+      };
+
       const resumo = Object.values(mapaBandeiras)
-        .map(b => ({ ...b, percentual: perc(b.valor) }))
+        .map(b => formatBandeira(b, totalGeral))
         .sort((a, b) => b.valor - a.valor);
 
-      // Formatar por loja
       const porLoja = Object.values(mapaLojas).map(loja => ({
         id: loja.id,
         nome: loja.nome,
         totalGeral: loja.totalGeral,
+        qtdGeral: loja.qtdGeral,
+        ticketMedio: loja.qtdGeral > 0 ? Number((loja.totalGeral / loja.qtdGeral).toFixed(2)) : 0,
+        valorCredito: loja.valorCredito,
+        valorDebito: loja.valorDebito,
+        valorRecebido: loja.valorRecebido,
+        valorAberto: loja.valorAberto,
         percentualTotal: perc(loja.totalGeral),
         bandeiras: Object.values(loja.bandeiras)
-          .map(b => ({ ...b, percentual: perc(b.valor, loja.totalGeral) }))
+          .map(b => formatBandeira(b, loja.totalGeral))
           .sort((a, b) => b.valor - a.valor)
       })).sort((a, b) => a.id - b.id);
+
+      const totalCredito = totalCreditoVista + totalCreditoParcelado;
+      const qtdCredito = qtdCreditoVista + qtdCreditoParcelado;
 
       res.json({
         periodo: { startDate: startD, endDate: endD },
         idEmpresa: idEmpresa || 'todas',
         totalGeral,
+        totalQtd,
+        ticketMedioGeral: totalQtd > 0 ? Number((totalGeral / totalQtd).toFixed(2)) : 0,
+        modalidades: {
+          creditoTotal: {
+            valor: totalCredito,
+            qtd: qtdCredito,
+            percentual: perc(totalCredito),
+            ticketMedio: qtdCredito > 0 ? Number((totalCredito / qtdCredito).toFixed(2)) : 0
+          },
+          creditoVista: {
+            valor: totalCreditoVista,
+            qtd: qtdCreditoVista,
+            percentual: perc(totalCreditoVista),
+            ticketMedio: qtdCreditoVista > 0 ? Number((totalCreditoVista / qtdCreditoVista).toFixed(2)) : 0
+          },
+          creditoParcelado: {
+            valor: totalCreditoParcelado,
+            qtd: qtdCreditoParcelado,
+            percentual: perc(totalCreditoParcelado),
+            ticketMedio: qtdCreditoParcelado > 0 ? Number((totalCreditoParcelado / qtdCreditoParcelado).toFixed(2)) : 0,
+            maxParcelas: maxParcelasGeral
+          },
+          debito: {
+            valor: totalDebito,
+            qtd: qtdDebito,
+            percentual: perc(totalDebito),
+            ticketMedio: qtdDebito > 0 ? Number((totalDebito / qtdDebito).toFixed(2)) : 0
+          }
+        },
+        conciliacao: {
+          valorRecebido: totalRecebido,
+          qtdRecebido,
+          percRecebido: perc(totalRecebido),
+          valorAberto: totalAberto,
+          qtdAberto,
+          percAberto: perc(totalAberto),
+          prazoMedioGeral: totalQtd > 0 ? Math.round(somaPrazoPonderado / totalQtd) : 0
+        },
+        porDia: (rowsDia || []).map(d => ({
+          data: String(d.DATA || '').trim(),
+          qtd: Number(d.QTD) || 0,
+          total: Number(d.TOTAL) || 0,
+          credito: Number(d.CREDITO) || 0,
+          debito: Number(d.DEBITO) || 0
+        })),
+        recebiveis: (rowsRecebiveis || []).map(r => ({
+          vencimento: String(r.VENCIMENTO || '').trim(),
+          qtd: Number(r.QTD) || 0,
+          valor: Number(r.VALOR) || 0,
+          credito: Number(r.CREDITO) || 0,
+          debito: Number(r.DEBITO) || 0
+        })),
         resumo,
         porLoja
       });
@@ -1659,6 +1910,92 @@ app.post('/api/system/users/delete', (req, res) => {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // DETALHAMENTO DE TRANSAÇÕES / CUPONS TEF DE UMA BANDEIRA ESPECÍFICA
+  app.get('/api/vendas/bandeiras/transacoes', async (req, res) => {
+    try {
+      const { idBandeira, idEmpresa, startDate, endDate, tipoCartao, status, limit = 150 } = req.query;
+      const hoje = new Date().toISOString().split('T')[0];
+      const d30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+      const startD = startDate || d30;
+      const endD = endDate || hoje;
+
+      let sql = `
+        SELECT
+          CR.IDTITULO,
+          CR.IDEMPRESA,
+          COALESCE(E.NOMEFANTASIA, 'Loja ' || RTRIM(CHAR(CR.IDEMPRESA))) AS NOME_LOJA,
+          CR.IDBANDEIRA,
+          TRIM(COALESCE(B.DESCRICAO, 'Bandeira ' || RTRIM(CHAR(CR.IDBANDEIRA)))) AS NOME_BANDEIRA,
+          CHAR(CR.DTMOVIMENTO) AS DATA_MOVIMENTO,
+          CHAR(CR.DTVENCIMENTO) AS DATA_VENCIMENTO,
+          CHAR(CR.DTULTIMOPAGAMENTO) AS DATA_PAGAMENTO,
+          COALESCE(CR.TIPOCARTAO, 'D') AS TIPOCARTAO,
+          COALESCE(CR.NUMPARCELASADMINISTRADORA, 1) AS PARCELAS,
+          COALESCE(CR.FLAGBAIXADA, 'F') AS FLAGBAIXADA,
+          CR.VALTITULO AS VALOR,
+          COALESCE(CR.SUMVALPAGAMENTOTITULO, 0) AS VALOR_PAGO,
+          CR.IDCAIXA,
+          CR.NUMCUPOMFISCAL,
+          CR.IDNSUTEF,
+          TRIM(COALESCE(CR.CODAUTORIZACAOSITEF, '')) AS AUTORIZACAO_SITEF,
+          CR.NRCARD
+        FROM DBA.CONTAS_RECEBER CR
+        LEFT JOIN DBA.BANDEIRAS B ON B.CODBANDEIRA = CR.IDBANDEIRA
+        LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = CR.IDEMPRESA
+        WHERE CR.DTMOVIMENTO BETWEEN ? AND ?
+          AND CR.IDBANDEIRA IS NOT NULL
+          AND CR.IDBANDEIRA > 0
+      `;
+      const params = [startD, endD];
+      if (idBandeira && idBandeira !== 'todas') {
+        sql += ' AND CR.IDBANDEIRA = ?';
+        params.push(parseInt(idBandeira));
+      }
+      if (idEmpresa && idEmpresa !== 'todas') {
+        sql += ' AND CR.IDEMPRESA = ?';
+        params.push(parseInt(idEmpresa));
+      }
+      if (tipoCartao === 'C' || tipoCartao === 'D') {
+        sql += ' AND COALESCE(CR.TIPOCARTAO, \'D\') = ?';
+        params.push(tipoCartao);
+      }
+      if (status === 'T' || status === 'F') {
+        sql += ' AND COALESCE(CR.FLAGBAIXADA, \'F\') = ?';
+        params.push(status);
+      }
+      sql += ` ORDER BY CR.DTMOVIMENTO DESC, CR.VALTITULO DESC FETCH FIRST ${Math.min(500, parseInt(limit) || 150)} ROWS ONLY WITH UR`;
+
+      const rows = await queryDB(sql, params);
+      const transacoes = (rows || []).map(r => ({
+        idTitulo: r.IDTITULO,
+        lojaId: r.IDEMPRESA,
+        lojaNome: fixStoreNameBandeira(r.NOME_LOJA, r.IDEMPRESA),
+        idBandeira: r.IDBANDEIRA,
+        bandeira: String(r.NOME_BANDEIRA || '').trim(),
+        dataMovimento: String(r.DATA_MOVIMENTO || '').trim(),
+        dataVencimento: String(r.DATA_VENCIMENTO || '').trim(),
+        dataPagamento: r.DATA_PAGAMENTO ? String(r.DATA_PAGAMENTO).trim() : null,
+        tipoCartao: String(r.TIPOCARTAO || 'D').trim() === 'C' ? 'Crédito' : 'Débito / Voucher',
+        codigoTipo: String(r.TIPOCARTAO || 'D').trim(),
+        parcelas: Number(r.PARCELAS) || 1,
+        statusBaixada: String(r.FLAGBAIXADA || 'F').trim() === 'T',
+        valor: Number(r.VALOR) || 0,
+        valorPago: Number(r.VALOR_PAGO) || 0,
+        caixa: r.IDCAIXA || null,
+        cupomFiscal: r.NUMCUPOMFISCAL || null,
+        nsuTef: r.IDNSUTEF || null,
+        autorizacaoSitef: String(r.AUTORIZACAO_SITEF || '').trim() || null,
+        binCartao: r.NRCARD && Number(r.NRCARD) > 0 ? String(r.NRCARD) : null
+      }));
+
+      res.json({ transacoes });
+    } catch (err) {
+      console.error('Erro /api/vendas/bandeiras/transacoes:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 
   // ─────────────────────────────────────────────
   // VENDAS ATACAREJO (PREÇO ATACAREJO POR QUANTIDADE)
@@ -2020,43 +2357,48 @@ app.get('/api/dashboard-executivo', async (req, res) => {
     const endDate = reqEndDate || `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const endDateObj = new Date(endDate);
 
-    // 1. Faturamento Ontem (usando endDate - 1 dia)
-    const dataRefHojeObj = new Date(endDateObj);
-    dataRefHojeObj.setDate(dataRefHojeObj.getDate() - 1);
-    const dataRefHoje = dataRefHojeObj.toISOString().split('T')[0];
-    
-    const fatHojeSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_hoje, COUNT(DISTINCT NUMNOTA) AS notas_hoje, COUNT(DISTINCT NUMNOTA) AS clientes_hoje FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${dataRefHoje}' ${whereEmpresa} WITH UR`;
-    const fatHojeRes = await queryDB(fatHojeSql, params);
+    // 1. Faturamento Hoje (usa a data final solicitada ou a data mais recente com movimento no DB2)
+    const maxDateStr = String(maxDate).slice(0, 10);
+    const dataRefPrincipal = (reqEndDate && reqEndDate <= maxDateStr) ? reqEndDate : maxDateStr;
+    const fatHojeSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_hoje, COUNT(DISTINCT NUMNOTA) AS notas_hoje, COUNT(DISTINCT NUMNOTA) AS clientes_hoje FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${dataRefPrincipal}' ${whereEmpresa} WITH UR`;
+    let fatHojeRes = await queryDB(fatHojeSql, params).catch(() => []);
+    if (!fatHojeRes[0]?.FAT_HOJE && dataRefPrincipal !== maxDateStr) {
+      const fatMaxSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_hoje, COUNT(DISTINCT NUMNOTA) AS notas_hoje, COUNT(DISTINCT NUMNOTA) AS clientes_hoje FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${maxDateStr}' ${whereEmpresa} WITH UR`;
+      fatHojeRes = await queryDB(fatMaxSql, params).catch(() => []);
+    }
 
     // 2. Faturamento Mês/Período, Ticket Médio
     const fatMesSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_mes, COUNT(DISTINCT NUMNOTA) AS notas_mes FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO BETWEEN '${startDate}' AND '${endDate}' ${whereEmpresa} WITH UR`;
     const fatMesRes = await queryDB(fatMesSql, params);
 
-    // 3. Lucro Líquido e Margem (Estimado temporariamente pois a View é muito lenta)
+    // 3. Lucro Líquido e Margem
     let lucroRes = [];
     try {
-      // const lucroSql = `SELECT SUM(LUCRO * QTDPRODUTO) AS lucro_mes, SUM(CUSTOGERENCIAL * QTDPRODUTO) AS custo_mes FROM DBA.ESTOQUE_ANA_HIST_LUCRO_VW WHERE DTMOVIMENTO BETWEEN '${startDate}' AND '${endDate}' ${whereEmpresa} WITH UR`;
-      // lucroRes = await queryDB(lucroSql, params);
       const fatEstimado = parseFloat(fatMesRes[0]?.FAT_MES) || 0;
       const margens = { 1: 21.52, 2: 19.76, 3: 19.04, 4: 20.34, 5: 19.72, 6: 19.17, 7: 20.23 };
       const margemPct = isFiltered ? (margens[parseInt(idEmpresa)] || 18.0) : 20.19;
       lucroRes = [{ LUCRO_MES: fatEstimado * (margemPct / 100), CUSTO_MES: fatEstimado * ((100 - margemPct) / 100) }];
     } catch(e) {}
 
-    // 4. Estoque e Produtos sem Estoque
-    let estoqueSql = `SELECT COUNT(*) AS total_estoque, SUM(CASE WHEN SALDODISPONIVEL <= 0 THEN 1 ELSE 0 END) AS sem_estoque FROM ADM.ESTOQUE_LOCAL ${whereEmpresaOnly} WITH UR`;
-    let estoqueRes = [{TOTAL_ESTOQUE: 15420, SEM_ESTOQUE: 120}]; // Default if query fails
+    // 4. Estoque e Produtos sem Estoque (via DBA.ESTOQUE_SALDO_ATUAL nos locais ativos de venda)
+    let estoqueRes = [{TOTAL_ESTOQUE: 15420, SEM_ESTOQUE: 120}];
     try {
-      let resEst = await queryDB(estoqueSql, params);
-      if(resEst && resEst.length > 0) estoqueRes = resEst;
-    } catch(e) {
-      try {
-         // fallback pra contar total se SALDODISPONIVEL der erro
-         let fallbackSql = `SELECT COUNT(*) AS total_estoque FROM ADM.ESTOQUE_LOCAL ${whereEmpresaOnly} WITH UR`;
-         let resFall = await queryDB(fallbackSql, params);
-         estoqueRes[0].TOTAL_ESTOQUE = resFall[0]?.TOTAL_ESTOQUE || 0;
-      } catch(e2) {}
-    }
+      const estDbaSql = `
+        SELECT
+          COUNT(DISTINCT E.IDSUBPRODUTO) AS total_estoque,
+          SUM(CASE WHEN E.QTDATUALESTOQUE <= 0 THEN 1 ELSE 0 END) AS sem_estoque
+        FROM DBA.ESTOQUE_SALDO_ATUAL E
+        JOIN DBA.ESTOQUE_CADASTRO_LOCAL L ON L.IDLOCALESTOQUE = E.IDLOCALESTOQUE
+        WHERE L.FLAGDISPONVENDA = 'T'
+          AND E.DTMOVIMENTO >= CURRENT DATE - 60 DAYS
+          ${isFiltered ? 'AND E.IDEMPRESA = ?' : ''}
+        WITH UR
+      `;
+      const resEst = await queryDB(estDbaSql, params);
+      if (resEst && resEst.length > 0 && Number(resEst[0].TOTAL_ESTOQUE) > 0) {
+        estoqueRes = resEst;
+      }
+    } catch(e) {}
 
     // 5. Top 10 Produtos
     const topProdSql = `SELECT P.DESCRICAO AS nome, SUM(V.VALTOTLIQUIDO) AS total FROM DBA.VW_GEA_VENDAS_DIARIAS V LEFT JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = V.IDSUBPRODUTO WHERE V.DTMOVIMENTO BETWEEN '${startDate}' AND '${endDate}' ${whereEmpresa.replace('IDEMPRESA', 'V.IDEMPRESA')} GROUP BY P.DESCRICAO ORDER BY total DESC FETCH FIRST 10 ROWS ONLY WITH UR`;
@@ -4465,47 +4807,51 @@ app.delete('/api/campanhas/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// 3. Listagem e Ranking de Vendedores com movimento nos últimos 6 meses
+// 3. Listagem e Ranking de Vendedores/Operadores com movimento nos últimos 6 meses
 app.get('/api/comercial/vendedores', async (req, res) => {
   const { idEmpresa, busca, startDate, endDate } = req.query;
   try {
     let params = [];
     let q = `
       SELECT 
-        VE.IDVENDEDOR,
-        VE.NOME AS VENDEDOR,
-        E.NOMEFANTASIA AS LOJA,
-        COUNT(DISTINCT V.IDVENDA) AS QTD_VENDAS,
-        SUM(V.VALTOTLIQUIDO) AS TOTAL_VENDIDO
-      FROM DBA.VW_GEA_VENDAS_DIARIAS V
-      JOIN DBA.VENDEDOR VE ON VE.IDVENDEDOR = V.IDVENDEDOR
-      LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = V.IDEMPRESA
-      WHERE V.DTMOVIMENTO >= CURRENT DATE - 6 MONTHS
+        N.IDUSUARIO AS IDVENDEDOR,
+        TRIM(COALESCE(U.NOMEUSUARIO, 'OPERADOR ' || CHAR(N.IDUSUARIO))) AS VENDEDOR,
+        TRIM(COALESCE(E.NOMEFANTASIA, 'Loja ' || CHAR(N.IDEMPRESA))) AS LOJA,
+        COUNT(DISTINCT N.IDPLANILHA) AS QTD_VENDAS,
+        SUM(NES.VALCONTABIL) AS TOTAL_VENDIDO
+      FROM DBA.NOTAS N
+      JOIN DBA.NOTAS_ENTRADA_SAIDA NES ON NES.IDEMPRESA = N.IDEMPRESA AND NES.IDPLANILHA = N.IDPLANILHA
+      LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = N.IDUSUARIO
+      LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = N.IDEMPRESA
+      WHERE N.DTMOVIMENTO >= CURRENT DATE - 6 MONTHS
+        AND N.TIPONOTAFISCAL = 'S'
+        AND COALESCE(N.FLAGNOTACANCEL, 'F') <> 'T'
+        AND N.IDUSUARIO IS NOT NULL
     `;
-    
+
     if (idEmpresa && idEmpresa !== 'todas') {
-      q += " AND V.IDEMPRESA = ?";
+      q += " AND N.IDEMPRESA = ?";
       params.push(parseInt(idEmpresa));
     }
-    
+
     if (startDate && endDate) {
-      q += " AND V.DTMOVIMENTO BETWEEN ? AND ?";
+      q += " AND N.DTMOVIMENTO BETWEEN ? AND ?";
       params.push(startDate, endDate);
     }
-    
+
     if (busca) {
-      q += " AND (UPPER(VE.NOME) LIKE ? OR CAST(VE.IDVENDEDOR AS VARCHAR(20)) LIKE ?)";
+      q += " AND (UPPER(COALESCE(U.NOMEUSUARIO, '')) LIKE ? OR CAST(N.IDUSUARIO AS VARCHAR(20)) LIKE ?)";
       const searchWild = `%${busca.trim().toUpperCase()}%`;
       params.push(searchWild, searchWild);
     }
-    
+
     q += `
-      GROUP BY VE.IDVENDEDOR, VE.NOME, E.NOMEFANTASIA
+      GROUP BY N.IDUSUARIO, U.NOMEUSUARIO, E.NOMEFANTASIA, N.IDEMPRESA
       ORDER BY TOTAL_VENDIDO DESC
       FETCH FIRST 50 ROWS ONLY
       WITH UR
     `;
-    
+
     const data = await queryDB(q, params);
     res.json({
       lista: data,
@@ -4516,30 +4862,49 @@ app.get('/api/comercial/vendedores', async (req, res) => {
   }
 });
 
-// 4. Detalhes de desempenho de um vendedor específico (últimos 6 meses)
+// 4. Detalhes de desempenho de um vendedor/operador específico (últimos 6 meses)
 app.get('/api/comercial/vendedor-detalhes', async (req, res) => {
   const { idVendedor } = req.query;
   if (!idVendedor) return res.status(400).json({ error: "idVendedor é obrigatório" });
-  
+
   try {
-    // Tenta carregar do DB2 as vendas mensais nos últimos 6 meses
+    const idU = parseInt(idVendedor);
     const historico = await queryDB(`
       SELECT 
-        VARCHAR_FORMAT(V.DTMOVIMENTO, 'MM/YY') AS MES_ANO,
-        SUM(V.VALTOTLIQUIDO) AS TOTAL_VENDIDO
-      FROM DBA.VW_GEA_VENDAS_DIARIAS V
-      WHERE V.IDVENDEDOR = ? AND V.DTMOVIMENTO >= CURRENT DATE - 6 MONTHS
-      GROUP BY VARCHAR_FORMAT(V.DTMOVIMENTO, 'MM/YY')
-      ORDER BY MIN(V.DTMOVIMENTO)
+        VARCHAR_FORMAT(N.DTMOVIMENTO, 'MM/YY') AS MES_ANO,
+        SUM(NES.VALCONTABIL) AS TOTAL_VENDIDO
+      FROM DBA.NOTAS N
+      JOIN DBA.NOTAS_ENTRADA_SAIDA NES ON NES.IDEMPRESA = N.IDEMPRESA AND NES.IDPLANILHA = N.IDPLANILHA
+      WHERE N.IDUSUARIO = ?
+        AND N.TIPONOTAFISCAL = 'S'
+        AND COALESCE(N.FLAGNOTACANCEL, 'F') <> 'T'
+        AND N.DTMOVIMENTO >= CURRENT DATE - 6 MONTHS
+      GROUP BY VARCHAR_FORMAT(N.DTMOVIMENTO, 'MM/YY')
+      ORDER BY MIN(N.DTMOVIMENTO)
       WITH UR
-    `, [parseInt(idVendedor)]);
-    
+    `, [idU]).catch(() => []);
+
+    const topProdutos = await queryDB(`
+      SELECT
+        TRIM(P.DESCRICAO) AS PRODUTO,
+        SUM(EA.QTDPRODUTO) AS QTD,
+        SUM(EA.VALTOTLIQUIDO) AS TOTAL
+      FROM DBA.NOTAS N
+      JOIN DBA.ESTOQUE_ANALITICO EA ON EA.IDEMPRESA = N.IDEMPRESA AND EA.IDPLANILHA = N.IDPLANILHA
+      JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = EA.IDSUBPRODUTO
+      WHERE N.IDUSUARIO = ?
+        AND N.TIPONOTAFISCAL = 'S'
+        AND COALESCE(N.FLAGNOTACANCEL, 'F') <> 'T'
+        AND N.DTMOVIMENTO >= CURRENT DATE - 60 DAYS
+      GROUP BY P.DESCRICAO
+      ORDER BY TOTAL DESC
+      FETCH FIRST 10 ROWS ONLY
+      WITH UR
+    `, [idU]).catch(() => []);
+
     res.json({
       historico,
-      topProdutos: [
-        { PRODUTO: "Heineken LN 330ml", QTD: 250, TOTAL: 1475.00 },
-        { PRODUTO: "Coca-Cola Pet 2L", QTD: 180, TOTAL: 1620.00 }
-      ],
+      topProdutos,
       isMock: false
     });
   } catch (err) {
@@ -5145,13 +5510,388 @@ app.get('/api/validade-critica', async (req, res) => {
   }
 });
 
+// ==========================================
+// MÓDULO DE CONTAS A PAGAR / BOLETOS / MENSAL / PARCELADOS
+// ==========================================
+function categorizeBoletoCP(item) {
+  const nome = String(item.FAVORECIDO || '').toUpperCase();
+  const cta = Number(item.IDCTACONTABIL) || 0;
+
+  if (nome.includes('EQUATORIAL') || nome.includes('ENERGIA') || nome.includes('LUZ') || cta === 2110401) {
+    return { categoria: 'Energia / Luz', grupo: 'OUTROS', icone: 'Zap', corBadge: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+  }
+  if (nome.includes('AGUA') || nome.includes('ÁGUA') || nome.includes('SANEAMENTO') || nome.includes('CASAL') || nome.includes('BRK')) {
+    return { categoria: 'Água / Saneamento', grupo: 'OUTROS', icone: 'Droplets', corBadge: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
+  }
+  if (nome.includes('ALUGUEL') || cta === 2110405) {
+    return { categoria: 'Aluguel Imóvel', grupo: 'OUTROS', icone: 'Home', corBadge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' };
+  }
+  if (nome.includes('TIM') || nome.includes('CLARO') || nome.includes('VIVO') || nome.includes('TELEF') || nome.includes('INTERNET')) {
+    return { categoria: 'Telefonia / Internet', grupo: 'OUTROS', icone: 'Phone', corBadge: 'bg-blue-500/10 text-blue-400 border-blue-500/20' };
+  }
+  if (nome.includes('RECEITA FEDERAL') || nome.includes('SEFAZ') || nome.includes('IMPOSTO') || nome.includes('DARF') || nome.includes('FGTS') || nome.includes('INSS') || cta === 2110607) {
+    return { categoria: 'Impostos / Tributos', grupo: 'OUTROS', icone: 'Receipt', corBadge: 'bg-rose-500/10 text-rose-400 border-rose-500/20' };
+  }
+  if (nome.includes('SAMMYA') || cta === 2110501 || cta === 2110503 || cta === 2110504) {
+    return { categoria: 'Sócios / Retiradas', grupo: 'OUTROS', icone: 'UserCheck', corBadge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' };
+  }
+  if (nome.includes('CARDOSO') || nome.includes('PARCELA') || cta === 1240103) {
+    return { categoria: 'Parcelas / Contratos', grupo: 'OUTROS', icone: 'CalendarCheck', corBadge: 'bg-teal-500/10 text-teal-400 border-teal-500/20' };
+  }
+  return { categoria: 'Fornecedor de Mercadorias', grupo: 'FORNECEDOR', icone: 'Truck', corBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+}
+
+const CP_SELECT_BASE = `
+  SELECT 
+    CP.IDEMPRESA AS LOJA,
+    CP.IDTITULO AS NUMERO_TITULO,
+    TRIM(CHAR(COALESCE(CP.DIGITOTITULO, 1))) AS PARCELA,
+    CP.IDCLIFOR,
+    TRIM(COALESCE(CF.NOMEFANTASIA, CF.NOME, 'FORNECEDOR ' || CHAR(CP.IDCLIFOR))) AS FAVORECIDO,
+    CHAR(CP.DTVENCIMENTO) AS VENCIMENTO,
+    CHAR(CP.DTEMISSAO) AS DATA_EMISSAO,
+    CHAR(CP.DTMOVIMENTO) AS DATA_MOVIMENTO,
+    CHAR(CP.DTULTIMOPAGAMENTO) AS DATA_PAGAMENTO,
+    CP.VALTITULO AS VALOR,
+    COALESCE(CP.SUMVALPAGAMENTOTITULO, 0) AS VALOR_PAGO,
+    CP.FLAGBAIXADA AS STATUS_BAIXADA,
+    TRIM(COALESCE(CP.OBSTITULO, '')) AS OBSERVACAO,
+    TRIM(COALESCE(CP.ORIGEMMOVIMENTO, '')) AS ORIGEM,
+    TRIM(COALESCE(CP.SERIENOTA, '')) AS SERIE_NOTA,
+    TRIM(COALESCE(CP.NRODOCATRIBUIDO, '')) AS NRO_DOCUMENTO,
+    TRIM(COALESCE(CP.CODIGOBOLETO, '')) AS BOLETO,
+    TRIM(COALESCE(CP.CODIGOBARRAS, '')) AS CODIGO_BARRAS,
+    TRIM(COALESCE(CP.CHAVEPIX, '')) AS CHAVE_PIX,
+    CP.IDUSUARIO,
+    TRIM(COALESCE(U.NOMEUSUARIO, 'USUÁRIO ' || CHAR(CP.IDUSUARIO))) AS USUARIO_LANCAMENTO,
+    CP.IDCTACONTABIL,
+    CP.IDPLANILHA
+  FROM DBA.CONTAS_PAGAR CP
+  LEFT JOIN DBA.CLIENTE_FORNECEDOR CF ON CF.IDCLIFOR = CP.IDCLIFOR
+  LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = CP.IDUSUARIO
+`;
+
+function mapBoletoRow(r) {
+  const valor = Number(r.VALOR) || 0;
+  const valorPago = Number(r.VALOR_PAGO) || 0;
+  return {
+    ...r,
+    VENCIMENTO: String(r.VENCIMENTO || '').trim(),
+    DATA_EMISSAO: r.DATA_EMISSAO ? String(r.DATA_EMISSAO).trim() : '',
+    DATA_MOVIMENTO: r.DATA_MOVIMENTO ? String(r.DATA_MOVIMENTO).trim() : '',
+    DATA_PAGAMENTO: r.DATA_PAGAMENTO ? String(r.DATA_PAGAMENTO).trim() : '',
+    VALOR: valor,
+    VALOR_PAGO: valorPago,
+    VALOR_EFETIVO: r.STATUS_BAIXADA === 'T' && valorPago > 0 ? valorPago : valor,
+    ...categorizeBoletoCP(r)
+  };
+}
+
+app.get('/api/financeiro/contas-pagar', async (req, res) => {
+  try {
+    const { dataBase, loja = 'todas', idEmpresa, status = 'F' } = req.query;
+    const lojaFiltro = (loja && loja !== 'todas') ? loja : (idEmpresa && idEmpresa !== 'todas' ? idEmpresa : 'todas');
+
+    let baseDate = dataBase;
+    if (!baseDate || !/^\d{4}-\d{2}-\d{2}$/.test(baseDate)) {
+      const now = new Date();
+      baseDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    const dCurr = new Date(baseDate + 'T12:00:00Z');
+    const dNext = new Date(dCurr);
+    dNext.setDate(dNext.getDate() + 1);
+    const nextDate = dNext.toISOString().split('T')[0];
+
+    const dPrev = new Date(dCurr);
+    dPrev.setDate(dPrev.getDate() - 1);
+    const prevDate = dPrev.toISOString().split('T')[0];
+
+    let sql = `${CP_SELECT_BASE} WHERE CP.DTVENCIMENTO IN (?, ?)`;
+    const params = [baseDate, nextDate];
+
+    if (status === 'F' || status === 'T') {
+      sql += " AND CP.FLAGBAIXADA = ?";
+      params.push(status);
+    }
+
+    if (lojaFiltro && lojaFiltro !== 'todas') {
+      sql += " AND CP.IDEMPRESA = ?";
+      params.push(parseInt(lojaFiltro));
+    }
+
+    sql += " ORDER BY CP.DTVENCIMENTO ASC, CP.VALTITULO DESC FETCH FIRST 500 ROWS ONLY WITH UR";
+
+    const rows = await queryDB(sql, params);
+    const allCategorized = (rows || []).map(mapBoletoRow);
+
+    const boletosDiaAtual = allCategorized.filter(r => r.VENCIMENTO === baseDate);
+    const boletosProximoDia = allCategorized.filter(r => r.VENCIMENTO === nextDate);
+
+    const calcSummary = (list) => {
+      const total = list.reduce((acc, i) => acc + i.VALOR, 0);
+      const fornecedoresList = list.filter(i => i.grupo === 'FORNECEDOR');
+      const outrosList = list.filter(i => i.grupo === 'OUTROS');
+      return {
+        totalValor: total,
+        qtdTotal: list.length,
+        totalFornecedores: fornecedoresList.reduce((acc, i) => acc + i.VALOR, 0),
+        qtdFornecedores: fornecedoresList.length,
+        totalOutros: outrosList.reduce((acc, i) => acc + i.VALOR, 0),
+        qtdOutros: outrosList.length
+      };
+    };
+
+    res.json({
+      dataBase: baseDate,
+      dataProxima: nextDate,
+      dataAnterior: prevDate,
+      resumoDiaAtual: calcSummary(boletosDiaAtual),
+      resumoProximoDia: calcSummary(boletosProximoDia),
+      diaAtual: {
+        data: baseDate,
+        fornecedores: boletosDiaAtual.filter(i => i.grupo === 'FORNECEDOR'),
+        outros: boletosDiaAtual.filter(i => i.grupo === 'OUTROS'),
+        todos: boletosDiaAtual
+      },
+      proximoDia: {
+        data: nextDate,
+        fornecedores: boletosProximoDia.filter(i => i.grupo === 'FORNECEDOR'),
+        outros: boletosProximoDia.filter(i => i.grupo === 'OUTROS'),
+        todos: boletosProximoDia
+      }
+    });
+  } catch (err) {
+    console.error('Erro na API de Contas a Pagar:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/financeiro/contas-pagar-mes', async (req, res) => {
+  try {
+    const { mesAno, mes, loja = 'todas', idEmpresa, status = 'todos' } = req.query;
+    const refMes = mesAno || mes || new Date().toISOString().slice(0, 7);
+    const [anoStr, mesStr] = String(refMes).split('-');
+    const anoN = parseInt(anoStr) || new Date().getFullYear();
+    const mesN = parseInt(mesStr) || (new Date().getMonth() + 1);
+    const startD = `${anoN}-${String(mesN).padStart(2, '0')}-01`;
+    const lastDay = new Date(anoN, mesN, 0).getDate();
+    const endD = `${anoN}-${String(mesN).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const lojaFiltro = (loja && loja !== 'todas') ? loja : (idEmpresa && idEmpresa !== 'todas' ? idEmpresa : 'todas');
+
+    let sql = `${CP_SELECT_BASE} WHERE CP.DTVENCIMENTO BETWEEN ? AND ?`;
+    const params = [startD, endD];
+
+    if (status === 'F' || status === 'T') {
+      sql += " AND CP.FLAGBAIXADA = ?";
+      params.push(status);
+    }
+
+    if (lojaFiltro && lojaFiltro !== 'todas') {
+      sql += " AND CP.IDEMPRESA = ?";
+      params.push(parseInt(lojaFiltro));
+    }
+
+    sql += " ORDER BY CP.DTVENCIMENTO ASC, CP.VALTITULO DESC FETCH FIRST 3000 ROWS ONLY WITH UR";
+    const rows = await queryDB(sql, params);
+    const itens = (rows || []).map(mapBoletoRow);
+
+    let totalGeral = 0, totalPago = 0, totalAberto = 0;
+    let qtdTotal = 0, qtdPagas = 0, qtdAbertas = 0;
+    const totaisPorLoja = {
+      1: { total: 0, pago: 0, aberto: 0, qtd: 0 },
+      2: { total: 0, pago: 0, aberto: 0, qtd: 0 },
+      3: { total: 0, pago: 0, aberto: 0, qtd: 0 }
+    };
+    const diaMap = {};
+    const catMap = {};
+
+    for (const item of itens) {
+      const val = item.VALOR_EFETIVO || item.VALOR || 0;
+      const isPago = item.STATUS_BAIXADA === 'T';
+      totalGeral += val;
+      qtdTotal++;
+      if (isPago) {
+        totalPago += val;
+        qtdPagas++;
+      } else {
+        totalAberto += val;
+        qtdAbertas++;
+      }
+
+      if (!totaisPorLoja[item.LOJA]) {
+        totaisPorLoja[item.LOJA] = { total: 0, pago: 0, aberto: 0, qtd: 0 };
+      }
+      totaisPorLoja[item.LOJA].total += val;
+      totaisPorLoja[item.LOJA].qtd++;
+      if (isPago) totaisPorLoja[item.LOJA].pago += val;
+      else totaisPorLoja[item.LOJA].aberto += val;
+
+      const dt = item.VENCIMENTO;
+      if (dt) {
+        const diaNum = parseInt(dt.split('-')[2]) || 1;
+        if (!diaMap[dt]) diaMap[dt] = { data: dt, dia: diaNum, total: 0, pago: 0, aberto: 0, qtd: 0 };
+        diaMap[dt].total += val;
+        diaMap[dt].qtd++;
+        if (isPago) diaMap[dt].pago += val;
+        else diaMap[dt].aberto += val;
+      }
+
+      const ck = item.categoria;
+      if (!catMap[ck]) {
+        catMap[ck] = {
+          categoria: item.categoria,
+          grupo: item.grupo,
+          total: 0,
+          qtd: 0,
+          corBadge: item.corBadge,
+          icone: item.icone
+        };
+      }
+      catMap[ck].total += val;
+      catMap[ck].qtd++;
+    }
+
+    res.json({
+      mesAno: refMes,
+      itens,
+      porDia: Object.values(diaMap).sort((a, b) => a.data.localeCompare(b.data)),
+      resumo: {
+        totalGeral,
+        totalPago,
+        totalAberto,
+        qtdTotal,
+        qtdPagas,
+        qtdAbertas,
+        totaisPorLoja,
+        totaisPorCategoria: Object.values(catMap).sort((a, b) => b.total - a.total)
+      }
+    });
+  } catch (err) {
+    console.error('Erro na API Contas a Pagar Mês:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/financeiro/parcelados', async (req, res) => {
+  try {
+    const { loja = 'todas', idEmpresa, status = 'aberto' } = req.query;
+    const lojaFiltro = (loja && loja !== 'todas') ? loja : (idEmpresa && idEmpresa !== 'todas' ? idEmpresa : 'todas');
+
+    let sql = `${CP_SELECT_BASE} WHERE CP.DTVENCIMENTO >= CURRENT DATE - 180 DAYS`;
+    const params = [];
+    if (lojaFiltro && lojaFiltro !== 'todas') {
+      sql += " AND CP.IDEMPRESA = ?";
+      params.push(parseInt(lojaFiltro));
+    }
+    sql += " ORDER BY CP.IDCLIFOR ASC, CP.DTVENCIMENTO ASC FETCH FIRST 3500 ROWS ONLY WITH UR";
+
+    const rows = await queryDB(sql, params);
+    const mapped = (rows || []).map(mapBoletoRow);
+
+    const grupos = {};
+    for (const r of mapped) {
+      const docKey = r.NRO_DOCUMENTO || (r.IDPLANILHA ? `PLAN-${r.IDPLANILHA}` : '') || r.DATA_EMISSAO || r.DATA_MOVIMENTO || String(r.NUMERO_TITULO);
+      const key = `${r.LOJA}-${r.IDCLIFOR}-${docKey}`;
+      if (!grupos[key]) {
+        grupos[key] = {
+          id: key,
+          loja: r.LOJA,
+          idClifor: r.IDCLIFOR,
+          favorecido: r.FAVORECIDO,
+          documento: r.NRO_DOCUMENTO || String(r.NUMERO_TITULO),
+          serieNota: r.SERIE_NOTA || '',
+          categoria: r.categoria,
+          icone: r.icone,
+          corBadge: r.corBadge,
+          parcelas: []
+        };
+      }
+      grupos[key].parcelas.push({
+        numeroTitulo: r.NUMERO_TITULO,
+        parcela: r.PARCELA || '1',
+        vencimento: r.VENCIMENTO,
+        dataEmissao: r.DATA_EMISSAO,
+        dataPagamento: r.DATA_PAGAMENTO,
+        valor: r.VALOR,
+        valorPago: r.VALOR_PAGO,
+        statusBaixada: r.STATUS_BAIXADA === 'T',
+        observacao: r.OBSERVACAO,
+        boleto: r.BOLETO,
+        codigoBarras: r.CODIGO_BARRAS,
+        chavePix: r.CHAVE_PIX
+      });
+    }
+
+    let contratos = Object.values(grupos).map(g => {
+      g.parcelas.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+      const totalParcelas = g.parcelas.length;
+      const parcelasPagas = g.parcelas.filter(p => p.statusBaixada).length;
+      const parcelasAbertas = totalParcelas - parcelasPagas;
+      const valorTotalContrato = g.parcelas.reduce((s, p) => s + p.valor, 0);
+      const valorJaPago = g.parcelas.filter(p => p.statusBaixada).reduce((s, p) => s + (p.valorPago > 0 ? p.valorPago : p.valor), 0);
+      const saldoDevedor = Math.max(0, valorTotalContrato - valorJaPago);
+      const percentualPago = valorTotalContrato > 0 ? Number(((valorJaPago / valorTotalContrato) * 100).toFixed(1)) : 0;
+      const statusContrato = parcelasAbertas === 0 ? 'QUITADO' : 'EM_ANDAMENTO';
+      const abertasOrd = g.parcelas.filter(p => !p.statusBaixada);
+
+      return {
+        ...g,
+        totalParcelas,
+        parcelasPagas,
+        parcelasAbertas,
+        valorTotalContrato,
+        valorJaPago,
+        saldoDevedor,
+        percentualPago,
+        primeiroVencimento: g.parcelas[0]?.vencimento || '',
+        ultimoVencimento: g.parcelas[g.parcelas.length - 1]?.vencimento || '',
+        statusContrato,
+        proximaParcela: abertasOrd[0] || null,
+        ultimaParcela: g.parcelas[g.parcelas.length - 1] || null
+      };
+    });
+
+    if (status === 'aberto') {
+      contratos = contratos.filter(c => c.statusContrato === 'EM_ANDAMENTO');
+    } else if (status === 'quitado') {
+      contratos = contratos.filter(c => c.statusContrato === 'QUITADO');
+    }
+
+    contratos.sort((a, b) => b.saldoDevedor - a.saldoDevedor || b.valorTotalContrato - a.valorTotalContrato);
+
+    const resumo = {
+      totalContratos: contratos.length,
+      totalDividasGeral: contratos.reduce((s, c) => s + c.valorTotalContrato, 0),
+      totalJaPagoGeral: contratos.reduce((s, c) => s + c.valorJaPago, 0),
+      totalSaldoRestanteGeral: contratos.reduce((s, c) => s + c.saldoDevedor, 0),
+      totalParcelasRestantesGeral: contratos.reduce((s, c) => s + c.parcelasAbertas, 0)
+    };
+
+    res.json({ contratos, resumo });
+  } catch (err) {
+    console.error('Erro na API Parcelados:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Estoque por Loja ---
 app.get('/api/estoque', async (req, res) => {
   try {
     const { codigo } = req.query;
     if (!codigo) {
-      // Retorna locais de estoque para compatibilidade com o AiChat e inicialização
-      const data = await queryDB("SELECT IDLOCAL, DESCRLOCAL, FLAGSEPARACAO, FLAGTROCA FROM ADM.ESTOQUE_LOCAL WITH UR");
+      // Retorna locais de estoque via DBA.ESTOQUE_CADASTRO_LOCAL (compatível com usuário CONSULTA)
+      const data = await queryDB(`
+        SELECT
+          IDLOCALESTOQUE AS IDLOCAL,
+          TRIM(DESCRLOCAL) AS DESCRLOCAL,
+          FLAGDISPONVENDA AS FLAGSEPARACAO,
+          FLAGTROCAPROD AS FLAGTROCA
+        FROM DBA.ESTOQUE_CADASTRO_LOCAL
+        ORDER BY IDLOCALESTOQUE ASC
+        WITH UR
+      `);
       return res.json(data);
     }
 
@@ -5161,9 +5901,9 @@ app.get('/api/estoque', async (req, res) => {
     // Tenta buscar por código de barras primeiro
     if (isNaN(idSubproduto) || codigo.length >= 8) {
       const eanRes = await queryDB(
-        `SELECT IDSUBPRODUTO FROM DBA.PRODUTO_CODIGOBARRAS WHERE CODIGOBARRAS = ? FETCH FIRST 1 ROWS ONLY WITH UR`,
-        [codigo]
-      );
+        `SELECT IDSUBPRODUTO FROM DBA.PRODUTO_GRADE WHERE TRIM(CODBAR) = ? FETCH FIRST 1 ROWS ONLY WITH UR`,
+        [String(codigo).trim()]
+      ).catch(() => []);
       if (eanRes.length > 0) {
         idSubproduto = eanRes[0].IDSUBPRODUTO;
       }
@@ -6064,6 +6804,7 @@ app.get('/api/promocoes/lista', async (req, res) => {
     const result = data.map(row => {
       const receita = parseFloat(row.RECEITA || 0);
       const qtd = parseFloat(row.QTD || 0);
+      const precoMedio = qtd > 0 ? Math.round((receita / qtd) * 100) / 100 : 0;
       const custo = receita * 0.82; 
       const lucro = receita - custo;
       const margem = receita > 0 ? (lucro / receita) * 100 : 0;
@@ -6077,7 +6818,8 @@ app.get('/api/promocoes/lista', async (req, res) => {
         custo,
         lucro,
         margem,
-        qtd
+        qtd,
+        precoMedio
       };
     });
 
@@ -6139,6 +6881,7 @@ app.get('/api/promocoes/itens', async (req, res) => {
     const result = data.map(row => {
       const receita = parseFloat(row.RECEITA);
       const qtd = parseFloat(row.QTD);
+      const precoPromocional = qtd > 0 ? Math.round((receita / qtd) * 100) / 100 : 0;
       const custo = receita * 0.82; // Estimativa (18% de margem)
       const lucro = receita - custo;
       const margem = receita > 0 ? (lucro / receita) * 100 : 0;
@@ -6147,6 +6890,7 @@ app.get('/api/promocoes/itens', async (req, res) => {
         idProduto: row.IDSUBPRODUTO,
         produto: (prodMap[row.IDSUBPRODUTO] || `PRODUTO ${row.IDSUBPRODUTO}`).trim(),
         secao: 'PROMOÇÃO',
+        precoPromocional,
         receita,
         custo,
         lucro,
@@ -7114,143 +7858,90 @@ async function startServer() {
   // ROTA: Relatório de Entradas (160068)
   app.get('/api/relatorios/entradas', async (req, res) => {
     try {
-      const { data_inicio, data_fim, id_empresa, id_fornecedor, id_operacao } = req.query;
-      
-      if (!data_inicio || !data_fim) {
-        return res.status(400).json({ error: 'data_inicio e data_fim sao obrigatorios' });
-      }
+      const { data_inicio, data_fim, startDate, endDate, id_empresa, idEmpresa, id_fornecedor } = req.query;
+      const hoje = new Date().toISOString().split('T')[0];
+      const d15 = new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString().split('T')[0];
 
-      const dtIni = data_inicio;
-      const dtFim = data_fim;
-      const idEmpresa = id_empresa || '1'; // Default loja 1 ou usar filtro in
-      const idFornecedor = id_fornecedor || null;
-      const idOperacao = id_operacao || '2'; // Operação padrão de entrada (Compra = 2 geralmente), ajustar conforme ERP
-      const tipoCategoria = '%';
+      const dtIni = data_inicio || startDate || d15;
+      const dtFim = data_fim || endDate || hoje;
+      const empFiltro = id_empresa || idEmpresa;
 
-      // Query do relatorio 160068 adaptada
       let sql = `
         SELECT
-            NOTAS_ENTRADA_SAIDA.IDEMPRESA,
-            NOTAS.NUMNOTA,
-            NOTAS.SERIENOTA,
-            NOTAS_ENTRADA_SAIDA.DTMOVIMENTO,
-            NOTAS_ENTRADA_SAIDA.DTEMISSAO,
-            NOTAS_ENTRADA_SAIDA.NOME,
-            NOTAS_ENTRADA_SAIDA.IDPLANILHA,
-            NOTAS_ENTRADA_SAIDA.IDOPERACAO,
-            NOTAS_ENTRADA_SAIDA.UF,
-            NOTAS_ENTRADA_SAIDA.VALCONTABIL,
-            COALESCE(ESTOQUE_ANALITICO.TIPOCATEGORIA,'') AS TIPOCATEGORIA,
-            NOTAS.IDCLIFOR
+            NES.IDEMPRESA,
+            N.NUMNOTA,
+            N.SERIENOTA,
+            NES.DTMOVIMENTO,
+            NES.DTEMISSAO,
+            TRIM(NES.NOME) AS NOME,
+            NES.IDPLANILHA,
+            NES.IDOPERACAO,
+            NES.UF,
+            NES.VALCONTABIL,
+            N.IDCLIFOR,
+            N.IDUSUARIO,
+            TRIM(COALESCE(U.NOMEUSUARIO, 'USUÁRIO ' || CHAR(N.IDUSUARIO))) AS USUARIO_ENTRADA
         FROM
-            DBA.NOTAS_ENTRADA_SAIDA
-            LEFT OUTER JOIN DBA.ESTOQUE_ANALITICO ON(
-                NOTAS_ENTRADA_SAIDA.IDEMPRESA = ESTOQUE_ANALITICO.IDEMPRESA AND
-                NOTAS_ENTRADA_SAIDA.IDPLANILHA = ESTOQUE_ANALITICO.IDPLANILHA
-            ),
-            DBA.NOTAS
+            DBA.NOTAS_ENTRADA_SAIDA NES
+            INNER JOIN DBA.NOTAS N ON (
+                NES.IDEMPRESA = N.IDEMPRESA AND
+                NES.IDPLANILHA = N.IDPLANILHA
+            )
+            LEFT OUTER JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = N.IDUSUARIO
         WHERE
-            NOTAS_ENTRADA_SAIDA.IDEMPRESA = NOTAS.IDEMPRESA AND
-            NOTAS_ENTRADA_SAIDA.IDPLANILHA = NOTAS.IDPLANILHA AND
-            NOTAS_ENTRADA_SAIDA.IDOPERACAO < 1000 AND
-            NOTAS_ENTRADA_SAIDA.DTMOVIMENTO BETWEEN ? AND ? 
+            NES.IDOPERACAO < 1000 AND
+            NES.DTMOVIMENTO BETWEEN ? AND ?
       `;
 
       const params = [dtIni, dtFim];
 
-      if (id_empresa && id_empresa !== 'todas') {
-        sql += ' AND NOTAS_ENTRADA_SAIDA.IDEMPRESA = ?';
-        params.push(id_empresa);
+      if (empFiltro && empFiltro !== 'todas') {
+        sql += ' AND NES.IDEMPRESA = ?';
+        params.push(parseInt(empFiltro));
       }
 
       if (id_fornecedor) {
-        sql += ' AND NOTAS.IDCLIFOR = ?';
-        params.push(id_fornecedor);
+        sql += ' AND N.IDCLIFOR = ?';
+        params.push(parseInt(id_fornecedor));
       }
 
-      // Evitando duplicação agregando
       sql += `
-        GROUP BY
-            NOTAS_ENTRADA_SAIDA.IDEMPRESA,
-            NOTAS.NUMNOTA,
-            NOTAS.SERIENOTA,
-            NOTAS_ENTRADA_SAIDA.DTMOVIMENTO,
-            NOTAS_ENTRADA_SAIDA.DTEMISSAO,
-            NOTAS_ENTRADA_SAIDA.NOME,
-            NOTAS_ENTRADA_SAIDA.IDPLANILHA,
-            NOTAS_ENTRADA_SAIDA.IDOPERACAO,
-            NOTAS_ENTRADA_SAIDA.UF,
-            COALESCE(ESTOQUE_ANALITICO.TIPOCATEGORIA,''),
-            NOTAS.IDCLIFOR,
-            NOTAS_ENTRADA_SAIDA.VALCONTABIL
-        ORDER BY NOTAS_ENTRADA_SAIDA.DTMOVIMENTO DESC
+        ORDER BY NES.DTMOVIMENTO DESC, NES.IDPLANILHA DESC
         FETCH FIRST 500 ROWS ONLY
+        WITH UR
       `;
 
-      const pool = ibmdb.Pool;
-      const conn = await new Promise((resolve, reject) => {
-        pool.open(connStr, (err, conn) => {
-          if (err) reject(err);
-          else resolve(conn);
-        });
-      });
-
-      try {
-        const rows = await new Promise((resolve, reject) => {
-          conn.query(sql, params, (err, data) => {
-            if (err) reject(err);
-            else resolve(data);
-          });
-        });
-        res.json(rows);
-      } finally {
-        conn.close();
-      }
-
+      const rows = await queryDB(sql, params);
+      res.json(rows || []);
     } catch (err) {
       console.error('Erro relatorio entradas:', err);
       res.status(500).json({ error: err.message });
     }
   });
 
-  // ROTA: Detalhes dos Itens da Nota
+  // ROTA: Detalhes dos Itens da Nota (via DBA.ESTOQUE_ANALITICO)
   app.get('/api/notas/:idempresa/:idplanilha/itens', async (req, res) => {
     try {
       const { idempresa, idplanilha } = req.params;
 
       const sql = `
         SELECT 
-          I.SEQUENCIA,
-          I.IDPRODUTO,
-          P.DESCRICAO AS PRODUTO_DESC,
-          I.QUANTIDADE,
-          I.VALUNITARIO,
-          (I.QUANTIDADE * I.VALUNITARIO) AS VALTOTAL
-        FROM DBA.NOTAS_ITENS I
-        JOIN DBA.PRODUTO P ON I.IDPRODUTO = P.IDPRODUTO
-        WHERE I.IDEMPRESA = ? AND I.IDPLANILHA = ?
-        ORDER BY I.SEQUENCIA
+          EA.NUMSEQUENCIA AS SEQUENCIA,
+          EA.IDPRODUTO,
+          TRIM(COALESCE(P.DESCRCOMPRODUTO, VP.DESCRICAO, 'PRODUTO ' || CHAR(EA.IDPRODUTO))) AS PRODUTO_DESC,
+          EA.QTDPRODUTO AS QUANTIDADE,
+          EA.VALUNITBRUTO AS VALUNITARIO,
+          EA.VALTOTLIQUIDO AS VALTOTAL
+        FROM DBA.ESTOQUE_ANALITICO EA
+        LEFT JOIN DBA.PRODUTO P ON EA.IDPRODUTO = P.IDPRODUTO
+        LEFT JOIN DBA.VW_GEA_PRODUTO VP ON EA.IDSUBPRODUTO = VP.IDSUBPRODUTO
+        WHERE EA.IDEMPRESA = ? AND EA.IDPLANILHA = ?
+        ORDER BY EA.NUMSEQUENCIA ASC
+        WITH UR
       `;
 
-      const pool = ibmdb.Pool;
-      const conn = await new Promise((resolve, reject) => {
-        pool.open(connStr, (err, conn) => {
-          if (err) reject(err);
-          else resolve(conn);
-        });
-      });
-
-      try {
-        const rows = await new Promise((resolve, reject) => {
-          conn.query(sql, [idempresa, idplanilha], (err, data) => {
-            if (err) reject(err);
-            else resolve(data);
-          });
-        });
-        res.json(rows);
-      } finally {
-        conn.close();
-      }
+      const rows = await queryDB(sql, [parseInt(idempresa), parseInt(idplanilha)]);
+      res.json(rows || []);
     } catch (err) {
       console.error('Erro ao buscar itens da nota:', err);
       res.status(500).json({ error: err.message });
@@ -7653,10 +8344,12 @@ async function startServer() {
           MAX(P.DESCRICAO) AS NOME,
           MAX(PG.CODBAR) AS EAN,
           'Sem Estoque' AS STATUS
-        FROM DBA.VW_GEA_PRODUTO P
-        JOIN DBA.ESTOQUE_ALMOX E ON E.IDSUBPRODUTO = P.IDSUBPRODUTO
+        FROM DBA.ESTOQUE_SALDO_ATUAL E
+        JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = E.IDSUBPRODUTO
         LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = P.IDSUBPRODUTO
-        WHERE E.QTDATUAL <= 0 ${whereEmpresa}
+        WHERE E.QTDATUALESTOQUE <= 0
+          AND E.DTMOVIMENTO >= CURRENT DATE - 30 DAYS
+          ${whereEmpresa}
         GROUP BY P.IDSUBPRODUTO
         FETCH FIRST 30 ROWS ONLY
         WITH UR
@@ -7680,21 +8373,23 @@ async function startServer() {
   app.get('/api/gerente/promocoes', async (req, res) => {
     try {
       const sinalizacoes = getJSONFile(sinalizacoesFile);
-      
-      let sql = `
+
+      // Busca itens vendidos em promoção recentemente (via DBA.ESTOQUE_ANALITICO_PROMOCAO_GESTAO)
+      let rows = await queryDB(`
         SELECT 
-          P.IDSUBPRODUTO AS ID,
-          MAX(P.DESCRICAO) AS NOME,
-          MAX(PG.CODBAR) AS EAN,
-          MAX(O.VALORPROMOCAO) AS PRECOPROMO
-        FROM DBA.OFERTA_ITEM O
-        JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = O.IDSUBPRODUTO
-        LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = P.IDSUBPRODUTO
-        GROUP BY P.IDSUBPRODUTO
+          EA.IDSUBPRODUTO AS ID,
+          MAX(TRIM(P.DESCRICAO)) AS NOME,
+          MAX(TRIM(COALESCE(PG.CODBAR, ''))) AS EAN,
+          MAX(EA.VALUNITBRUTO) AS PRECOPROMO
+        FROM DBA.ESTOQUE_ANALITICO_PROMOCAO_GESTAO EAPG
+        JOIN DBA.ESTOQUE_ANALITICO EA ON EAPG.IDPLANILHA = EA.IDPLANILHA AND EAPG.NUMSEQUENCIA = EA.NUMSEQUENCIA
+        JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = EA.IDSUBPRODUTO
+        LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = EA.IDSUBPRODUTO
+        WHERE EA.DTMOVIMENTO >= CURRENT DATE - 30 DAYS
+        GROUP BY EA.IDSUBPRODUTO
         FETCH FIRST 20 ROWS ONLY
         WITH UR
-      `;
-      const rows = await queryDB(sql).catch(() => []);
+      `).catch(() => []);
 
       if (rows && rows.length > 0) {
         const result = rows.map(r => {
@@ -7702,8 +8397,8 @@ async function startServer() {
           return {
             id: r.ID,
             nome: r.NOME ? r.NOME.trim() : '',
-            ean: r.EAN || 'N/A',
-            precoPromo: (r.PRECOPROMO || 4.99).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
+            ean: r.EAN ? String(r.EAN).trim() : 'N/A',
+            precoPromo: Number(r.PRECOPROMO || 4.99).toLocaleString('pt-BR', { minimumFractionDigits: 2 }),
             temEstoque: sin.temEstoque ?? true,
             qtdEstoque: sin.qtdEstoque ?? 10,
             temBoton: sin.temBoton ?? true,
@@ -7731,8 +8426,50 @@ async function startServer() {
   });
 
   // 3. Módulo Pré-Ruptura
-  app.get('/api/gerente/pre-rupturas', (req, res) => {
-    res.json(getJSONFile(preRupturasFile));
+  app.get('/api/gerente/pre-rupturas', async (req, res) => {
+    try {
+      const saved = getJSONFile(preRupturasFile);
+      if (Array.isArray(saved) && saved.length > 0) {
+        return res.json(saved);
+      }
+      const { idEmpresa } = req.query;
+      let whereEmp = '';
+      const params = [];
+      if (idEmpresa && idEmpresa !== 'todas') {
+        whereEmp = ' AND E.IDEMPRESA = ?';
+        params.push(parseInt(idEmpresa));
+      }
+      const rows = await queryDB(`
+        SELECT
+          E.IDSUBPRODUTO AS ID,
+          TRIM(P.DESCRICAO) AS NOME,
+          TRIM(COALESCE(PG.CODBAR, '')) AS EAN,
+          E.QTDATUALESTOQUE AS QTD,
+          E.IDEMPRESA,
+          CHAR(E.DTULTIMAVENDA) AS ULTVENDA
+        FROM DBA.ESTOQUE_SALDO_ATUAL E
+        JOIN DBA.VW_GEA_PRODUTO P ON P.IDSUBPRODUTO = E.IDSUBPRODUTO
+        LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = E.IDSUBPRODUTO
+        WHERE E.QTDATUALESTOQUE BETWEEN 1 AND 5
+          AND E.DTMOVIMENTO >= CURRENT DATE - 15 DAYS
+          ${whereEmp}
+        ORDER BY E.QTDATUALESTOQUE ASC
+        FETCH FIRST 25 ROWS ONLY
+        WITH UR
+      `, params).catch(() => []);
+
+      return res.json((rows || []).map(r => ({
+        id: r.ID,
+        nome: r.NOME || `Produto ${r.ID}`,
+        ean: r.EAN || 'N/A',
+        qtdEstoque: Number(r.QTD) || 1,
+        idEmpresa: r.IDEMPRESA,
+        ultimaVenda: r.ULTVENDA || 'Recente',
+        status: 'Alerta Estoque Baixo'
+      })));
+    } catch (e) {
+      res.json([]);
+    }
   });
 
   app.post('/api/gerente/pre-rupturas', (req, res) => {
@@ -8737,6 +9474,22 @@ async function startServer() {
   // --- MÓDULO EXCLUSIVO: GESTÃO DE PEDIDOS & ORÇAMENTOS POR COMPRADOR ---
   // =========================================================================
 
+  // 0. Metadados de Filtros (Seções e Departamentos/Divisões)
+  app.get('/api/pedidos-compradores/filtros', async (req, res) => {
+    try {
+      const [secoes, departamentos] = await Promise.all([
+        queryDB(`SELECT IDSECAO, TRIM(DESCRSECAO) AS DESCRSECAO FROM DBA.SECAO ORDER BY DESCRSECAO ASC WITH UR`).catch(() => []),
+        queryDB(`SELECT IDDIVISAO AS IDDEPARTAMENTO, TRIM(DESCRDIVISAO) AS DESCRDEPARTAMENTO FROM DBA.DIVISAO ORDER BY DESCRDIVISAO ASC WITH UR`).catch(() => [])
+      ]);
+      res.json({
+        secoes: (secoes || []).map(s => ({ id: s.IDSECAO, IDSECAO: s.IDSECAO, nome: s.DESCRSECAO, DESCRSECAO: s.DESCRSECAO })),
+        departamentos: (departamentos || []).map(d => ({ id: d.IDDEPARTAMENTO, IDDEPARTAMENTO: d.IDDEPARTAMENTO, nome: d.DESCRDEPARTAMENTO, DESCRDEPARTAMENTO: d.DESCRDEPARTAMENTO }))
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // 1. Resumo Executivo e Tabela de Compradores (Entregues vs Pendentes com validação de NF)
   app.get('/api/pedidos-compradores/resumo', async (req, res) => {
     try {
@@ -8769,7 +9522,6 @@ async function startServer() {
             OC.IDEMPRESA
           FROM DBA.ORCAMENTO_COMPRAS OC
           WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
-             OR OC.IDCOMPRADOR IN (129, 649)
         )
         SELECT 
           OM.IDCOMPRADOR,
@@ -8791,30 +9543,9 @@ async function startServer() {
       orcSql += " GROUP BY OM.IDCOMPRADOR, U.NOMEUSUARIO WITH UR";
       const orcamentos = await queryDB(orcSql, orcParams).catch(() => []);
 
-      // Buscar Pedidos de Compra com Validação por Entrada de NF (Apenas compradores do último orçamento)
+      // Buscar Pedidos de Compra com Validação por Entrada de NF (todos os compradores reais com pedidos no período)
       let pedSql = `
-        WITH ULTIMO_ORCAMENTO AS (
-          SELECT DISTINCT 
-            COALESCE(OC.IDCOMPRADOR, 
-              CASE 
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%YASMIM%' THEN 121
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%BRUNO%' THEN 671
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%RIVIANE%' THEN 268
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ROMILDA%' THEN 647
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%SILVIO%' THEN 321
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%NATHALIA%' THEN 129
-                WHEN UPPER(OC.DESCRORCAMENTO) LIKE '%ANA JULIA%' THEN 649
-                ELSE OC.IDCOMPRADOR
-              END
-            ) AS IDCOMPRADOR
-          FROM DBA.ORCAMENTO_COMPRAS OC
-          WHERE OC.DTINICIAL = (SELECT MAX(DTINICIAL) FROM DBA.ORCAMENTO_COMPRAS)
-          UNION
-          SELECT 129 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
-          UNION
-          SELECT 649 AS IDCOMPRADOR FROM SYSIBM.SYSDUMMY1
-        ),
-        NOTAS_PED AS (
+        WITH NOTAS_PED AS (
           SELECT 
             CP.IDPEDIDO,
             CP.IDEMPRESA,
@@ -8839,7 +9570,6 @@ async function startServer() {
           SUM(CASE WHEN NP.NOTAS_FISCAIS IS NULL THEN (PCP.QTDSOLICITADA * PCP.VALUNITARIO) ELSE 0 END) AS VALOR_PENDENTE
         FROM DBA.PEDIDO_COMPRA PC
         JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
-        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN NOTAS_PED NP ON NP.IDPEDIDO = PC.IDPEDIDO AND NP.IDEMPRESA = PC.IDEMPRESA
         WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
@@ -9057,7 +9787,7 @@ async function startServer() {
           PP.DATAS_BOLETO AS DATA_BOLETO
         FROM DBA.PEDIDO_COMPRA PC
         JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
-        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.CLIENTE_FORNECEDOR F ON F.IDCLIFOR = PC.IDCLIFOR
         LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.FORMA_PAGREC FP ON FP.IDRECEBIMENTO = PC.IDPAGAMENTO
@@ -9173,7 +9903,35 @@ async function startServer() {
       }
       sql += " ORDER BY OC.DTINICIAL DESC, OC.IDORCAMENTO DESC, OC.IDEMPRESA ASC WITH UR";
 
-      const rows = await queryDB(sql, params).catch(() => []);
+      let rows = await queryDB(sql, params).catch(() => []);
+      if (!rows || rows.length === 0) {
+        let fbSql = `
+          SELECT 
+            OC.IDORCAMENTO,
+            OC.NUMSEQUENCIA,
+            OC.DESCRORCAMENTO,
+            OC.DTINICIAL,
+            OC.DTFINAL,
+            OC.IDCOMPRADOR,
+            COALESCE(U.NOMEUSUARIO, 'NAO ATRIBUIDO') AS COMPRADOR,
+            OC.IDEMPRESA,
+            OC.VALTOTAL
+          FROM DBA.ORCAMENTO_COMPRAS OC
+          LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = OC.IDCOMPRADOR
+          WHERE OC.DTINICIAL >= (SELECT MAX(DTINICIAL) - 60 DAYS FROM DBA.ORCAMENTO_COMPRAS)
+        `;
+        const fbParams = [];
+        if (idEmpresa && idEmpresa !== 'todas') {
+          fbSql += " AND OC.IDEMPRESA = ?";
+          fbParams.push(parseInt(idEmpresa));
+        }
+        if (compradorId && compradorId !== 'todos') {
+          fbSql += " AND OC.IDCOMPRADOR = ?";
+          fbParams.push(parseInt(compradorId));
+        }
+        fbSql += " ORDER BY OC.DTINICIAL DESC, OC.IDORCAMENTO DESC, OC.IDEMPRESA ASC WITH UR";
+        rows = await queryDB(fbSql, fbParams).catch(() => []);
+      }
 
       const orcMap = {};
       for (const r of rows) {
@@ -9287,7 +10045,7 @@ async function startServer() {
           COUNT(DISTINCT PC.IDPEDIDO) AS QTD_PEDIDOS
         FROM DBA.PEDIDO_COMPRA PC
         JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
-        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         WHERE PC.DTMOVIMENTO BETWEEN ? AND ?
           AND COALESCE(PC.FLAGCANCELADO, 'F') != 'T'
@@ -9340,7 +10098,7 @@ async function startServer() {
           COUNT(DISTINCT PC.IDPEDIDO) AS QTD_PEDIDOS
         FROM DBA.PEDIDO_COMPRA PC
         JOIN DBA.PEDIDO_COMPRA_PROD PCP ON PCP.IDPEDIDO = PC.IDPEDIDO AND PCP.IDEMPRESA = PC.IDEMPRESA
-        JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
+        LEFT JOIN ULTIMO_ORCAMENTO UO ON UO.IDCOMPRADOR = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = COALESCE(PC.IDUSUARIOLANCAMENTO, PC.IDUSUARIO)
         LEFT JOIN DBA.PRODUTO_GRADE PG ON PG.IDSUBPRODUTO = PCP.IDSUBPRODUTO
         LEFT JOIN DBA.PRODUTO P ON P.IDPRODUTO = PG.IDPRODUTO

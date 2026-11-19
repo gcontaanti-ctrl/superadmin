@@ -597,7 +597,7 @@ function Dashboard() {
 
         {activeTab === "configuracoes" && (
           <div className="flex-1 overflow-auto h-full">
-            {username.toLowerCase() === "cristiano" ? (
+            {isSuperAdmin || username.toLowerCase() === "cristiano" ? (
               <DatabaseSettings />
             ) : (
               <div className="glass-strong rounded-2xl p-6 h-full flex flex-col items-center justify-center text-center gap-4 border border-white/5">

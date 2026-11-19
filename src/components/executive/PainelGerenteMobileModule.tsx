@@ -134,7 +134,7 @@ const tipoConfig: Record<string, { label: string; color: string }> = {
 // ======================== COMPONENTE PRINCIPAL ========================
 
 export function PainelGerenteMobileModule({ selectedStore }: PainelGerenteMobileModuleProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"visao-geral" | "sinalizacoes" | "pre-rupturas" | "solicitacoes">("visao-geral");
+  const [activeSubTab, setActiveSubTab] = useState<"visao-geral" | "sinalizacoes" | "pre-rupturas" | "solicitacoes" | "lancar-produto">("visao-geral");
   const [sinalizacoes, setSinalizacoes] = useState<Sinalizacao[]>([]);
   const [preRupturas, setPreRupturas] = useState<PreRuptura[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<Solicitacao[]>([]);
@@ -260,6 +260,7 @@ export function PainelGerenteMobileModule({ selectedStore }: PainelGerenteMobile
 
   const subTabs = [
     { id: "visao-geral" as const, label: "Visão Geral", icon: BarChart3 },
+    { id: "lancar-produto" as const, label: "Lançar Produto", icon: Package },
     { id: "sinalizacoes" as const, label: "Sinalizações", icon: Tag, count: kpis.totalSinalizacoes },
     { id: "pre-rupturas" as const, label: "Pré-Rupturas", icon: AlertTriangle, count: kpis.totalRupturas },
     { id: "solicitacoes" as const, label: "Solicitações", icon: ShoppingBag, count: kpis.totalSolicitacoes },
@@ -410,6 +411,35 @@ export function PainelGerenteMobileModule({ selectedStore }: PainelGerenteMobile
                   solicitacoes={solicitacoes}
                 />
               </div>
+            </div>
+          )}
+
+          {/* ============= LANÇAR PRODUTO (IFRAME DESKTOP) ============= */}
+          {activeSubTab === "lancar-produto" && (
+            <div className="glass-strong rounded-2xl border border-white/5 overflow-hidden">
+              <div className="flex items-center justify-between p-4 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <Package className="size-4 text-emerald-400" />
+                  <h3 className="text-sm font-semibold text-slate-200">
+                    Lançamento de Produtos — Sugestões, Estoque Zerado & Correções
+                  </h3>
+                </div>
+                <a
+                  href="/mobile-gerente/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 underline underline-offset-2"
+                >
+                  Abrir em nova aba ↗
+                </a>
+              </div>
+              <iframe
+                src="/mobile-gerente/"
+                className="w-full border-0"
+                style={{ height: "calc(100vh - 220px)", minHeight: "600px" }}
+                title="App Lançamento de Produtos - Gerente Mobile"
+                allow="camera; microphone"
+              />
             </div>
           )}
 

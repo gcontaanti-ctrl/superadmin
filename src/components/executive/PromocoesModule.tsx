@@ -30,6 +30,7 @@ interface PromoItem {
   idProduto: number;
   produto: string;
   secao: string;
+  precoPromocional?: number;
   receita: number;
   custo: number;
   lucro: number;
@@ -42,6 +43,7 @@ interface PromoListaItem {
   nome: string;
   dtInicio: string;
   dtFim: string;
+  precoMedio?: number;
   receita: number;
   custo: number;
   lucro: number;
@@ -253,6 +255,7 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                       <th className="py-3 px-3 text-left">Campanha / Promoção</th>
                       <th className="py-3 px-3 text-left hidden md:table-cell">Período</th>
                       <th className="py-3 px-3 text-right">Qtd Itens</th>
+                      <th className="py-3 px-3 text-right text-amber-300">Preço Médio Promo</th>
                       <th className="py-3 px-3 text-right">Arrecadado</th>
                       <th className="py-3 px-3 text-right">Custo</th>
                       <th className="py-3 px-3 text-right">Lucro</th>
@@ -275,6 +278,9 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                           </td>
                           <td className="py-4 px-3 text-right font-mono font-bold text-slate-300">
                             {fmtNum(promo.qtd)}
+                          </td>
+                          <td className="py-4 px-3 text-right font-mono font-bold text-amber-300">
+                            {fmtCurrency(promo.precoMedio ?? (promo.qtd > 0 ? promo.receita / promo.qtd : 0))}
                           </td>
                           <td className="py-4 px-3 text-right font-mono font-bold text-blue-400">
                             {fmtCurrency(promo.receita)}
@@ -299,7 +305,7 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                         {/* Expandable Row para os Itens da Campanha */}
                         {expandedPromo === promo.idPromocao && (
                           <tr className="bg-black/20 border-b border-white/5">
-                            <td colSpan={7} className="p-0">
+                            <td colSpan={8} className="p-0">
                               <div className="p-4 pl-8 border-l-2 border-orange-500/50">
                                 {loadingItens[promo.idPromocao] ? (
                                   <div className="text-slate-400 flex items-center gap-2 py-4">
@@ -321,6 +327,7 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                                         <thead>
                                           <tr className="border-b border-white/10 text-slate-400 text-[9px] uppercase tracking-wider bg-black/40">
                                             <th className="py-2 px-3 text-left">Produto</th>
+                                            <th className="py-2 px-3 text-right text-amber-300 font-bold">Preço Promocional</th>
                                             <th className="py-2 px-3 text-right">Qtd</th>
                                             <th className="py-2 px-3 text-right">Arrecadado</th>
                                             <th className="py-2 px-3 text-right">Lucro</th>
@@ -328,7 +335,9 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                                           </tr>
                                         </thead>
                                         <tbody>
-                                          {promoItensCache[promo.idPromocao].map((item, idx) => (
+                                          {promoItensCache[promo.idPromocao].map((item, idx) => {
+                                            const precoPromo = item.precoPromocional ?? (item.qtd > 0 ? item.receita / item.qtd : 0);
+                                            return (
                                             <tr 
                                               key={`item-${item.idProduto}-${idx}`}
                                               className="border-b border-white/5 hover:bg-white/[0.08] cursor-pointer transition-colors"
@@ -339,6 +348,9 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                                             >
                                               <td className="py-2 px-3 text-slate-300">
                                                 {item.produto} <span className="text-slate-600 ml-1">#{item.idProduto}</span>
+                                              </td>
+                                              <td className="py-2 px-3 text-right font-mono font-bold text-amber-300 bg-amber-500/10">
+                                                {fmtCurrency(precoPromo)}
                                               </td>
                                               <td className="py-2 px-3 text-right font-mono text-slate-400">
                                                 {fmtNum(item.qtd)}
@@ -360,7 +372,8 @@ export function PromocoesModule({ selectedStore, globalStartDate, globalEndDate 
                                                 </span>
                                               </td>
                                             </tr>
-                                          ))}
+                                            );
+                                          })}
                                         </tbody>
                                       </table>
                                     )}

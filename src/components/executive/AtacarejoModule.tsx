@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import atacarejoSnapshot from "@/data/albuquerque_atacarejo_snapshot.json";
 
 interface ProdutoItem {
   id: number;

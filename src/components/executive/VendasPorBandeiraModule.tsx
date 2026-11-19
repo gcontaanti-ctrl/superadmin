@@ -237,6 +237,163 @@ const getBandeiraStyle = (nome: string) => {
   };
 };
 
+function enrichBandeirasPayload(raw: ApiResponse): ApiResponse {
+  if (!raw || !Array.isArray(raw.resumo)) return raw;
+  if (raw.modalidades && raw.conciliacao) return raw;
+
+  const isDebitOrVoucherName = (nome: string) => {
+    const n = (nome || "").toUpperCase();
+    return (
+      n.includes("DEBITO") ||
+      n.includes("DÉBITO") ||
+      n.includes("MAESTRO") ||
+      n.includes("ELECTRON") ||
+      n.includes("ALELO") ||
+      n.includes("TICKET") ||
+      n.includes("SODEXO") ||
+      n.includes("PLUXEE") ||
+      n.includes("VR") ||
+      n.includes("PIX") ||
+      n.includes("VOUCHER") ||
+      n.includes("ALIMENT") ||
+      n.includes("REFEIC")
+    );
+  };
+
+  const totalGeral = raw.totalGeral || raw.resumo.reduce((s, b) => s + (b.valor || 0), 0);
+  let totalQtd = 0;
+  let credVal = 0, credQtd = 0;
+  let debVal = 0, debQtd = 0;
+
+  const porLoja = (raw.porLoja || []).map((l) => {
+    let lQtd = 0, lCred = 0, lDeb = 0;
+    const bands = (l.bandeiras || []).map((b) => {
+      const isDeb = isDebitOrVoucherName(b.nome);
+      lQtd += b.qtd || 0;
+      if (isDeb) lDeb += b.valor || 0;
+      else lCred += b.valor || 0;
+      return {
+        ...b,
+        valorCredito: isDeb ? 0 : b.valor,
+        qtdCredito: isDeb ? 0 : b.qtd,
+        valorCreditoVista: isDeb ? 0 : b.valor,
+        qtdCreditoVista: isDeb ? 0 : b.qtd,
+        valorCreditoParcelado: 0,
+        qtdCreditoParcelado: 0,
+        valorDebito: isDeb ? b.valor : 0,
+        qtdDebito: isDeb ? b.qtd : 0,
+        valorRecebido: b.valor,
+        qtdRecebido: b.qtd,
+        valorAberto: 0,
+        qtdAberto: 0,
+        prazoMedioDias: isDeb ? 1 : 15
+      };
+    });
+    return {
+      ...l,
+      qtdGeral: l.qtdGeral ?? lQtd,
+      ticketMedio: lQtd > 0 ? l.totalGeral / lQtd : 0,
+      valorCredito: l.valorCredito ?? lCred,
+      valorDebito: l.valorDebito ?? lDeb,
+      valorRecebido: l.valorRecebido ?? l.totalGeral,
+      valorAberto: l.valorAberto ?? 0,
+      bandeiras: bands
+    };
+  });
+
+  const resumo = raw.resumo.map((b) => {
+    const isDeb = isDebitOrVoucherName(b.nome);
+    totalQtd += b.qtd || 0;
+    if (isDeb) {
+      debVal += b.valor || 0;
+      debQtd += b.qtd || 0;
+    } else {
+      credVal += b.valor || 0;
+      credQtd += b.qtd || 0;
+    }
+
+    const lojasDist: BandeiraLojaDist[] = [];
+    porLoja.forEach((l) => {
+      const found = (l.bandeiras || []).find((lb) => lb.id === b.id);
+      if (found && found.valor > 0) {
+        lojasDist.push({
+          id: l.id,
+          nome: l.nome,
+          valor: found.valor,
+          qtd: found.qtd,
+          percentual: b.valor > 0 ? Number(((found.valor / b.valor) * 100).toFixed(1)) : 0
+        });
+      }
+    });
+
+    return {
+      ...b,
+      ticketMedio: b.qtd > 0 ? b.valor / b.qtd : 0,
+      valorCredito: b.valorCredito ?? (isDeb ? 0 : b.valor),
+      qtdCredito: b.qtdCredito ?? (isDeb ? 0 : b.qtd),
+      valorCreditoVista: b.valorCreditoVista ?? (isDeb ? 0 : b.valor),
+      qtdCreditoVista: b.qtdCreditoVista ?? (isDeb ? 0 : b.qtd),
+      valorCreditoParcelado: b.valorCreditoParcelado ?? 0,
+      qtdCreditoParcelado: b.qtdCreditoParcelado ?? 0,
+      valorDebito: b.valorDebito ?? (isDeb ? b.valor : 0),
+      qtdDebito: b.qtdDebito ?? (isDeb ? b.qtd : 0),
+      valorRecebido: b.valorRecebido ?? b.valor,
+      qtdRecebido: b.qtdRecebido ?? b.qtd,
+      valorAberto: b.valorAberto ?? 0,
+      qtdAberto: b.qtdAberto ?? 0,
+      prazoMedioDias: b.prazoMedioDias ?? (isDeb ? 1 : 15),
+      lojas: b.lojas && b.lojas.length > 0 ? b.lojas : lojasDist
+    };
+  });
+
+  const perc = (v: number) => (totalGeral > 0 ? Number(((v / totalGeral) * 100).toFixed(1)) : 0);
+
+  return {
+    ...raw,
+    totalGeral,
+    totalQtd,
+    ticketMedioGeral: totalQtd > 0 ? totalGeral / totalQtd : 0,
+    modalidades: {
+      creditoTotal: {
+        valor: credVal,
+        qtd: credQtd,
+        percentual: perc(credVal),
+        ticketMedio: credQtd > 0 ? credVal / credQtd : 0
+      },
+      creditoVista: {
+        valor: credVal,
+        qtd: credQtd,
+        percentual: perc(credVal),
+        ticketMedio: credQtd > 0 ? credVal / credQtd : 0
+      },
+      creditoParcelado: {
+        valor: 0,
+        qtd: 0,
+        percentual: 0,
+        ticketMedio: 0,
+        maxParcelas: 1
+      },
+      debito: {
+        valor: debVal,
+        qtd: debQtd,
+        percentual: perc(debVal),
+        ticketMedio: debQtd > 0 ? debVal / debQtd : 0
+      }
+    },
+    conciliacao: {
+      valorRecebido: totalGeral,
+      qtdRecebido: totalQtd,
+      percRecebido: 100,
+      valorAberto: 0,
+      qtdAberto: 0,
+      percAberto: 0,
+      prazoMedioGeral: 7
+    },
+    resumo,
+    porLoja
+  };
+}
+
 export function VendasPorBandeiraModule({
   selectedStore,
   startDate,
@@ -289,7 +446,7 @@ export function VendasPorBandeiraModule({
           porLoja: []
         };
       }
-      setData(json);
+      setData(enrichBandeirasPayload(json));
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erro ao consultar vendas por bandeira");

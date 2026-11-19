@@ -99,16 +99,79 @@ export function ContasPagarMensal({ selectedStore = 'todas' }: ContasPagarMensal
     try {
       const url = `/api/financeiro/contas-pagar-mes?mesAno=${mesAno}&loja=${lojaSelecionada}&status=${statusFiltro}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Falha ao carregar visão mensal');
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        setItens(data.itens || []);
+        setPorDia(data.porDia || []);
+        setCategorias(data.resumo?.totaisPorCategoria || []);
+        setResumoGeral(data.resumo || {
+          totalGeral: 0, totalPago: 0, totalAberto: 0, qtdTotal: 0, qtdPagas: 0, qtdAbertas: 0,
+          totaisPorLoja: { 1: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 2: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 3: { total: 0, pago: 0, aberto: 0, qtd: 0 } }
+        });
+        return;
+      }
 
-      setItens(data.itens || []);
-      setPorDia(data.porDia || []);
-      setCategorias(data.resumo?.totaisPorCategoria || []);
-      setResumoGeral(data.resumo || {
-        totalGeral: 0, totalPago: 0, totalAberto: 0, qtdTotal: 0, qtdPagas: 0, qtdAbertas: 0,
-        totaisPorLoja: { 1: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 2: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 3: { total: 0, pago: 0, aberto: 0, qtd: 0 } }
+      // Fallback legado via /api/financeiro/pagar
+      const [anoS, mesS] = mesAno.split('-');
+      const lastD = new Date(Number(anoS), Number(mesS), 0).getDate();
+      const startD = `${mesAno}-01`;
+      const endD = `${mesAno}-${String(lastD).padStart(2, '0')}`;
+      const resLeg = await fetch(`/api/financeiro/pagar?startDate=${startD}&endDate=${endD}${lojaSelecionada !== 'todas' ? `&idEmpresa=${lojaSelecionada}` : ''}`);
+      if (!resLeg.ok) throw new Error('Falha ao carregar visão mensal');
+      const jsonLeg = await resLeg.json();
+      const rawList: any[] = jsonLeg.lista || [];
+
+      const list: BoletoItem[] = rawList.map((r: any) => {
+        const val = Number(r.VALTITULO) || 0;
+        const st = String(r.FLAGBAIXADA || 'F').trim();
+        return {
+          LOJA: Number(r.IDEMPRESA) || 1,
+          NUMERO_TITULO: Number(r.IDTITULO) || 0,
+          IDCLIFOR: 0,
+          FAVORECIDO: String(r.FORNECEDOR || 'FORNECEDOR').trim(),
+          VENCIMENTO: String(r.DTVENCIMENTO || '').slice(0, 10),
+          DATA_EMISSAO: r.DTEMISSAO ? String(r.DTEMISSAO).slice(0, 10) : '',
+          VALOR: val,
+          VALOR_PAGO: st === 'T' ? val : 0,
+          VALOR_EFETIVO: val,
+          STATUS_BAIXADA: st,
+          OBSERVACAO: '',
+          ORIGEM: '',
+          BOLETO: '',
+          CODIGO_BARRAS: String(r.CODIGOBARRAS || '').trim(),
+          categoria: 'Fornecedor de Mercadorias',
+          grupo: 'FORNECEDOR',
+          icone: 'Truck',
+          corBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+        };
+      }).filter((i: BoletoItem) => statusFiltro === 'todos' || i.STATUS_BAIXADA === statusFiltro);
+
+      setItens(list);
+      const diaMap: Record<string, DiaResumo> = {};
+      let totalGeral = 0, totalPago = 0, totalAberto = 0, qtdPagas = 0, qtdAbertas = 0;
+      const totaisPorLoja: any = { 1: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 2: { total: 0, pago: 0, aberto: 0, qtd: 0 }, 3: { total: 0, pago: 0, aberto: 0, qtd: 0 } };
+      list.forEach(item => {
+        totalGeral += item.VALOR;
+        if (item.STATUS_BAIXADA === 'T') { totalPago += item.VALOR; qtdPagas++; }
+        else { totalAberto += item.VALOR; qtdAbertas++; }
+        if (!totaisPorLoja[item.LOJA]) totaisPorLoja[item.LOJA] = { total: 0, pago: 0, aberto: 0, qtd: 0 };
+        totaisPorLoja[item.LOJA].total += item.VALOR;
+        totaisPorLoja[item.LOJA].qtd++;
+        if (item.STATUS_BAIXADA === 'T') totaisPorLoja[item.LOJA].pago += item.VALOR;
+        else totaisPorLoja[item.LOJA].aberto += item.VALOR;
+        const dt = item.VENCIMENTO;
+        if (dt) {
+          const dNum = Number(dt.split('-')[2]) || 1;
+          if (!diaMap[dt]) diaMap[dt] = { data: dt, dia: dNum, total: 0, pago: 0, aberto: 0, qtd: 0 };
+          diaMap[dt].total += item.VALOR;
+          diaMap[dt].qtd++;
+          if (item.STATUS_BAIXADA === 'T') diaMap[dt].pago += item.VALOR;
+          else diaMap[dt].aberto += item.VALOR;
+        }
       });
+      setPorDia(Object.values(diaMap).sort((a, b) => a.data.localeCompare(b.data)));
+      setCategorias([{ categoria: 'Fornecedor de Mercadorias', grupo: 'FORNECEDOR', total: totalGeral, qtd: list.length, corBadge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icone: 'Truck' }]);
+      setResumoGeral({ totalGeral, totalPago, totalAberto, qtdTotal: list.length, qtdPagas, qtdAbertas, totaisPorLoja });
     } catch (err: any) {
       console.error(err);
       toast.error('Erro ao consultar dados do mês');

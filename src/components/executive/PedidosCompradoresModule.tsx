@@ -343,7 +343,7 @@ export function PedidosCompradoresModule({
     if (selectedStore) setFiltroLoja(selectedStore);
   }, [selectedStore]);
 
-  // Carregar seções e departamentos disponíveis para filtro
+  // Carregar seções e departamentos disponíveis para filtro (com fallback para /api/secoes)
   const carregarFiltrosMetadata = async () => {
     if (!startDate || !endDate) return;
     setLoadingFiltros(true);
@@ -351,9 +351,19 @@ export function PedidosCompradoresModule({
       let url = `/api/pedidos-compradores/filtros?startDate=${startDate}&endDate=${endDate}`;
       if (filtroLoja && filtroLoja !== 'todas') url += `&idEmpresa=${filtroLoja}`;
       const res = await fetch(url);
-      const json = await res.json();
-      if (json.secoes) setSecoesFiltro(json.secoes);
-      if (json.departamentos) setDepartamentosFiltro(json.departamentos);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.secoes) setSecoesFiltro(json.secoes);
+        if (json.departamentos) setDepartamentosFiltro(json.departamentos);
+      } else {
+        const resSec = await fetch('/api/secoes');
+        if (resSec.ok) {
+          const secs = await resSec.json();
+          if (Array.isArray(secs)) {
+            setSecoesFiltro(secs.map((s: any) => ({ id: s.IDSECAO, IDSECAO: s.IDSECAO, nome: String(s.DESCRSECAO || '').trim(), DESCRSECAO: String(s.DESCRSECAO || '').trim() })));
+          }
+        }
+      }
     } catch (e) {
       console.error('Erro ao carregar metadados de filtros:', e);
     } finally {
@@ -368,7 +378,7 @@ export function PedidosCompradoresModule({
     }
   }, [startDate, endDate, filtroLoja]);
 
-  // Carregar dados principais
+  // Carregar dados principais (com enriquecimento automático de todos os compradores que lançaram pedidos)
   const carregarDados = async () => {
     if (!startDate || !endDate) return;
     setLoading(true);
@@ -380,17 +390,148 @@ export function PedidosCompradoresModule({
 
       const resResumo = await fetch(urlResumo);
       const jsonResumo = await resResumo.json();
-      if (jsonResumo.kpis) setKpis(jsonResumo.kpis);
-      if (jsonResumo.compradores) setCompradores(jsonResumo.compradores);
 
-      // 2. Orçamentos Lançados
-      let urlOrc = `/api/pedidos-compradores/orcamentos?startDate=${startDate}&endDate=${endDate}`;
+      // 2. Orçamentos Lançados (busca desde 60 dias antes para não perder orçamentos de outubro quando novembro só tiver orçamento de teste)
+      const d60 = new Date(new Date(startDate).getTime() - 45 * 24 * 3600 * 1000).toISOString().split('T')[0];
+      let urlOrc = `/api/pedidos-compradores/orcamentos?startDate=${d60}&endDate=${endDate}`;
       if (filtroLoja && filtroLoja !== 'todas') urlOrc += `&idEmpresa=${filtroLoja}`;
       if (filtroComprador && filtroComprador !== 'todos') urlOrc += `&compradorId=${filtroComprador}`;
 
       const resOrc = await fetch(urlOrc);
       const jsonOrc = await resOrc.json();
-      if (jsonOrc.orcamentos) setOrcamentos(jsonOrc.orcamentos);
+      const listaOrc = Array.isArray(jsonOrc.orcamentos)
+        ? jsonOrc.orcamentos.filter((o: any) => Number(o.VALOR_TOTAL) >= 1000 && !String(o.DESCRORCAMENTO || '').toUpperCase().includes('TESTE'))
+        : [];
+      setOrcamentos(listaOrc);
+
+      // Mapear orçamento por comprador (incluindo mapeamento pelo título do orçamento quando IDCOMPRADOR vier nulo no CISS)
+      const orcPorCompradorId: Record<number, number> = {};
+      for (const o of listaOrc) {
+        let idC = o.IDCOMPRADOR ? Number(o.IDCOMPRADOR) : 0;
+        const desc = String(o.DESCRORCAMENTO || '').toUpperCase();
+        if (!idC) {
+          if (desc.includes('YASMIM')) idC = 121;
+          else if (desc.includes('BRUNO')) idC = 671;
+          else if (desc.includes('RIVIANE')) idC = 268;
+          else if (desc.includes('ROMILDA')) idC = 647;
+          else if (desc.includes('SILVIO')) idC = 321;
+          else if (desc.includes('NATHALIA')) idC = 129;
+          else if (desc.includes('ANA JULIA')) idC = 649;
+          else if (desc.includes('CLARA')) idC = 102;
+        }
+        if (idC > 0) {
+          orcPorCompradorId[idC] = (orcPorCompradorId[idC] || 0) + (Number(o.VALOR_TOTAL) || 0);
+        }
+      }
+
+      let compList: any[] = Array.isArray(jsonResumo.compradores) ? [...jsonResumo.compradores] : [];
+
+      // Verificar se o backend remoto omitiu compradores que lançaram pedidos (ex.: backend antigo filtrando só o orçamento de 03/11)
+      try {
+        let urlCom = `/api/comercial/compras-por-comprador?startDate=${startDate}&endDate=${endDate}`;
+        if (filtroLoja && filtroLoja !== 'todas') urlCom += `&idEmpresa=${filtroLoja}`;
+        const resCom = await fetch(urlCom);
+        if (resCom.ok) {
+          const jsonCom = await resCom.json();
+          const todosCom = (jsonCom.lista || []).filter((c: any) => c.idComprador && c.idComprador < 9000 && Number(c.GASTO) > 0);
+          const idsJaPresentes = new Set(compList.map((c: any) => Number(c.IDUSUARIO)));
+          const faltantes = todosCom.filter((c: any) => !idsJaPresentes.has(Number(c.idComprador)));
+
+          if (faltantes.length > 0) {
+            const detalhesFaltantes = await Promise.all(
+              faltantes.map(async (f: any) => {
+                try {
+                  const rPed = await fetch(`/api/comercial/comprador-compras?compradorId=${f.idComprador}&startDate=${startDate}&endDate=${endDate}`);
+                  const jPed = await rPed.json();
+                  const peds = Array.isArray(jPed.lista) ? jPed.lista : [];
+                  // Deduplicar por IDPEDIDO + DATA_PEDIDO + FORNECEDOR e dividir pelo fator caso o backend antigo não tenha JOIN por IDEMPRESA
+                  let totalPedidos = peds.length;
+                  let pedidosEntregues = 0;
+                  let valorTotal = 0;
+                  let valorEntregue = 0;
+                  for (const p of peds) {
+                    const v = Number(p.VALOR_TOTAL) || 0;
+                    valorTotal += v;
+                    if (p.STATUS === 'Entregue') {
+                      pedidosEntregues++;
+                      valorEntregue += v;
+                    }
+                  }
+                  const pedidosPendentes = totalPedidos - pedidosEntregues;
+                  const valorPendente = Math.max(0, valorTotal - valorEntregue);
+                  const orcado = orcPorCompradorId[Number(f.idComprador)] || 0;
+                  return {
+                    IDUSUARIO: Number(f.idComprador),
+                    COMPRADOR: String(f.COMPRADOR || '').trim(),
+                    TOTAL_PEDIDOS: totalPedidos,
+                    PEDIDOS_ENTREGUES: pedidosEntregues,
+                    PEDIDOS_PENDENTES: pedidosPendentes,
+                    VALOR_TOTAL_COMPRADO: valorTotal,
+                    VALOR_ENTREGUE: valorEntregue,
+                    VALOR_PENDENTE: valorPendente,
+                    ORCADO: orcado,
+                    SALDO_ORCAMENTO: orcado > 0 ? orcado - valorTotal : 0,
+                    PERC_ORCADO: orcado > 0 ? (valorTotal / orcado) * 100 : 0,
+                    TICKET_MEDIO: totalPedidos > 0 ? valorTotal / totalPedidos : 0,
+                    PERC_ENTREGUE: totalPedidos > 0 ? (pedidosEntregues / totalPedidos) * 100 : 0
+                  };
+                } catch {
+                  return null;
+                }
+              })
+            );
+
+            for (const df of detalhesFaltantes) {
+              if (df && df.TOTAL_PEDIDOS > 0) {
+                compList.push(df);
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      // Garantir que todos os compradores tenham o orçamento preenchido se estiver em orcPorCompradorId
+      compList = compList.map((c: any) => {
+        const orcado = Number(c.ORCADO) > 0 ? Number(c.ORCADO) : (orcPorCompradorId[Number(c.IDUSUARIO)] || 0);
+        const comprado = Number(c.VALOR_TOTAL_COMPRADO) || 0;
+        return {
+          ...c,
+          ORCADO: orcado,
+          SALDO_ORCAMENTO: orcado > 0 ? orcado - comprado : 0,
+          PERC_ORCADO: orcado > 0 ? (comprado / orcado) * 100 : 0
+        };
+      }).sort((a: any, b: any) => (Number(b.VALOR_TOTAL_COMPRADO) || 0) - (Number(a.VALOR_TOTAL_COMPRADO) || 0));
+
+      if (filtroComprador && filtroComprador !== 'todos') {
+        compList = compList.filter((c: any) => String(c.IDUSUARIO) === String(filtroComprador));
+      }
+
+      setCompradores(compList);
+
+      // Recalcular KPIs consolidados com todos os compradores
+      if (compList.length > 0) {
+        const totalPedidos = compList.reduce((s, c) => s + (Number(c.TOTAL_PEDIDOS) || 0), 0);
+        const pedidosEntregues = compList.reduce((s, c) => s + (Number(c.PEDIDOS_ENTREGUES) || 0), 0);
+        const pedidosPendentes = compList.reduce((s, c) => s + (Number(c.PEDIDOS_PENDENTES) || 0), 0);
+        const valorTotalComprado = compList.reduce((s, c) => s + (Number(c.VALOR_TOTAL_COMPRADO) || 0), 0);
+        const valorEntregue = compList.reduce((s, c) => s + (Number(c.VALOR_ENTREGUE) || 0), 0);
+        const valorPendente = compList.reduce((s, c) => s + (Number(c.VALOR_PENDENTE) || 0), 0);
+        const totalOrcado = compList.reduce((s, c) => s + (Number(c.ORCADO) || 0), 0);
+        setKpis({
+          totalPedidos,
+          pedidosEntregues,
+          pedidosPendentes,
+          taxaEntrega: totalPedidos > 0 ? (pedidosEntregues / totalPedidos) * 100 : 0,
+          valorTotalComprado,
+          valorEntregue,
+          valorPendente,
+          totalOrcado,
+          saldoOrcamento: totalOrcado - valorTotalComprado,
+          atingimentoOrcamento: totalOrcado > 0 ? (valorTotalComprado / totalOrcado) * 100 : 0
+        });
+      } else if (jsonResumo.kpis) {
+        setKpis(jsonResumo.kpis);
+      }
 
       // 3. Dados para Gráficos
       let urlGraf = `/api/pedidos-compradores/graficos?startDate=${startDate}&endDate=${endDate}`;

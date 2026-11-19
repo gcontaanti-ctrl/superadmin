@@ -148,19 +148,88 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
     data: '', fornecedores: [], outros: [], todos: []
   });
 
-  // Carrega dados da API
+  // Carrega dados da API (com fallback automático para /api/financeiro/pagar caso o backend remoto seja legado)
   const carregarBoletos = async () => {
     setLoading(true);
     try {
       const url = `/api/financeiro/contas-pagar?dataBase=${dataBase}&loja=todas&status=${statusFiltro}`;
       const res = await fetch(url);
-      if (!res.ok) throw new Error('Falha ao carregar contas a pagar');
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        setResumoHoje(data.resumoDiaAtual || { totalValor: 0, qtdTotal: 0, totalFornecedores: 0, qtdFornecedores: 0, totalOutros: 0, qtdOutros: 0 });
+        setResumoAmanha(data.resumoProximoDia || { totalValor: 0, qtdTotal: 0, totalFornecedores: 0, qtdFornecedores: 0, totalOutros: 0, qtdOutros: 0 });
+        setDiaAtualData(data.diaAtual || { data: dataBase, fornecedores: [], outros: [], todos: [] });
+        setProximoDiaData(data.proximoDia || { data: data.dataProxima, fornecedores: [], outros: [], todos: [] });
+        return;
+      }
 
-      setResumoHoje(data.resumoDiaAtual || { totalValor: 0, qtdTotal: 0, totalFornecedores: 0, qtdFornecedores: 0, totalOutros: 0, qtdOutros: 0 });
-      setResumoAmanha(data.resumoProximoDia || { totalValor: 0, qtdTotal: 0, totalFornecedores: 0, qtdFornecedores: 0, totalOutros: 0, qtdOutros: 0 });
-      setDiaAtualData(data.diaAtual || { data: dataBase, fornecedores: [], outros: [], todos: [] });
-      setProximoDiaData(data.proximoDia || { data: data.dataProxima, fornecedores: [], outros: [], todos: [] });
+      // Fallback legado via /api/financeiro/pagar
+      const dCurr = new Date(dataBase + 'T12:00:00Z');
+      const dNext = new Date(dCurr);
+      dNext.setDate(dNext.getDate() + 1);
+      const nextDate = dNext.toISOString().split('T')[0];
+
+      const resLeg = await fetch(`/api/financeiro/pagar?startDate=${dataBase}&endDate=${nextDate}`);
+      if (!resLeg.ok) throw new Error('Falha ao carregar contas a pagar');
+      const jsonLeg = await resLeg.json();
+      const rawList: any[] = jsonLeg.lista || [];
+
+      const mapItem = (r: any): BoletoItem => {
+        const fav = String(r.FORNECEDOR || 'FORNECEDOR').trim();
+        const up = fav.toUpperCase();
+        let categoria = 'Fornecedor de Mercadorias';
+        let grupo: 'FORNECEDOR' | 'OUTROS' = 'FORNECEDOR';
+        let icone = 'Truck';
+        let corBadge = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        if (up.includes('EQUATORIAL') || up.includes('ENERGIA')) {
+          categoria = 'Energia / Luz'; grupo = 'OUTROS'; icone = 'Zap'; corBadge = 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+        } else if (up.includes('AGUA') || up.includes('CASAL') || up.includes('BRK')) {
+          categoria = 'Água / Saneamento'; grupo = 'OUTROS'; icone = 'Droplets'; corBadge = 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+        } else if (up.includes('SEFAZ') || up.includes('RECEITA') || up.includes('IMPOSTO')) {
+          categoria = 'Impostos / Tributos'; grupo = 'OUTROS'; icone = 'Receipt'; corBadge = 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+        }
+        const lojaMatch = String(r.LOJA || '').match(/\d+/);
+        const lojaNum = r.IDEMPRESA ? Number(r.IDEMPRESA) : (lojaMatch ? Number(lojaMatch[0]) : 1);
+        return {
+          LOJA: lojaNum,
+          NUMERO_TITULO: Number(r.IDTITULO) || 0,
+          IDCLIFOR: Number(r.IDCLIFOR) || 0,
+          FAVORECIDO: fav,
+          VENCIMENTO: String(r.DTVENCIMENTO || '').slice(0, 10),
+          DATA_EMISSAO: r.DTEMISSAO ? String(r.DTEMISSAO).slice(0, 10) : '',
+          VALOR: Number(r.VALTITULO) || 0,
+          STATUS_BAIXADA: String(r.FLAGBAIXADA || 'F').trim(),
+          OBSERVACAO: String(r.DETALHES || '').trim(),
+          ORIGEM: '',
+          BOLETO: '',
+          CODIGO_BARRAS: String(r.CODIGOBARRAS || '').trim(),
+          categoria,
+          grupo,
+          icone,
+          corBadge
+        };
+      };
+
+      const mapped = rawList.map(mapItem).filter(i => statusFiltro === 'todos' || i.STATUS_BAIXADA === statusFiltro);
+      const hojeList = mapped.filter(i => i.VENCIMENTO === dataBase);
+      const amanhaList = mapped.filter(i => i.VENCIMENTO === nextDate);
+      const calcSum = (arr: BoletoItem[]): SummaryData => {
+        const forn = arr.filter(i => i.grupo === 'FORNECEDOR');
+        const out = arr.filter(i => i.grupo === 'OUTROS');
+        return {
+          totalValor: arr.reduce((s, i) => s + i.VALOR, 0),
+          qtdTotal: arr.length,
+          totalFornecedores: forn.reduce((s, i) => s + i.VALOR, 0),
+          qtdFornecedores: forn.length,
+          totalOutros: out.reduce((s, i) => s + i.VALOR, 0),
+          qtdOutros: out.length
+        };
+      };
+
+      setResumoHoje(calcSum(hojeList));
+      setResumoAmanha(calcSum(amanhaList));
+      setDiaAtualData({ data: dataBase, fornecedores: hojeList.filter(i => i.grupo === 'FORNECEDOR'), outros: hojeList.filter(i => i.grupo === 'OUTROS'), todos: hojeList });
+      setProximoDiaData({ data: nextDate, fornecedores: amanhaList.filter(i => i.grupo === 'FORNECEDOR'), outros: amanhaList.filter(i => i.grupo === 'OUTROS'), todos: amanhaList });
     } catch (err: any) {
       console.error(err);
       toast.error('Erro ao conectar com o financeiro DB2');

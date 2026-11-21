@@ -15,7 +15,7 @@ interface DreDespesasModuleProps {
   selectedStore: string;
 }
 
-type SubTab = "dre" | "comparativo" | "despesas" | "lancamentos";
+type SubTab = "dre" | "comparativo" | "multinivel" | "despesas" | "lancamentos";
 
 export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
   const { isDark } = useTheme();
@@ -35,6 +35,10 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
   const [loadingLanc, setLoadingLanc] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [expandedAccounts, setExpandedAccounts] = useState<Record<string, any[]>>({});
+  const [loadingAccountKey, setLoadingAccountKey] = useState<string>("");
+  const [mesMultinivel, setMesMultinivel] = useState<string>("2026-10");
 
   const fmtCurrency = (val: number) => {
     const num = Number(val) || 0;
@@ -166,6 +170,61 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
     setSubTab("lancamentos");
   };
 
+  const toggleGroup = (grpKey: string) => {
+    setExpandedGroups(prev => ({ ...prev, [grpKey]: !prev[grpKey] }));
+  };
+
+  const toggleAccountDrill = async (classificacao: string) => {
+    const key = `${mesMultinivel}_${classificacao}`;
+    if (expandedAccounts[key]) {
+      setExpandedAccounts(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    setLoadingAccountKey(key);
+    try {
+      const qs = new URLSearchParams({
+        idEmpresa: selectedStore || "todas",
+        classificacao,
+        limit: "500",
+        _t: String(Date.now())
+      });
+      if (mesMultinivel !== "todos") qs.set("anoMes", mesMultinivel);
+      const res = await fetch(`/api/contabilidade/despesas-lancamentos?${qs.toString()}`, { cache: "no-store" });
+      const json = await res.json();
+      setExpandedAccounts(prev => ({ ...prev, [key]: json.lista || [] }));
+    } catch {
+      toast.error("Erro ao carregar lançamentos da conta.");
+    } finally {
+      setLoadingAccountKey("");
+    }
+  };
+
+  const multinivelGrupos = useMemo(() => {
+    const list: any[] = data?.despesasPorConta || [];
+    const mesObj = periodos.find(p => p.anoMes === mesMultinivel);
+    const map = new Map<string, { grpCode: string; grupo: string; total: number; contas: any[] }>();
+
+    for (const c of list) {
+      if (!incluirTransitorias && c.isTransitoria) continue;
+      const val = mesObj ? (c.meses?.[mesObj.key] || 0) : (c.totalGeral || 0);
+      if (Math.abs(val) < 0.01 && mesObj) continue;
+
+      if (!map.has(c.grpCode)) {
+        map.set(c.grpCode, { grpCode: c.grpCode, grupo: c.grupo, total: 0, contas: [] });
+      }
+      const g = map.get(c.grpCode)!;
+      g.total += val;
+      g.contas.push({ ...c, valorMes: val });
+    }
+    return Array.from(map.values())
+      .map(g => ({ ...g, contas: g.contas.sort((a, b) => Math.abs(b.valorMes) - Math.abs(a.valorMes)) }))
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  }, [data, periodos, mesMultinivel, incluirTransitorias]);
+
   const exportLancamentosCsv = () => {
     if (!lancamentos.length) return;
     const header = "DATA_MOV;DATA_LANC;LOJA;CLASSIFICACAO;CONTA;GRUPO;D_C;VALOR;ORIGEM;USUARIO;HISTORICO\n";
@@ -262,7 +321,8 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
           {[
             { id: "dre", label: "DRE Gerencial (3M)", icon: FileSpreadsheet },
             { id: "comparativo", label: "Comparativo Lojas", icon: Building2 },
-            { id: "despesas", label: "Despesas por Conta", icon: Layers },
+            { id: "multinivel", label: "Multinível por Mês", icon: Layers },
+            { id: "despesas", label: "Despesas por Conta", icon: DollarSign },
             { id: "lancamentos", label: "Lançamentos (Auditoria)", icon: Receipt }
           ].map(t => {
             const Icon = t.icon;
@@ -570,6 +630,132 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ABA 2.5: RELATÓRIO MULTINÍVEL (MÊS -> GRUPO -> CONTA -> LANÇAMENTOS) */}
+      {subTab === "multinivel" && (
+        <div className={cn("rounded-2xl border overflow-hidden", isDark ? "bg-slate-900/70 border-white/10" : "bg-white border-slate-200 shadow-sm")}>
+          <div className="p-4 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-sm">Relatório Multinível de Despesas (Mês → Grupo → Conta → Lançamentos)</h3>
+              <p className="text-xs text-muted-foreground">Selecione o mês e clique nos grupos e contas para abrir os lançamentos individuais que estão dentro</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {periodos.map(p => (
+                <button
+                  key={p.anoMes}
+                  onClick={() => { setMesMultinivel(p.anoMes); setExpandedAccounts({}); }}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
+                    mesMultinivel === p.anoMes
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : isDark ? "bg-slate-800/70 border-white/10 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <button
+                onClick={() => { setMesMultinivel("todos"); setExpandedAccounts({}); }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all",
+                  mesMultinivel === "todos"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : isDark ? "bg-slate-800/70 border-white/10 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
+                )}
+              >
+                Todos os Meses
+              </button>
+            </div>
+          </div>
+
+          <div className="divide-y divide-white/10">
+            {multinivelGrupos.map(g => {
+              const isGrpOpen = expandedGroups[g.grpCode] !== false;
+              return (
+                <div key={g.grpCode}>
+                  <button
+                    onClick={() => toggleGroup(g.grpCode)}
+                    className={cn(
+                      "w-full px-4 py-3 flex items-center justify-between text-left transition-colors",
+                      isDark ? "bg-slate-950/60 hover:bg-slate-900" : "bg-slate-100 hover:bg-slate-200/70"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      <ChevronRight className={cn("size-4 transition-transform", isGrpOpen && "rotate-90")} />
+                      <span>{g.grupo}</span>
+                      <span className="text-[11px] font-normal text-muted-foreground">({g.contas.length} contas)</span>
+                    </div>
+                    <span className="font-bold text-sm text-rose-400 tabular-nums">{fmtCurrency(g.total)}</span>
+                  </button>
+
+                  {isGrpOpen && (
+                    <div className="divide-y divide-white/5">
+                      {g.contas.map((c: any) => {
+                        const accKey = `${mesMultinivel}_${c.classificacao}`;
+                        const lancs = expandedAccounts[accKey];
+                        const isAccOpen = !!lancs;
+                        const isLoadingAcc = loadingAccountKey === accKey;
+
+                        return (
+                          <div key={c.classificacao}>
+                            <button
+                              onClick={() => toggleAccountDrill(c.classificacao)}
+                              className="w-full pl-9 pr-4 py-2.5 flex items-center justify-between text-left hover:bg-white/5 transition-colors text-xs"
+                            >
+                              <div className="flex items-center gap-2">
+                                <ChevronRight className={cn("size-3.5 text-cyan-400 transition-transform", isAccOpen && "rotate-90")} />
+                                <span className="font-mono text-muted-foreground">{c.classificacao}</span>
+                                <span className="font-semibold text-cyan-400">{c.conta}</span>
+                                {isLoadingAcc && <RefreshCw className="size-3 animate-spin text-muted-foreground" />}
+                              </div>
+                              <span className="font-semibold tabular-nums">{fmtCurrency(c.valorMes)}</span>
+                            </button>
+
+                            {isAccOpen && (
+                              <div className={cn("pl-14 pr-4 pb-3 pt-1 overflow-x-auto", isDark ? "bg-black/25" : "bg-slate-50")}>
+                                {lancs.length === 0 ? (
+                                  <div className="text-xs text-muted-foreground py-2">Nenhum lançamento individual encontrado neste filtro.</div>
+                                ) : (
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="border-b border-white/10 text-muted-foreground text-left">
+                                        <th className="py-1.5 pr-3">Data</th>
+                                        <th className="py-1.5 pr-3">Loja</th>
+                                        <th className="py-1.5 pr-3">D/C</th>
+                                        <th className="py-1.5 pr-3 text-right">Valor</th>
+                                        <th className="py-1.5 pr-3">Usuário</th>
+                                        <th className="py-1.5">Histórico / Complemento</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {lancs.map((l: any, i: number) => (
+                                        <tr key={i} className="border-b border-white/5">
+                                          <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums">{l.dtMovimento}</td>
+                                          <td className="py-1.5 pr-3 whitespace-nowrap">{l.loja}</td>
+                                          <td className="py-1.5 pr-3 font-mono">{l.nat}</td>
+                                          <td className="py-1.5 pr-3 text-right tabular-nums font-semibold text-rose-400 whitespace-nowrap">
+                                            {fmtCurrency(l.valorLiquido)}
+                                          </td>
+                                          <td className="py-1.5 pr-3 whitespace-nowrap">{l.usuario}</td>
+                                          <td className="py-1.5 text-muted-foreground">{l.historico || "-"}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

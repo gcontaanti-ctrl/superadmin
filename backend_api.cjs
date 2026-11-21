@@ -3878,6 +3878,375 @@ app.get('/api/contabilidade/plano-contas', async (req, res) => {
   }
 });
 
+// 4. DRE Gerencial com Despesas & Comparativo dos Últimos 3 Meses (+ Mês Atual)
+function classifyDreAccount(cls) {
+  const c = String(cls || '').trim();
+  if (c === '4220115' || c.startsWith('425')) return 'TRANSITORIA_NUMERARIO';
+  if (c.startsWith('42103')) return 'PESSOAL';
+  if (c.startsWith('42102')) return 'ADMINISTRATIVAS';
+  if (c.startsWith('42101')) return 'COMERCIAIS_MKT';
+  if (c.startsWith('42104')) return 'TAXAS_IMPOSTOS';
+  if (c.startsWith('42105')) return 'FINANCEIRAS';
+  if (c.startsWith('422')) return 'PERDAS_QUEBRAS';
+  if (c.startsWith('421')) return 'ADMINISTRATIVAS';
+  return 'OUTRAS_DESPESAS';
+}
+
+const DRE_GROUP_LABELS = {
+  PESSOAL: 'Despesas com Pessoal (42103)',
+  ADMINISTRATIVAS: 'Despesas Gerais e Administrativas (42102)',
+  COMERCIAIS_MKT: 'Despesas Comerciais e Marketing (42101)',
+  TAXAS_IMPOSTOS: 'Impostos e Taxas Operacionais (42104)',
+  PERDAS_QUEBRAS: 'Perdas e Quebras (422)',
+  FINANCEIRAS: 'Despesas Financeiras e Bancárias (42105)',
+  TRANSITORIA_NUMERARIO: 'Transitórias / Numerários (Fora DRE)'
+};
+
+app.get('/api/contabilidade/dre-comparativo', async (req, res) => {
+  try {
+    const { idEmpresa = 'todas', meses = '3' } = req.query;
+    const qtdMesesFechados = Math.min(6, Math.max(1, parseInt(meses) || 3));
+
+    const now = new Date();
+    const startRef = new Date(now.getFullYear(), now.getMonth() - qtdMesesFechados, 1);
+    const startStr = `${startRef.getFullYear()}-${String(startRef.getMonth() + 1).padStart(2, '0')}-01`;
+
+    const MESES_PT = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const periodos = [];
+    for (let i = qtdMesesFechados; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const ano = d.getFullYear();
+      const mes = d.getMonth() + 1;
+      const isCurrent = i === 0;
+      periodos.push({
+        key: `m_${ano}_${mes}`,
+        anoMes: `${ano}-${String(mes).padStart(2, '0')}`,
+        ano,
+        mes,
+        isCurrent,
+        label: isCurrent
+          ? `${MESES_PT[mes]}/${ano} (Parcial)`
+          : `${MESES_PT[mes]}/${ano}`
+      });
+    }
+
+    const isFiltered = idEmpresa && idEmpresa !== 'todas';
+    const empFilterInt = isFiltered ? parseInt(idEmpresa) : null;
+
+    const [empresasRows, vendasRows, despRows] = await Promise.all([
+      queryDB(`SELECT IDEMPRESA, TRIM(NOMEFANTASIA) AS DESCREMPRESA FROM DBA.VW_GEA_EMPRESA ORDER BY IDEMPRESA WITH UR`).catch(() => []),
+      queryDB(`
+        SELECT
+          YEAR(EA.DTMOVIMENTO) AS ANO,
+          MONTH(EA.DTMOVIMENTO) AS MES,
+          EA.IDEMPRESA,
+          SUM(EA.VALTOTBRUTO) AS FAT_BRUTO,
+          SUM(EA.VALDESCONTOPRO) AS DESCONTOS,
+          SUM(EA.VALTOTLIQUIDO) AS FAT_LIQUIDO,
+          SUM(EA.VALLUCRO) AS LUCRO_BRUTO,
+          SUM(EA.VALTOTLIQUIDO - COALESCE(EA.VALLUCRO, 0)) AS CMV,
+          SUM(EA.VALICMS) AS ICMS,
+          SUM(EA.VALPIS) AS PIS,
+          SUM(EA.VALCOFINS) AS COFINS
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        WHERE EA.DTMOVIMENTO >= ?
+          AND OP.TIPOMOVIMENTO = 'V'
+        GROUP BY YEAR(EA.DTMOVIMENTO), MONTH(EA.DTMOVIMENTO), EA.IDEMPRESA
+        ORDER BY ANO, MES, EA.IDEMPRESA
+        WITH UR
+      `, [startStr]),
+      queryDB(`
+        SELECT
+          YEAR(M.DTMOVIMENTO) AS ANO,
+          MONTH(M.DTMOVIMENTO) AS MES,
+          COALESCE(M.IDEMPRESA, 1) AS IDEMPRESA,
+          P.CLASSIFICACAO,
+          TRIM(P.DESCRCTACONTABIL) AS CONTA,
+          COUNT(*) AS QTD_LANC,
+          SUM(CASE WHEN M.TIPONATUREZALCTO = 'D' THEN M.VALLANCAMENTO ELSE -M.VALLANCAMENTO END) AS VALOR
+        FROM DBA.CONTABIL_MOVIMENTO M
+        JOIN DBA.CONTABIL_PLANO_CONTAS P ON P.IDCTACONTABIL = M.IDCTACONTABIL
+        WHERE M.DTMOVIMENTO >= ?
+          AND P.CLASSIFICACAO LIKE '42%'
+        GROUP BY YEAR(M.DTMOVIMENTO), MONTH(M.DTMOVIMENTO), COALESCE(M.IDEMPRESA, 1), P.CLASSIFICACAO, P.DESCRCTACONTABIL
+        ORDER BY P.CLASSIFICACAO, ANO, MES, IDEMPRESA
+        WITH UR
+      `, [startStr]).catch(() => [])
+    ]);
+
+    const lojasList = (empresasRows || []).map(e => ({
+      idEmpresa: Number(e.IDEMPRESA),
+      nome: String(e.DESCREMPRESA || `Loja ${e.IDEMPRESA}`)
+        .replace(/Itapu[\uFFFD\?]/gi, 'Itapuã')
+        .replace(/Canafistula/gi, 'Canafístula')
+        .trim()
+    }));
+
+    const makeBucket = () => ({
+      fatBruto: 0, descontos: 0, fatLiquido: 0,
+      icms: 0, pis: 0, cofins: 0, impostosVenda: 0,
+      cmv: 0, lucroBruto: 0,
+      PESSOAL: 0, ADMINISTRATIVAS: 0, COMERCIAIS_MKT: 0, TAXAS_IMPOSTOS: 0, PERDAS_QUEBRAS: 0, FINANCEIRAS: 0, OUTRAS_DESPESAS: 0,
+      TRANSITORIA_NUMERARIO: 0
+    });
+
+    const buckets = { 0: {} };
+    for (const l of lojasList) buckets[l.idEmpresa] = {};
+    for (const empKey of Object.keys(buckets)) {
+      for (const p of periodos) buckets[empKey][p.key] = makeBucket();
+    }
+
+    for (const v of (vendasRows || [])) {
+      const emp = Number(v.IDEMPRESA);
+      const mKey = `m_${v.ANO}_${v.MES}`;
+      if (!buckets[emp]) {
+        buckets[emp] = {};
+        for (const p of periodos) buckets[emp][p.key] = makeBucket();
+      }
+      if (!buckets[emp][mKey]) continue;
+
+      const fb = Number(v.FAT_BRUTO) || 0;
+      const desc = Number(v.DESCONTOS) || 0;
+      const fl = Number(v.FAT_LIQUIDO) || 0;
+      const icms = Number(v.ICMS) || 0;
+      const pis = Number(v.PIS) || 0;
+      const cofins = Number(v.COFINS) || 0;
+      const imp = icms + pis + cofins;
+      const cmv = Number(v.CMV) || 0;
+      const lb = Number(v.LUCRO_BRUTO) || 0;
+
+      for (const target of [buckets[emp][mKey], buckets[0][mKey]]) {
+        target.fatBruto += fb;
+        target.descontos += desc;
+        target.fatLiquido += fl;
+        target.icms += icms;
+        target.pis += pis;
+        target.cofins += cofins;
+        target.impostosVenda += imp;
+        target.cmv += cmv;
+        target.lucroBruto += lb;
+      }
+    }
+
+    const contasMap = new Map();
+    for (const d of (despRows || [])) {
+      const emp = Number(d.IDEMPRESA) || 1;
+      const mKey = `m_${d.ANO}_${d.MES}`;
+      const cls = String(d.CLASSIFICACAO || '').trim();
+      const conta = String(d.CONTA || '').trim();
+      const val = Number(d.VALOR) || 0;
+      const qtd = Number(d.QTD_LANC) || 0;
+      const grp = classifyDreAccount(cls);
+
+      if (buckets[emp] && buckets[emp][mKey]) {
+        buckets[emp][mKey][grp] = (buckets[emp][mKey][grp] || 0) + val;
+      }
+      if (buckets[0][mKey]) {
+        buckets[0][mKey][grp] = (buckets[0][mKey][grp] || 0) + val;
+      }
+
+      if (empFilterInt && emp !== empFilterInt) continue;
+
+      if (!contasMap.has(cls)) {
+        contasMap.set(cls, {
+          classificacao: cls,
+          conta,
+          grpCode: grp,
+          grupo: DRE_GROUP_LABELS[grp] || grp,
+          isTransitoria: grp === 'TRANSITORIA_NUMERARIO',
+          meses: {},
+          porLoja: {},
+          totalFechado3M: 0,
+          totalGeral: 0,
+          qtdLanc: 0
+        });
+        for (const p of periodos) contasMap.get(cls).meses[p.key] = 0;
+      }
+      const cEntry = contasMap.get(cls);
+      if (cEntry.meses[mKey] !== undefined) {
+        cEntry.meses[mKey] += val;
+      }
+      cEntry.porLoja[emp] = (cEntry.porLoja[emp] || 0) + val;
+      cEntry.totalGeral += val;
+      cEntry.qtdLanc += qtd;
+      const pObj = periodos.find(p => p.key === mKey);
+      if (pObj && !pObj.isCurrent) {
+        cEntry.totalFechado3M += val;
+      }
+    }
+
+    const enrichBucket = (b) => {
+      const despOperacionais = b.PESSOAL + b.ADMINISTRATIVAS + b.COMERCIAIS_MKT + b.TAXAS_IMPOSTOS + b.PERDAS_QUEBRAS + (b.OUTRAS_DESPESAS || 0);
+      const resultadoOperacional = b.lucroBruto - despOperacionais;
+      const resultadoOperacionalAposImp = (b.lucroBruto - b.impostosVenda) - despOperacionais;
+      const resultadoLiquido = resultadoOperacional - b.FINANCEIRAS;
+      const resultadoLiquidoAposImp = resultadoOperacionalAposImp - b.FINANCEIRAS;
+      const margemBrutaPct = b.fatLiquido > 0 ? (b.lucroBruto / b.fatLiquido) * 100 : 0;
+      const margemLiquidaPct = b.fatLiquido > 0 ? (resultadoLiquido / b.fatLiquido) * 100 : 0;
+      return {
+        ...b,
+        despOperacionais,
+        resultadoOperacional,
+        resultadoOperacionalAposImp,
+        resultadoLiquido,
+        resultadoLiquidoAposImp,
+        margemBrutaPct,
+        margemLiquidaPct
+      };
+    };
+
+    const selectedEmpKey = empFilterInt && buckets[empFilterInt] ? empFilterInt : 0;
+    const drePorPeriodo = {};
+    for (const p of periodos) {
+      drePorPeriodo[p.key] = enrichBucket(buckets[selectedEmpKey][p.key]);
+    }
+
+    const comparativoLojas = [
+      ...lojasList.map(l => ({
+        idEmpresa: l.idEmpresa,
+        nome: l.nome,
+        meses: periodos.reduce((acc, p) => {
+          acc[p.key] = enrichBucket(buckets[l.idEmpresa]?.[p.key] || makeBucket());
+          return acc;
+        }, {})
+      })),
+      {
+        idEmpresa: 0,
+        nome: 'CONSOLIDADO REDE',
+        isTotal: true,
+        meses: periodos.reduce((acc, p) => {
+          acc[p.key] = enrichBucket(buckets[0][p.key]);
+          return acc;
+        }, {})
+      }
+    ];
+
+    const despesasPorConta = Array.from(contasMap.values()).sort(
+      (a, b) => Math.abs(b.totalGeral) - Math.abs(a.totalGeral)
+    );
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({
+      periodos,
+      lojas: lojasList,
+      idEmpresaSelecionada: selectedEmpKey === 0 ? 'todas' : String(selectedEmpKey),
+      drePorPeriodo,
+      comparativoLojas,
+      despesasPorConta,
+      atualizadoEm: new Date().toISOString(),
+      isMock: false
+    });
+  } catch (err) {
+    console.error('[DRE Comparativo Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Lançamentos Individuais de Despesas (42*) para Auditoria no Painel
+app.get('/api/contabilidade/despesas-lancamentos', async (req, res) => {
+  try {
+    const { idEmpresa = 'todas', anoMes, classificacao, grupo, busca, limit = '500' } = req.query;
+    const now = new Date();
+    const startRef = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const defaultStart = `${startRef.getFullYear()}-${String(startRef.getMonth() + 1).padStart(2, '0')}-01`;
+
+    let where = `WHERE P.CLASSIFICACAO LIKE '42%'`;
+    const params = [];
+
+    if (anoMes && /^\d{4}-\d{2}$/.test(String(anoMes))) {
+      const [y, m] = String(anoMes).split('-').map(Number);
+      const lastDay = new Date(y, m, 0).getDate();
+      where += ` AND M.DTMOVIMENTO BETWEEN ? AND ?`;
+      params.push(`${anoMes}-01`, `${anoMes}-${String(lastDay).padStart(2, '0')}`);
+    } else {
+      where += ` AND M.DTMOVIMENTO >= ?`;
+      params.push(defaultStart);
+    }
+
+    if (idEmpresa && idEmpresa !== 'todas') {
+      where += ` AND COALESCE(M.IDEMPRESA, 1) = ?`;
+      params.push(parseInt(idEmpresa));
+    }
+
+    if (classificacao && String(classificacao).trim()) {
+      where += ` AND P.CLASSIFICACAO LIKE ?`;
+      params.push(`${String(classificacao).trim()}%`);
+    }
+
+    if (busca && String(busca).trim()) {
+      const b = `%${String(busca).trim().toUpperCase()}%`;
+      where += ` AND (UPPER(P.DESCRCTACONTABIL) LIKE ? OR UPPER(CAST(COALESCE(M.COMPLEMENTO, '') AS VARCHAR(300))) LIKE ? OR UPPER(COALESCE(U.NOMEUSUARIO, '')) LIKE ?)`;
+      params.push(b, b, b);
+    }
+
+    const lim = Math.min(2000, Math.max(50, parseInt(limit) || 500));
+
+    const sql = `
+      SELECT
+        COALESCE(M.IDEMPRESA, 1) AS IDEMPRESA,
+        COALESCE(TRIM(E.NOMEFANTASIA), 'Loja ' || CHAR(COALESCE(M.IDEMPRESA, 1))) AS LOJA,
+        M.DTMOVIMENTO,
+        M.DTLANCAMENTO,
+        M.IDPLANILHA,
+        M.NUMSEQUENCIA,
+        P.CLASSIFICACAO,
+        TRIM(P.DESCRCTACONTABIL) AS CONTA,
+        M.TIPONATUREZALCTO,
+        M.VALLANCAMENTO,
+        CASE WHEN M.TIPONATUREZALCTO = 'D' THEN M.VALLANCAMENTO ELSE -M.VALLANCAMENTO END AS VALOR_LIQUIDO,
+        M.ORIGEMMOVIMENTO,
+        COALESCE(TRIM(U.NOMEUSUARIO), 'SISTEMA') AS USUARIO,
+        CAST(COALESCE(M.COMPLEMENTO, '') AS VARCHAR(300)) AS HISTORICO
+      FROM DBA.CONTABIL_MOVIMENTO M
+      JOIN DBA.CONTABIL_PLANO_CONTAS P ON P.IDCTACONTABIL = M.IDCTACONTABIL
+      LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = COALESCE(M.IDEMPRESA, 1)
+      LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = M.IDUSUARIO
+      ${where}
+      ORDER BY M.DTMOVIMENTO DESC, M.VALLANCAMENTO DESC
+      FETCH FIRST ${lim} ROWS ONLY
+      WITH UR
+    `;
+
+    const rows = await queryDB(sql, params);
+    const mapped = (rows || [])
+      .map(r => {
+        const cls = String(r.CLASSIFICACAO || '').trim();
+        const grpCode = classifyDreAccount(cls);
+        return {
+          idEmpresa: Number(r.IDEMPRESA) || 1,
+          loja: String(r.LOJA || '').replace(/Itapu[\uFFFD\?]/gi, 'Itapuã').replace(/Canafistula/gi, 'Canafístula').trim(),
+          dtMovimento: r.DTMOVIMENTO ? String(r.DTMOVIMENTO).substring(0, 10) : '',
+          dtLancamento: r.DTLANCAMENTO ? String(r.DTLANCAMENTO).substring(0, 10) : '',
+          idPlanilha: r.IDPLANILHA || null,
+          classificacao: cls,
+          conta: String(r.CONTA || '').trim(),
+          grpCode,
+          grupo: DRE_GROUP_LABELS[grpCode] || grpCode,
+          nat: String(r.TIPONATUREZALCTO || 'D').trim(),
+          valorBruto: Number(r.VALLANCAMENTO) || 0,
+          valorLiquido: Number(r.VALOR_LIQUIDO) || 0,
+          origem: String(r.ORIGEMMOVIMENTO || '').trim(),
+          usuario: String(r.USUARIO || 'SISTEMA').trim(),
+          historico: String(r.HISTORICO || '').trim()
+        };
+      })
+      .filter(item => !grupo || grupo === 'todos' || item.grpCode === grupo);
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.json({
+      lista: mapped,
+      totalValor: mapped.reduce((s, x) => s + x.valorLiquido, 0),
+      totalRegistros: mapped.length,
+      atualizadoEm: new Date().toISOString(),
+      isMock: false
+    });
+  } catch (err) {
+    console.error('[Despesas Lancamentos Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── AUDITOR FISCAL: ENDPOINTS REAIS ─────────────────────────────────────────
 
 // 1. Dashboard de Auditoria Fiscal (KPIs reais por empresa e período)

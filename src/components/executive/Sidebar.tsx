@@ -12,6 +12,7 @@ export const nav = [
   { icon: ShoppingBag, label: "Vendas Atacarejo", id: "atacarejo", badge: "NOVO" },
   { icon: CreditCard, label: "Vendas por Bandeira", id: "vendas-bandeira", badge: "TEF" },
   { icon: Wallet, label: "Contas a Pagar", id: "contas-pagar", badge: "BOLETOS" },
+  { icon: FileSpreadsheet, label: "DRE & Despesas", id: "dre-despesas", badge: "3M" },
   { icon: ShieldCheck, label: "Gestão Usuários", id: "gestao-usuarios", badge: "ADMIN", adminOnly: true },
   { icon: BatteryCharging, label: "Orçamento de Compras", id: "pedidos-compradores", badge: "BATERIAS" },
   { icon: ShoppingBag, label: "Sugestões Compras", id: "sugestoes-compras", badge: "GERENTES" },
@@ -81,6 +82,9 @@ export function Sidebar({
     // Se o usuário tiver lista de permissões específicas liberadas pelo Cristiano
     const perms = Array.isArray(currentUser?.permissions) ? currentUser.permissions : [];
     if (perms.length === 0) return true; // Segurança para não deixar o menu vazio
+    if (item.id === "dre-despesas" && (perms.includes("dre-despesas") || perms.includes("contas-pagar"))) {
+      return true;
+    }
     return perms.includes(item.id);
   });
 

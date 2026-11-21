@@ -31,6 +31,7 @@ import { PainelGerenteMobileModule } from "@/components/executive/PainelGerenteM
 import { PedidosCompradoresModule } from "@/components/executive/PedidosCompradoresModule";
 import { UserManagementModule } from "@/components/executive/UserManagementModule";
 import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
+import { DreDespesasModule } from "@/components/executive/DreDespesasModule";
 import { AtacarejoModule } from "@/components/executive/AtacarejoModule";
 import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
 import { ThemeToggle } from "@/components/executive/ThemeToggle";
@@ -516,6 +517,11 @@ function Dashboard() {
         {/* Contas a Pagar / Boletos Tab */}
         {activeTab === "contas-pagar" && (
           <ContasPagarModule selectedStore={selectedStore} />
+        )}
+
+        {/* DRE Gerencial, Despesas & Comparativo 3 Meses Tab */}
+        {activeTab === "dre-despesas" && (
+          <DreDespesasModule selectedStore={selectedStore} />
         )}
 
         {/* Metas Gerenciais de Vendas Tab */}

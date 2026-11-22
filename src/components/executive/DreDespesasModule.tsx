@@ -19,7 +19,20 @@ type SubTab = "dre" | "comparativo" | "multinivel" | "despesas" | "lancamentos";
 
 export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
   const { isDark } = useTheme();
-  const [subTab, setSubTab] = useState<SubTab>("dre");
+  const [subTab, setSubTab] = useState<SubTab>(() => {
+    try {
+      const saved = localStorage.getItem("horus_dre_subtab") as SubTab | null;
+      return saved && ["dre", "comparativo", "multinivel", "despesas", "lancamentos"].includes(saved) ? saved : "dre";
+    } catch {
+      return "dre";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("horus_dre_subtab", subTab);
+    } catch {}
+  }, [subTab]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [mostrarAposImpostos, setMostrarAposImpostos] = useState(false);

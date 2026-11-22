@@ -1,0 +1,15 @@
+node_modules
+.git
+.runtime
+scratch
+dist
+*.pdf
+*.zip
+*.exe
+*.log
+*.bat
+*.vbs
+.env
+.env.*
+albuquerque.env
+superatacado.env

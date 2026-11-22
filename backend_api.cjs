@@ -4188,6 +4188,7 @@ app.get('/api/contabilidade/despesas-lancamentos', async (req, res) => {
         COALESCE(TRIM(E.NOMEFANTASIA), 'Loja ' || CHAR(COALESCE(M.IDEMPRESA, 1))) AS LOJA,
         M.DTMOVIMENTO,
         M.DTLANCAMENTO,
+        M.DTHORAULTIMAALTERACAO,
         M.IDPLANILHA,
         M.NUMSEQUENCIA,
         P.CLASSIFICACAO,
@@ -4218,6 +4219,7 @@ app.get('/api/contabilidade/despesas-lancamentos', async (req, res) => {
           loja: String(r.LOJA || '').replace(/Itapu[\uFFFD\?]/gi, 'Itapuã').replace(/Canafistula/gi, 'Canafístula').trim(),
           dtMovimento: r.DTMOVIMENTO ? String(r.DTMOVIMENTO).substring(0, 10) : '',
           dtLancamento: r.DTLANCAMENTO ? String(r.DTLANCAMENTO).substring(0, 10) : '',
+          dtHoraAlteracao: r.DTHORAULTIMAALTERACAO ? String(r.DTHORAULTIMAALTERACAO).substring(0, 19) : '',
           idPlanilha: r.IDPLANILHA || null,
           classificacao: cls,
           conta: String(r.CONTA || '').trim(),
@@ -4243,6 +4245,158 @@ app.get('/api/contabilidade/despesas-lancamentos', async (req, res) => {
     });
   } catch (err) {
     console.error('[Despesas Lancamentos Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2b. Raio-X profundo de uma Planilha / Lançamento Contábil (Partidas D/C + Contas a Pagar + Baixas + Nota Fiscal)
+app.get('/api/contabilidade/planilha-detalhe', async (req, res) => {
+  try {
+    const idPlanilha = parseInt(req.query.idPlanilha);
+    if (!idPlanilha || isNaN(idPlanilha)) {
+      return res.status(400).json({ error: 'idPlanilha invalido' });
+    }
+
+    const [partidas, titulos, baixas, notas] = await Promise.all([
+      queryDB(`
+        SELECT
+          M.NUMSEQUENCIA,
+          COALESCE(M.IDEMPRESA, 1) AS IDEMPRESA,
+          COALESCE(TRIM(E.NOMEFANTASIA), 'Loja ' || CHAR(COALESCE(M.IDEMPRESA, 1))) AS LOJA,
+          P.CLASSIFICACAO,
+          TRIM(P.DESCRCTACONTABIL) AS CONTA,
+          M.TIPONATUREZALCTO AS NAT,
+          M.VALLANCAMENTO AS VALOR,
+          M.ORIGEMMOVIMENTO AS ORIGEM,
+          M.DTMOVIMENTO,
+          M.DTLANCAMENTO,
+          M.DTHORAULTIMAALTERACAO,
+          COALESCE(TRIM(U.NOMEUSUARIO), 'SISTEMA') AS USUARIO,
+          CAST(COALESCE(M.COMPLEMENTO, '') AS VARCHAR(300)) AS COMPLEMENTO
+        FROM DBA.CONTABIL_MOVIMENTO M
+        JOIN DBA.CONTABIL_PLANO_CONTAS P ON P.IDCTACONTABIL = M.IDCTACONTABIL
+        LEFT JOIN DBA.VW_GEA_EMPRESA E ON E.IDEMPRESA = COALESCE(M.IDEMPRESA, 1)
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = M.IDUSUARIO
+        WHERE M.IDPLANILHA = ?
+        ORDER BY M.NUMSEQUENCIA, M.TIPONATUREZALCTO DESC
+        WITH UR
+      `, [idPlanilha]),
+      queryDB(`
+        SELECT
+          CP.IDEMPRESA,
+          CP.IDCLIFOR,
+          COALESCE(TRIM(CF.NOME), 'FORNECEDOR ' || CHAR(CP.IDCLIFOR)) AS CREDOR,
+          CP.IDTITULO,
+          TRIM(COALESCE(CP.SERIENOTA, '')) AS SERIENOTA,
+          TRIM(COALESCE(CP.DIGITOTITULO, '')) AS DIGITOTITULO,
+          CP.DTEMISSAO,
+          CP.DTMOVIMENTO,
+          CP.DTVENCIMENTO,
+          CP.DTULTIMOPAGAMENTO,
+          CP.FLAGBAIXADA,
+          CP.VALTITULO,
+          COALESCE(CP.SUMVALPAGAMENTOTITULO, 0) AS VALPAGO,
+          CAST(COALESCE(CP.OBSTITULO, '') AS VARCHAR(300)) AS OBSTITULO,
+          COALESCE(TRIM(U.NOMEUSUARIO), 'SISTEMA') AS USUARIO
+        FROM DBA.CONTAS_PAGAR CP
+        LEFT JOIN DBA.CLIENTE_FORNECEDOR CF ON CF.IDCLIFOR = CP.IDCLIFOR
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = CP.IDUSUARIO
+        WHERE CP.IDPLANILHA = ?
+        WITH UR
+      `, [idPlanilha]).catch(() => []),
+      queryDB(`
+        SELECT
+          B.IDEMPRESA,
+          B.IDTITULO,
+          B.DTPAGAMENTO,
+          B.VALPAGAMENTOTITULO,
+          COALESCE(B.VALJUROSCOBRADO, 0) AS VALJUROS,
+          COALESCE(B.VALDESCCONCEDIDOTITULO, 0) AS VALDESC,
+          B.ORIGEMMOVIMENTO
+        FROM DBA.CONTAS_PAGAR_BAIXAS B
+        JOIN DBA.CONTAS_PAGAR CP
+          ON CP.IDEMPRESA = B.IDEMPRESA
+         AND CP.IDCLIFOR = B.IDCLIFOR
+         AND CP.IDTITULO = B.IDTITULO
+         AND COALESCE(CP.SERIENOTA, '') = COALESCE(B.SERIENOTA, '')
+         AND COALESCE(CP.DIGITOTITULO, '') = COALESCE(B.DIGITOTITULO, '')
+        WHERE CP.IDPLANILHA = ?
+        ORDER BY B.DTPAGAMENTO DESC
+        WITH UR
+      `, [idPlanilha]).catch(() => []),
+      queryDB(`
+        SELECT
+          N.IDEMPRESA,
+          N.NUMNOTA,
+          TRIM(COALESCE(N.SERIENOTA, '')) AS SERIENOTA,
+          N.TIPONOTAFISCAL,
+          N.DTMOVIMENTO,
+          N.DTALTERACAO,
+          COALESCE(TRIM(CF.NOME), '') AS FORNECEDOR_CLIENTE,
+          COALESCE(TRIM(U.NOMEUSUARIO), 'SISTEMA') AS USUARIO
+        FROM DBA.NOTAS N
+        LEFT JOIN DBA.CLIENTE_FORNECEDOR CF ON CF.IDCLIFOR = N.IDCLIFOR
+        LEFT JOIN DBA.VW_GEA_USUARIO U ON U.IDUSUARIO = N.IDUSUARIO
+        WHERE N.IDPLANILHA = ?
+        WITH UR
+      `, [idPlanilha]).catch(() => []),
+    ]);
+
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      idPlanilha,
+      partidas: (partidas || []).map(p => ({
+        seq: p.NUMSEQUENCIA,
+        idEmpresa: Number(p.IDEMPRESA) || 1,
+        loja: String(p.LOJA || '').replace(/Itapu[\uFFFD\?]/gi, 'Itapuã').replace(/Canafistula/gi, 'Canafístula').trim(),
+        classificacao: String(p.CLASSIFICACAO || '').trim(),
+        conta: String(p.CONTA || '').trim(),
+        nat: String(p.NAT || '').trim(),
+        valor: Number(p.VALOR) || 0,
+        origem: String(p.ORIGEM || '').trim(),
+        dtMovimento: p.DTMOVIMENTO ? String(p.DTMOVIMENTO).substring(0, 10) : '',
+        dtLancamento: p.DTLANCAMENTO ? String(p.DTLANCAMENTO).substring(0, 10) : '',
+        dtHoraAlteracao: p.DTHORAULTIMAALTERACAO ? String(p.DTHORAULTIMAALTERACAO).substring(0, 19) : '',
+        usuario: String(p.USUARIO || 'SISTEMA').trim(),
+        complemento: String(p.COMPLEMENTO || '').trim(),
+      })),
+      titulos: (titulos || []).map(t => ({
+        idEmpresa: Number(t.IDEMPRESA) || 1,
+        idClifor: t.IDCLIFOR,
+        credor: String(t.CREDOR || '').trim(),
+        idTitulo: t.IDTITULO,
+        serie: String(t.SERIENOTA || '').trim(),
+        digito: String(t.DIGITOTITULO || '').trim(),
+        dtEmissao: t.DTEMISSAO ? String(t.DTEMISSAO).substring(0, 10) : '',
+        dtMovimento: t.DTMOVIMENTO ? String(t.DTMOVIMENTO).substring(0, 10) : '',
+        dtVencimento: t.DTVENCIMENTO ? String(t.DTVENCIMENTO).substring(0, 10) : '',
+        dtUltimoPagamento: t.DTULTIMOPAGAMENTO ? String(t.DTULTIMOPAGAMENTO).substring(0, 10) : '',
+        baixada: String(t.FLAGBAIXADA || 'F').trim() === 'T',
+        valTitulo: Number(t.VALTITULO) || 0,
+        valPago: Number(t.VALPAGO) || 0,
+        obsTitulo: String(t.OBSTITULO || '').trim(),
+        usuario: String(t.USUARIO || 'SISTEMA').trim(),
+      })),
+      baixas: (baixas || []).map(b => ({
+        idTitulo: b.IDTITULO,
+        dtPagamento: b.DTPAGAMENTO ? String(b.DTPAGAMENTO).substring(0, 10) : '',
+        valPago: Number(b.VALPAGAMENTOTITULO) || 0,
+        valJuros: Number(b.VALJUROS) || 0,
+        valDesc: Number(b.VALDESC) || 0,
+        origem: String(b.ORIGEMMOVIMENTO || '').trim(),
+      })),
+      notas: (notas || []).map(n => ({
+        numNota: n.NUMNOTA,
+        serie: String(n.SERIENOTA || '').trim(),
+        tipo: String(n.TIPONOTAFISCAL || '').trim(),
+        dtMovimento: n.DTMOVIMENTO ? String(n.DTMOVIMENTO).substring(0, 19) : '',
+        dtAlteracao: n.DTALTERACAO ? String(n.DTALTERACAO).substring(0, 19) : '',
+        fornecedor: String(n.FORNECEDOR_CLIENTE || '').trim(),
+        usuario: String(n.USUARIO || 'SISTEMA').trim(),
+      })),
+    });
+  } catch (err) {
+    console.error('[Planilha Detalhe Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });

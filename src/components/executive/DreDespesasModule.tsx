@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   FileSpreadsheet, TrendingUp, TrendingDown, DollarSign, Building2,
   Search, Download, AlertTriangle, ChevronRight, Layers, Receipt,
-  Filter, RefreshCw, Eye, EyeOff, ArrowUpRight, ArrowDownRight
+  Filter, RefreshCw, Eye, EyeOff, ArrowUpRight, ArrowDownRight, X
 } from "lucide-react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend
@@ -39,6 +39,27 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
   const [expandedAccounts, setExpandedAccounts] = useState<Record<string, any[]>>({});
   const [loadingAccountKey, setLoadingAccountKey] = useState<string>("");
   const [mesMultinivel, setMesMultinivel] = useState<string>("2026-10");
+  const [selectedLanc, setSelectedLanc] = useState<any>(null);
+  const [raioX, setRaioX] = useState<any>(null);
+  const [loadingRaioX, setLoadingRaioX] = useState(false);
+
+  const openRaioX = async (lanc: any) => {
+    setSelectedLanc(lanc);
+    setRaioX(null);
+    if (!lanc?.idPlanilha) return;
+    setLoadingRaioX(true);
+    try {
+      const res = await fetch(`/api/contabilidade/planilha-detalhe?idPlanilha=${lanc.idPlanilha}&_t=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      setRaioX(json);
+    } catch (err) {
+      console.error("Erro Raio-X:", err);
+      toast.error("Erro ao carregar detalhes profundos da planilha.");
+    } finally {
+      setLoadingRaioX(false);
+    }
+  };
 
   const fmtCurrency = (val: number) => {
     const num = Number(val) || 0;
@@ -732,7 +753,12 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
                                     </thead>
                                     <tbody>
                                       {lancs.map((l: any, i: number) => (
-                                        <tr key={i} className="border-b border-white/5">
+                                        <tr
+                                          key={i}
+                                          onClick={() => openRaioX(l)}
+                                          className="border-b border-white/5 hover:bg-cyan-500/10 cursor-pointer transition-colors"
+                                          title="Clique para ver partidas D/C, nota fiscal, título e baixas"
+                                        >
                                           <td className="py-1.5 pr-3 whitespace-nowrap tabular-nums">{l.dtMovimento}</td>
                                           <td className="py-1.5 pr-3 whitespace-nowrap">{l.loja}</td>
                                           <td className="py-1.5 pr-3 font-mono">{l.nat}</td>
@@ -740,7 +766,14 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
                                             {fmtCurrency(l.valorLiquido)}
                                           </td>
                                           <td className="py-1.5 pr-3 whitespace-nowrap">{l.usuario}</td>
-                                          <td className="py-1.5 text-muted-foreground">{l.historico || "-"}</td>
+                                          <td className="py-1.5 text-muted-foreground whitespace-normal break-words">
+                                            <span>{l.historico || "-"}</span>
+                                            {l.idPlanilha && (
+                                              <span className="ml-2 inline-flex items-center gap-0.5 text-[10px] text-cyan-400 font-semibold">
+                                                <Eye className="size-3" /> Raio-X
+                                              </span>
+                                            )}
+                                          </td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -943,8 +976,18 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
                   </tr>
                 ) : (
                   lancamentos.map((l, idx) => (
-                    <tr key={idx} className="border-b border-white/5 hover:bg-white/5">
-                      <td className="py-2 px-3 whitespace-nowrap tabular-nums">{l.dtMovimento}</td>
+                    <tr
+                      key={idx}
+                      onClick={() => openRaioX(l)}
+                      className="border-b border-white/5 hover:bg-cyan-500/10 cursor-pointer transition-colors"
+                      title="Clique para abrir o Raio-X completo (Partidas D/C, Nota, Contas a Pagar e Baixas)"
+                    >
+                      <td className="py-2 px-3 whitespace-nowrap tabular-nums">
+                        <div>{l.dtMovimento}</div>
+                        {l.dtHoraAlteracao && (
+                          <div className="text-[10px] text-muted-foreground font-mono">{l.dtHoraAlteracao.slice(11, 16)}</div>
+                        )}
+                      </td>
                       <td className="py-2 px-3 whitespace-nowrap">{l.loja}</td>
                       <td className="py-2 px-3">
                         <div className="font-medium">{l.conta}</div>
@@ -954,15 +997,209 @@ export function DreDespesasModule({ selectedStore }: DreDespesasModuleProps) {
                       <td className={cn("py-2 px-3 text-right tabular-nums font-semibold whitespace-nowrap", l.valorLiquido < 0 ? "text-emerald-400" : "text-rose-400")}>
                         {fmtCurrency(l.valorLiquido)}
                       </td>
-                      <td className="py-2 px-3 whitespace-nowrap">{l.usuario}</td>
-                      <td className="py-2 px-3 text-muted-foreground max-w-[380px] truncate" title={l.historico}>
-                        {l.historico || "-"}
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <div>{l.usuario}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono">{l.origem || "-"} {l.idPlanilha ? `· #${l.idPlanilha}` : ""}</div>
+                      </td>
+                      <td className="py-2 px-3 text-muted-foreground min-w-[280px] whitespace-normal break-words leading-relaxed">
+                        <div className="text-foreground/90">{l.historico || "-"}</div>
+                        {l.idPlanilha && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-cyan-400 font-semibold mt-0.5">
+                            <Eye className="size-3" /> Ver detalhes completos (Partidas / Título / Nota)
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Raio-X Profundo da Planilha / Lançamento */}
+      {selectedLanc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setSelectedLanc(null)}
+        >
+          <div
+            className={cn(
+              "w-full max-w-4xl max-h-[88vh] overflow-y-auto rounded-2xl border shadow-2xl p-5 space-y-5",
+              isDark ? "bg-slate-950 border-white/15 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs text-cyan-400 font-mono">
+                  <span>RAIO-X DO LANÇAMENTO</span>
+                  {selectedLanc.idPlanilha && <span>· PLANILHA #{selectedLanc.idPlanilha}</span>}
+                  {selectedLanc.origem && <span>· ORIGEM: {selectedLanc.origem}</span>}
+                </div>
+                <h3 className="text-lg font-bold mt-0.5">
+                  {selectedLanc.conta} ({selectedLanc.classificacao})
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {selectedLanc.loja} · Mov: {selectedLanc.dtMovimento}
+                  {selectedLanc.dtHoraAlteracao ? ` · Alt: ${selectedLanc.dtHoraAlteracao}` : ""} · Usuário: <strong>{selectedLanc.usuario}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedLanc(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className={cn("rounded-xl border p-3.5", isDark ? "bg-slate-900/70 border-white/10" : "bg-slate-50 border-slate-200")}>
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">
+                Descrição / Motivo Completo Digitado
+              </div>
+              <div className="text-sm font-medium whitespace-normal break-words">
+                {selectedLanc.historico || "Sem descrição/complemento informado."}
+              </div>
+            </div>
+
+            {loadingRaioX ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                Buscando partidas contábeis, títulos, baixas e nota fiscal no DB2...
+              </div>
+            ) : raioX ? (
+              <div className="space-y-5">
+                {/* Nível 2: Partidas Contábeis D/C */}
+                <div>
+                  <h4 className="text-xs uppercase tracking-wider font-bold text-cyan-400 mb-2">
+                    Nível 2 · Partidas Contábeis da Planilha (Débito x Crédito)
+                  </h4>
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className={cn("border-b text-left", isDark ? "bg-slate-900 border-white/10" : "bg-slate-100 border-slate-200")}>
+                          <th className="py-2 px-3">D/C</th>
+                          <th className="py-2 px-3">Conta Contábil</th>
+                          <th className="py-2 px-3 text-right">Valor</th>
+                          <th className="py-2 px-3">Usuário / Data Hora</th>
+                          <th className="py-2 px-3">Complemento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(raioX.partidas || []).map((p: any, i: number) => (
+                          <tr key={i} className="border-b border-white/5">
+                            <td className={cn("py-2 px-3 font-mono font-bold", p.nat === "D" ? "text-rose-400" : "text-emerald-400")}>
+                              {p.nat === "D" ? "D (Débito)" : "C (Crédito)"}
+                            </td>
+                            <td className="py-2 px-3">
+                              <div className="font-medium">{p.conta}</div>
+                              <div className="text-[10px] text-muted-foreground font-mono">{p.classificacao}</div>
+                            </td>
+                            <td className="py-2 px-3 text-right tabular-nums font-semibold">{fmtCurrency(p.valor)}</td>
+                            <td className="py-2 px-3 whitespace-nowrap text-[11px]">
+                              <div>{p.usuario}</div>
+                              <div className="text-muted-foreground font-mono">{p.dtHoraAlteracao || p.dtMovimento}</div>
+                            </td>
+                            <td className="py-2 px-3 text-muted-foreground whitespace-normal break-words">{p.complemento || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Nível 3: Contas a Pagar / Títulos / Observação */}
+                {(raioX.titulos?.length > 0 || raioX.notas?.length > 0) && (
+                  <div className="space-y-4">
+                    {raioX.titulos?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs uppercase tracking-wider font-bold text-amber-400 mb-2">
+                          Nível 3 · Título no Contas a Pagar & Observações
+                        </h4>
+                        <div className="space-y-2">
+                          {raioX.titulos.map((t: any, i: number) => (
+                            <div key={i} className={cn("rounded-xl border p-3 text-xs space-y-1.5", isDark ? "bg-slate-900/50 border-white/10" : "bg-slate-50 border-slate-200")}>
+                              <div className="flex flex-wrap justify-between gap-2">
+                                <span><strong>Credor / Fornecedor:</strong> {t.idClifor} - {t.credor}</span>
+                                <span className={cn("px-2 py-0.5 rounded font-semibold", t.baixada ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300")}>
+                                  {t.baixada ? "PAGO / BAIXADO" : "EM ABERTO"}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-4 text-muted-foreground">
+                                <span>Título: <strong className="text-foreground">{t.idTitulo}{t.serie ? `/${t.serie}` : ""}</strong></span>
+                                <span>Emissão: <strong className="text-foreground">{t.dtEmissao || "-"}</strong></span>
+                                <span>Vencimento: <strong className="text-foreground">{t.dtVencimento || "-"}</strong></span>
+                                <span>Val. Título: <strong className="text-foreground">{fmtCurrency(t.valTitulo)}</strong></span>
+                                <span>Pago: <strong className="text-emerald-400">{fmtCurrency(t.valPago)}</strong></span>
+                                {t.dtUltimoPagamento && <span>Dt. Pagto: <strong className="text-foreground">{t.dtUltimoPagamento}</strong></span>}
+                              </div>
+                              {t.obsTitulo && (
+                                <div className="pt-1 border-t border-white/10">
+                                  <strong>Observação digitada no Título:</strong> <span className="text-amber-300">{t.obsTitulo}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {raioX.baixas?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs uppercase tracking-wider font-bold text-emerald-400 mb-2">
+                          Nível 3 · Pagamentos / Baixas Realizadas
+                        </h4>
+                        <div className="overflow-x-auto rounded-xl border border-white/10">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className={cn("border-b text-left", isDark ? "bg-slate-900 border-white/10" : "bg-slate-100 border-slate-200")}>
+                                <th className="py-1.5 px-3">Data Pagto</th>
+                                <th className="py-1.5 px-3">Título</th>
+                                <th className="py-1.5 px-3">Origem</th>
+                                <th className="py-1.5 px-3 text-right">Valor Pago</th>
+                                <th className="py-1.5 px-3 text-right">Juros</th>
+                                <th className="py-1.5 px-3 text-right">Desconto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {raioX.baixas.map((b: any, i: number) => (
+                                <tr key={i} className="border-b border-white/5">
+                                  <td className="py-1.5 px-3">{b.dtPagamento}</td>
+                                  <td className="py-1.5 px-3 font-mono">{b.idTitulo}</td>
+                                  <td className="py-1.5 px-3">{b.origem}</td>
+                                  <td className="py-1.5 px-3 text-right font-semibold text-emerald-400">{fmtCurrency(b.valPago)}</td>
+                                  <td className="py-1.5 px-3 text-right">{fmtCurrency(b.valJuros)}</td>
+                                  <td className="py-1.5 px-3 text-right">{fmtCurrency(b.valDesc)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {raioX.notas?.length > 0 && (
+                      <div>
+                        <h4 className="text-xs uppercase tracking-wider font-bold text-indigo-400 mb-2">
+                          Nível 3 · Nota Fiscal Vinculada
+                        </h4>
+                        <div className="space-y-1.5">
+                          {raioX.notas.map((n: any, i: number) => (
+                            <div key={i} className={cn("rounded-xl border p-3 text-xs flex flex-wrap gap-4", isDark ? "bg-slate-900/50 border-white/10" : "bg-slate-50 border-slate-200")}>
+                              <span>Nota: <strong>{n.numNota}{n.serie ? `/${n.serie}` : ""}</strong></span>
+                              <span>Tipo: <strong>{n.tipo}</strong></span>
+                              <span>Fornecedor/Cliente: <strong>{n.fornecedor || "-"}</strong></span>
+                              <span>Movimento: <strong>{n.dtMovimento}</strong></span>
+                              <span>Usuário Nota: <strong>{n.usuario}</strong></span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
       )}

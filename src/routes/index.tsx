@@ -101,6 +101,58 @@ function Dashboard() {
   const [selectedStore, setSelectedStore] = useState("todas");
   const [startDate, setStartDate] = useState<string>(get30DaysAgoStr());
   const [endDate, setEndDate] = useState<string>(getTodayStr());
+  const [datePreset, setDatePreset] = useState<string>("30dias");
+
+  const applyDatePreset = (preset: string) => {
+    const today = new Date();
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    let s = startDate;
+    let e = fmt(today);
+    let label = "Personalizado";
+
+    if (preset === "dia") {
+      s = fmt(today);
+      e = fmt(today);
+      label = "Hoje (Dia)";
+    } else if (preset === "ontem") {
+      const y = new Date(today);
+      y.setDate(today.getDate() - 1);
+      s = fmt(y);
+      e = fmt(y);
+      label = "Ontem";
+    } else if (preset === "semana") {
+      const w = new Date(today);
+      w.setDate(today.getDate() - 6);
+      s = fmt(w);
+      e = fmt(today);
+      label = "Semana (7 dias)";
+    } else if (preset === "mes") {
+      s = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+      e = fmt(today);
+      label = "Mês Atual";
+    } else if (preset === "mes-anterior") {
+      const firstPrev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastPrev = new Date(today.getFullYear(), today.getMonth(), 0);
+      s = fmt(firstPrev);
+      e = fmt(lastPrev);
+      label = "Mês Anterior";
+    } else if (preset === "30dias") {
+      const d30 = new Date(today);
+      d30.setDate(today.getDate() - 30);
+      s = fmt(d30);
+      e = fmt(today);
+      label = "Últimos 30 dias";
+    }
+
+    setDatePreset(preset);
+    if (preset !== "personalizado") {
+      setStartDate(s);
+      setEndDate(e);
+      toast.success(`Período: ${label}`);
+    }
+  };
   const [dbLojas, setDbLojas] = useState<any[]>([]);
   const [dbEstoque, setDbEstoque] = useState<any[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -325,13 +377,38 @@ function Dashboard() {
               </div>
 
               {/* Global Date Range Selector (Desktop) */}
-              <div className="hidden lg:flex items-center gap-2 bg-black/45 px-3 py-1.5 rounded-xl border border-white/10 shadow-inner shrink-0">
+              <div className="hidden lg:flex items-center gap-2 bg-black/45 px-2.5 py-1 rounded-xl border border-white/10 shadow-inner shrink-0">
                 <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-                <div className="flex items-center gap-1.5 text-xs text-slate-300">
+                <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-lg border border-white/5">
+                  {[
+                    { id: "dia", label: "Dia" },
+                    { id: "ontem", label: "Ontem" },
+                    { id: "semana", label: "Semana" },
+                    { id: "mes", label: "Mês" },
+                    { id: "mes-anterior", label: "Mês Ant." },
+                    { id: "30dias", label: "30d" },
+                    { id: "personalizado", label: "Custom" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => applyDatePreset(opt.id)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
+                        datePreset === opt.id
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-300 pl-1 border-l border-white/10">
                   <input 
                     type="date" 
                     value={startDate} 
                     onChange={(e) => {
+                      setDatePreset("personalizado");
                       setStartDate(e.target.value);
                       toast.success(`Data inicial: ${e.target.value}`);
                     }}
@@ -342,6 +419,7 @@ function Dashboard() {
                     type="date" 
                     value={endDate} 
                     onChange={(e) => {
+                      setDatePreset("personalizado");
                       setEndDate(e.target.value);
                       toast.success(`Data final: ${e.target.value}`);
                     }}
@@ -401,31 +479,59 @@ function Dashboard() {
               </select>
             </div>
 
-            <div className="flex items-center justify-between gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full">
-              <div className="flex items-center gap-1.5 text-cyan-400 shrink-0">
-                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-xs font-medium text-slate-300">Período:</span>
+            <div className="flex flex-col gap-2 bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-inner w-full">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-cyan-400 shrink-0">
+                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-xs font-medium text-slate-300">Período:</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-slate-200">
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => {
+                      setDatePreset("personalizado");
+                      setStartDate(e.target.value);
+                      toast.success(`Data inicial: ${e.target.value}`);
+                    }}
+                    className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
+                  />
+                  <span className="text-slate-500 text-[10px]">até</span>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => {
+                      setDatePreset("personalizado");
+                      setEndDate(e.target.value);
+                      toast.success(`Data final: ${e.target.value}`);
+                    }}
+                    className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-1 text-xs text-slate-200">
-                <input 
-                  type="date" 
-                  value={startDate} 
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    toast.success(`Data inicial: ${e.target.value}`);
-                  }}
-                  className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
-                />
-                <span className="text-slate-500 text-[10px]">até</span>
-                <input 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    toast.success(`Data final: ${e.target.value}`);
-                  }}
-                  className="bg-black/40 border border-white/10 rounded-lg px-1.5 py-1 text-slate-200 focus:outline-none cursor-pointer text-[11px] font-semibold [color-scheme:dark] max-w-[110px]" 
-                />
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                {[
+                  { id: "dia", label: "Dia" },
+                  { id: "ontem", label: "Ontem" },
+                  { id: "semana", label: "Semana" },
+                  { id: "mes", label: "Mês" },
+                  { id: "mes-anterior", label: "Mês Ant." },
+                  { id: "30dias", label: "30 dias" },
+                  { id: "personalizado", label: "Personalizado" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => applyDatePreset(opt.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
+                      datePreset === opt.id
+                        ? "bg-primary text-white shadow-sm"
+                        : "bg-white/5 text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 

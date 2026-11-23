@@ -127,6 +127,9 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
     setLojaAtivaAmanha(loja);
   };
 
+  // Aba ativa dentro de Contas do Dia (Hoje vs Amanhã)
+  const [diaSubTab, setDiaSubTab] = useState<'hoje' | 'amanha'>('hoje');
+
   // Filtro de Categoria ativa por coluna
   const [categoriaAtivaHoje, setCategoriaAtivaHoje] = useState<'TODOS' | 'FORNECEDORES' | 'OUTROS'>('TODOS');
   const [categoriaAtivaAmanha, setCategoriaAtivaAmanha] = useState<'TODOS' | 'FORNECEDORES' | 'OUTROS'>('TODOS');
@@ -1062,205 +1065,125 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
         {abaModulo === 'diario' && (
           <>
             {/* 1. Header do Módulo & Barra de Filtros Principais */}
-            <div className="glass-strong rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-white/10 shadow-xl">
-              <div className="flex items-center gap-3">
-            <div className="size-12 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 grid place-items-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-              <Wallet className="size-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl md:text-2xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-200 to-white">
+            <div className="glass-strong rounded-2xl p-3.5 md:p-4 flex flex-wrap items-center justify-between gap-3 border border-white/10 shadow-xl">
+              <div className="flex items-center gap-2.5">
+                <div className="size-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-500 grid place-items-center text-white shadow-md shadow-cyan-500/20 shrink-0">
+                  <Wallet className="size-4" />
+                </div>
+                <h2 className="text-base md:text-lg font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-200 to-white">
                   Contas a Pagar & Boletos
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                  Separado por Loja
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                Planejamento diário: <strong className="text-slate-200">Dia Atual</strong> vs <strong className="text-slate-200">Próximo Dia</strong> organizados por Loja 1, Loja 2 e Loja 3
-              </p>
-            </div>
-          </div>
-
-          {/* Controles de Navegação, Filtros e Modos de Visualização */}
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            {/* Alternador de Modo de Visualização: Lista (Clean c/ clique) vs Cards vs Tabela */}
-            <div className="flex items-center gap-1 bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-semibold">
-              <button
-                onClick={() => setModoVisualizacao('lista')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                  modoVisualizacao === 'lista' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-extrabold shadow' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Lista compacta com fornecedor e valor ao lado (clique na linha para ver todos os detalhes)"
-              >
-                <List className="size-3.5" />
-                <span>Lista (Clique p/ Detalhes)</span>
-              </button>
-              <button
-                onClick={() => setModoVisualizacao('cards')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                  modoVisualizacao === 'cards' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-extrabold shadow' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Visualizar em Cards Detalhados Abertos"
-              >
-                <LayoutGrid className="size-3.5" />
-                <span>Cards</span>
-              </button>
-              <button
-                onClick={() => setModoVisualizacao('tabela')}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-all ${
-                  modoVisualizacao === 'tabela' 
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-extrabold shadow' 
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Visualizar em Tabela Completa"
-              >
-                <TableIcon className="size-3.5" />
-                <span>Tabela</span>
-              </button>
-            </div>
-
-            {/* Alternador de Rolagem da Página */}
-            <button
-              onClick={() => setRolagemLivre(!rolagemLivre)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                rolagemLivre
-                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 shadow'
-                  : 'bg-black/40 text-slate-400 border-white/10 hover:text-white'
-              }`}
-              title={rolagemLivre ? 'Rolagem livre na página inteira (Sem limites)' : 'Rolagem presa em caixa interna'}
-            >
-              {rolagemLivre ? <Maximize2 className="size-3.5 text-cyan-400" /> : <Minimize2 className="size-3.5" />}
-              <span>{rolagemLivre ? 'Página Livre' : 'Caixa c/ Barra'}</span>
-            </button>
-
-            {/* Seletor de Status */}
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-medium">
-              <button
-                onClick={() => setStatusFiltro('F')}
-                className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'F' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'}`}
-              >
-                A Pagar
-              </button>
-              <button
-                onClick={() => setStatusFiltro('T')}
-                className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'T' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'}`}
-              >
-                Pagos
-              </button>
-              <button
-                onClick={() => setStatusFiltro('todos')}
-                className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'todos' ? 'bg-white/20 text-white font-bold shadow' : 'text-slate-400 hover:text-white'}`}
-              >
-                Todos
-              </button>
-            </div>
-
-            {/* Controles de Data */}
-            <div className="flex items-center gap-1 bg-black/40 px-2 py-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => mudarDia(-1)}
-                className="p-1 hover:bg-white/10 rounded-lg text-slate-300 transition-colors"
-                title="Voltar 1 dia"
-              >
-                <ArrowLeft className="size-4" />
-              </button>
-
-              <div className="flex items-center gap-1.5 px-2">
-                <Calendar className="size-3.5 text-cyan-400 shrink-0" />
-                <input
-                  type="date"
-                  value={dataBase}
-                  onChange={(e) => setDataBase(e.target.value)}
-                  className="bg-transparent border-none text-slate-200 text-xs font-bold focus:outline-none cursor-pointer [color-scheme:dark]"
-                />
               </div>
 
-              <button
-                onClick={() => mudarDia(1)}
-                className="p-1 hover:bg-white/10 rounded-lg text-slate-300 transition-colors"
-                title="Avançar 1 dia"
-              >
-                <ArrowRight className="size-4" />
-              </button>
+              {/* Controles de Navegação, Filtros e Modos de Visualização */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Modo de Visualização */}
+                <div className="flex items-center gap-0.5 bg-black/50 p-1 rounded-xl border border-white/10 text-xs font-semibold">
+                  <button
+                    onClick={() => setModoVisualizacao('lista')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
+                      modoVisualizacao === 'lista' 
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold shadow' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <List className="size-3.5" />
+                    <span>Lista</span>
+                  </button>
+                  <button
+                    onClick={() => setModoVisualizacao('cards')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
+                      modoVisualizacao === 'cards' 
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold shadow' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="size-3.5" />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    onClick={() => setModoVisualizacao('tabela')}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg transition-all ${
+                      modoVisualizacao === 'tabela' 
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold shadow' 
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <TableIcon className="size-3.5" />
+                    <span>Tabela</span>
+                  </button>
+                </div>
+
+                {/* Seletor de Status */}
+                <div className="flex items-center gap-0.5 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-medium">
+                  <button
+                    onClick={() => setStatusFiltro('F')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'F' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    A Pagar
+                  </button>
+                  <button
+                    onClick={() => setStatusFiltro('T')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'T' ? 'bg-emerald-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Pagos
+                  </button>
+                  <button
+                    onClick={() => setStatusFiltro('todos')}
+                    className={`px-2.5 py-1 rounded-lg transition-all ${statusFiltro === 'todos' ? 'bg-white/20 text-white font-bold shadow' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Todos
+                  </button>
+                </div>
+
+                {/* Controles de Data */}
+                <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => mudarDia(-1)}
+                    className="p-1 hover:bg-white/10 rounded-lg text-slate-300 transition-colors"
+                    title="Voltar 1 dia"
+                  >
+                    <ArrowLeft className="size-3.5" />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    <Calendar className="size-3.5 text-cyan-400 shrink-0" />
+                    <input
+                      type="date"
+                      value={dataBase}
+                      onChange={(e) => setDataBase(e.target.value)}
+                      className="bg-transparent border-none text-slate-200 text-xs font-bold focus:outline-none cursor-pointer [color-scheme:dark]"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => mudarDia(1)}
+                    className="p-1 hover:bg-white/10 rounded-lg text-slate-300 transition-colors"
+                    title="Avançar 1 dia"
+                  >
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={irParaHoje}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition-colors"
+                  title="Ir para o dia de hoje"
+                >
+                  <RotateCcw className="size-3.5 text-cyan-400" />
+                  Hoje
+                </button>
+
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+                  title="Imprimir relatório"
+                >
+                  <Printer className="size-3.5" />
+                  <span>Imprimir</span>
+                </button>
+              </div>
             </div>
-
-            <button
-              onClick={irParaHoje}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-slate-300 border border-white/10 transition-colors"
-              title="Ir para o dia de hoje"
-            >
-              <RotateCcw className="size-3.5 text-cyan-400" />
-              Hoje
-            </button>
-
-            {/* Botão de Imprimir Relatório Executivo */}
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
-              title="Imprimir relatório das contas de acordo com a data e filtros selecionados"
-            >
-              <Printer className="size-3.5" />
-              <span>Imprimir Relatório</span>
-            </button>
-          </div>
-        </div>
-
-      {/* 2. Barra de Filtro de Loja em Destaque */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-black/40 p-2.5 rounded-2xl border border-white/10 shadow-md">
-        <div className="flex items-center gap-2">
-          <Store className="size-4 text-cyan-400 shrink-0 ml-1" />
-          <span className="text-xs font-bold text-slate-300">
-            Filtrar por Loja:
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <button
-            onClick={() => selecionarLojaGlobal('todas')}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-              lojaGlobal === 'todas'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 border border-white/5'
-            }`}
-          >
-            <span>🏪 Todas as Lojas (Consolidado com Blocos Separados)</span>
-          </button>
-          <button
-            onClick={() => selecionarLojaGlobal('1')}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-              lojaGlobal === '1'
-                ? 'bg-cyan-500 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 border border-white/5'
-            }`}
-          >
-            <span>🏢 Loja 01</span>
-          </button>
-          <button
-            onClick={() => selecionarLojaGlobal('2')}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-              lojaGlobal === '2'
-                ? 'bg-cyan-500 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 border border-white/5'
-            }`}
-          >
-            <span>🏢 Loja 02</span>
-          </button>
-          <button
-            onClick={() => selecionarLojaGlobal('3')}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-              lojaGlobal === '3'
-                ? 'bg-cyan-500 text-slate-950 shadow-md'
-                : 'bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 border border-white/5'
-            }`}
-          >
-            <span>🏢 Loja 03</span>
-          </button>
-        </div>
-      </div>
 
       {/* 3. Campo de Busca Instantânea com contador de resultados */}
       <div className="relative">
@@ -1282,215 +1205,121 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
         )}
       </div>
 
-      {/* 4. Cards Comparativos Superiores com Divisão por Loja */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card Resumo DIA BASE */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-cyan-500/20 bg-gradient-to-br from-cyan-950/30 via-slate-900/60 to-black/60 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-cyan-400 flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
-                Dia Atual Selecionado
-              </span>
-              <h3 className="text-base font-bold text-white mt-0.5">
-                {fmtDataExtenso(dataBase)}
-              </h3>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-white">
-                {fmtMoeda(resumoHoje.totalValor)}
-              </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                {resumoHoje.qtdTotal} títulos {statusFiltro === 'F' ? 'a pagar' : 'listados'}
-              </div>
+      {/* 4. Abas Separadas: HOJE vs AMANHÃ (Visão Limpa em Largura Total) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setDiaSubTab('hoje')}
+          className={`flex-1 min-w-[220px] flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
+            diaSubTab === 'hoje'
+              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-600/15 border-cyan-400/50 shadow-lg shadow-cyan-500/10'
+              : 'bg-black/30 border-white/10 hover:bg-white/5 opacity-75 hover:opacity-100'
+          }`}
+        >
+          <div className="text-left">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400 flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              Hoje (Dia Atual)
+            </span>
+            <div className="text-xs md:text-sm font-bold text-slate-100 mt-0.5">
+              {fmtDataExtenso(dataBase)}
             </div>
           </div>
-
-          {/* Divisão por Loja em Destaque */}
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-cyan-400" /> Loja 01
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasHoje[1] || 0)}
-              </span>
+          <div className="text-right">
+            <div className="text-base md:text-lg font-extrabold font-serif text-cyan-300 tabular-nums">
+              {fmtMoeda(resumoHoje.totalValor)}
             </div>
-
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-cyan-400" /> Loja 02
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasHoje[2] || 0)}
-              </span>
-            </div>
-
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-cyan-400" /> Loja 03
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasHoje[3] || 0)}
-              </span>
+            <div className="text-[10px] text-slate-400 font-semibold">
+              {resumoHoje.qtdTotal} títulos
             </div>
           </div>
-        </div>
+        </button>
 
-        {/* Card Resumo PRÓXIMO DIA */}
-        <div className="glass-strong rounded-2xl p-4 md:p-5 border border-blue-500/20 bg-gradient-to-br from-blue-950/30 via-slate-900/60 to-black/60 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-            <div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-blue-400 flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-blue-400" />
-                Próximo Dia (D+1)
-              </span>
-              <h3 className="text-base font-bold text-white mt-0.5">
-                {fmtDataExtenso(proximoDiaData.data)}
-              </h3>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">
-                {fmtMoeda(resumoAmanha.totalValor)}
-              </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                {resumoAmanha.qtdTotal} títulos {statusFiltro === 'F' ? 'a pagar' : 'listados'}
-              </div>
+        <button
+          type="button"
+          onClick={() => setDiaSubTab('amanha')}
+          className={`flex-1 min-w-[220px] flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all cursor-pointer ${
+            diaSubTab === 'amanha'
+              ? 'bg-gradient-to-r from-blue-500/20 to-indigo-600/15 border-blue-400/50 shadow-lg shadow-blue-500/10'
+              : 'bg-black/30 border-white/10 hover:bg-white/5 opacity-75 hover:opacity-100'
+          }`}
+        >
+          <div className="text-left">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-blue-400 flex items-center gap-1.5">
+              <span className="size-1.5 rounded-full bg-blue-400" />
+              Amanhã (Próximo Dia)
+            </span>
+            <div className="text-xs md:text-sm font-bold text-slate-100 mt-0.5">
+              {fmtDataExtenso(proximoDiaData.data)}
             </div>
           </div>
-
-          {/* Divisão por Loja em Destaque */}
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-blue-400" /> Loja 01
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasAmanha[1] || 0)}
-              </span>
+          <div className="text-right">
+            <div className="text-base md:text-lg font-extrabold font-serif text-blue-300 tabular-nums">
+              {fmtMoeda(resumoAmanha.totalValor)}
             </div>
-
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-blue-400" /> Loja 02
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasAmanha[2] || 0)}
-              </span>
-            </div>
-
-            <div className="bg-black/40 p-2 rounded-xl border border-white/5 flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                <Store className="size-3 text-blue-400" /> Loja 03
-              </span>
-              <span className="text-xs md:text-sm font-extrabold text-white mt-0.5">
-                {fmtMoeda(totaisLojasAmanha[3] || 0)}
-              </span>
+            <div className="text-[10px] text-slate-400 font-semibold">
+              {resumoAmanha.qtdTotal} títulos
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
-      {/* 5. Colunas Lado a Lado: DIA BASE vs PRÓXIMO DIA (SEPARADOS POR LOJA) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* ==================== COLUNA 1: DIA ATUAL ==================== */}
-        <div className="glass-strong rounded-2xl p-4 flex flex-col gap-3 border border-white/10 shadow-lg">
-          <div className="flex flex-col gap-2 pb-2 border-b border-white/10">
+      <div className="w-full">
+        {/* ==================== ABA 1: DIA ATUAL ==================== */}
+        {diaSubTab === 'hoje' && (
+        <div className="glass-strong rounded-2xl p-4 flex flex-col gap-3 border border-cyan-500/20 shadow-lg">
+          <div className="flex flex-col gap-2 pb-2.5 border-b border-white/10">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-cyan-400" />
-                <h4 className="font-bold text-sm text-slate-100">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  Dia Atual
+                </span>
+                <h4 className="font-bold text-sm text-slate-100 mt-0.5">
                   {fmtDataExtenso(dataBase)}
                 </h4>
               </div>
 
-              {/* Botões de Ações Rápidas de Lojas e Detalhes */}
-              <div className="flex items-center gap-1 text-[10px] flex-wrap">
-                <button
-                  onClick={() => setTodasLojasHoje(true)}
-                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-colors"
-                  title="Expandir todas as lojas"
-                >
-                  Abrir Lojas
-                </button>
-                <button
-                  onClick={() => setTodasLojasHoje(false)}
-                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-colors"
-                  title="Recolher todas as lojas"
-                >
-                  Fechar Lojas
-                </button>
-                {modoVisualizacao === 'lista' && (
-                  <>
-                    <button
-                      onClick={() => expandirTodosItens(diaAtualData.todos)}
-                      className="px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-semibold transition-colors"
-                      title="Abrir todos os detalhes dos fornecedores"
-                    >
-                      Abrir Detalhes
-                    </button>
-                    <button
-                      onClick={recolherTodosItens}
-                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-400 font-semibold transition-colors"
-                      title="Fechar detalhes dos fornecedores"
-                    >
-                      Fechar Detalhes
-                    </button>
-                  </>
-                )}
-              </div>
+              <div className="flex items-center gap-3">
+                {/* Filtro de Categoria */}
+                <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px]">
+                  <button
+                    onClick={() => setCategoriaAtivaHoje('TODOS')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'TODOS' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setCategoriaAtivaHoje('FORNECEDORES')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'FORNECEDORES' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Fornec.
+                  </button>
+                  <button
+                    onClick={() => setCategoriaAtivaHoje('OUTROS')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'OUTROS' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Outros
+                  </button>
+                </div>
 
-              {/* Filtro de Categoria */}
-              <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px]">
-                <button
-                  onClick={() => setCategoriaAtivaHoje('TODOS')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'TODOS' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Todos
-                </button>
-                <button
-                  onClick={() => setCategoriaAtivaHoje('FORNECEDORES')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'FORNECEDORES' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Fornec.
-                </button>
-                <button
-                  onClick={() => setCategoriaAtivaHoje('OUTROS')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaHoje === 'OUTROS' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Outros
-                </button>
+                <div className="text-right">
+                  <div className="text-lg font-extrabold font-serif text-cyan-300 tabular-nums leading-tight">
+                    {fmtMoeda(resumoHoje.totalValor)}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {resumoHoje.qtdTotal} títulos
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Abas de Lojas da Coluna 1 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
-              <button
-                onClick={() => setLojaAtivaHoje('todas')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${lojaAtivaHoje === 'todas' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm' : 'bg-black/30 text-slate-400 hover:text-white border border-white/5'}`}
-              >
-                Todas as Lojas
-              </button>
-              <button
-                onClick={() => setLojaAtivaHoje('1')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaHoje === '1' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 01 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasHoje[1] || 0)})</span>
-              </button>
-              <button
-                onClick={() => setLojaAtivaHoje('2')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaHoje === '2' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 02 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasHoje[2] || 0)})</span>
-              </button>
-              <button
-                onClick={() => setLojaAtivaHoje('3')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaHoje === '3' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 03 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasHoje[3] || 0)})</span>
-              </button>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+              <span>L1: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasHoje[1] || 0)}</strong></span>
+              <span>•</span>
+              <span>L2: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasHoje[2] || 0)}</strong></span>
+              <span>•</span>
+              <span>L3: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasHoje[3] || 0)}</strong></span>
             </div>
           </div>
 
@@ -1570,103 +1399,63 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
             </div>
           )}
         </div>
+        )}
 
-        {/* ==================== COLUNA 2: PRÓXIMO DIA (D+1) ==================== */}
-        <div className="glass-strong rounded-2xl p-4 flex flex-col gap-3 border border-white/10 shadow-lg">
-          <div className="flex flex-col gap-2 pb-2 border-b border-white/10">
+        {/* ==================== ABA 2: PRÓXIMO DIA (D+1) ==================== */}
+        {diaSubTab === 'amanha' && (
+        <div className="glass-strong rounded-2xl p-4 flex flex-col gap-3 border border-blue-500/20 shadow-lg">
+          <div className="flex flex-col gap-2 pb-2.5 border-b border-white/10">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-blue-400" />
-                <h4 className="font-bold text-sm text-slate-100">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-blue-400 flex items-center gap-1.5">
+                  <span className="size-1.5 rounded-full bg-blue-400" />
+                  Próximo Dia (D+1)
+                </span>
+                <h4 className="font-bold text-sm text-slate-100 mt-0.5">
                   {fmtDataExtenso(proximoDiaData.data)}
                 </h4>
               </div>
 
-              {/* Botões de Ações Rápidas de Lojas e Detalhes */}
-              <div className="flex items-center gap-1 text-[10px] flex-wrap">
-                <button
-                  onClick={() => setTodasLojasAmanha(true)}
-                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-colors"
-                  title="Expandir todas as lojas"
-                >
-                  Abrir Lojas
-                </button>
-                <button
-                  onClick={() => setTodasLojasAmanha(false)}
-                  className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 font-semibold transition-colors"
-                  title="Recolher todas as lojas"
-                >
-                  Fechar Lojas
-                </button>
-                {modoVisualizacao === 'lista' && (
-                  <>
-                    <button
-                      onClick={() => expandirTodosItens(proximoDiaData.todos)}
-                      className="px-2 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-semibold transition-colors"
-                      title="Abrir todos os detalhes dos fornecedores"
-                    >
-                      Abrir Detalhes
-                    </button>
-                    <button
-                      onClick={recolherTodosItens}
-                      className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-400 font-semibold transition-colors"
-                      title="Fechar detalhes dos fornecedores"
-                    >
-                      Fechar Detalhes
-                    </button>
-                  </>
-                )}
-              </div>
+              <div className="flex items-center gap-3">
+                {/* Filtro de Categoria */}
+                <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px]">
+                  <button
+                    onClick={() => setCategoriaAtivaAmanha('TODOS')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'TODOS' ? 'bg-blue-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setCategoriaAtivaAmanha('FORNECEDORES')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'FORNECEDORES' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Fornec.
+                  </button>
+                  <button
+                    onClick={() => setCategoriaAtivaAmanha('OUTROS')}
+                    className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'OUTROS' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                  >
+                    Outros
+                  </button>
+                </div>
 
-              {/* Filtro de Categoria */}
-              <div className="flex items-center gap-1 bg-black/40 p-0.5 rounded-lg border border-white/10 text-[11px]">
-                <button
-                  onClick={() => setCategoriaAtivaAmanha('TODOS')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'TODOS' ? 'bg-blue-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Todos
-                </button>
-                <button
-                  onClick={() => setCategoriaAtivaAmanha('FORNECEDORES')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'FORNECEDORES' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Fornec.
-                </button>
-                <button
-                  onClick={() => setCategoriaAtivaAmanha('OUTROS')}
-                  className={`px-2 py-0.5 rounded transition-colors ${categoriaAtivaAmanha === 'OUTROS' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Outros
-                </button>
+                <div className="text-right">
+                  <div className="text-lg font-extrabold font-serif text-blue-300 tabular-nums leading-tight">
+                    {fmtMoeda(resumoAmanha.totalValor)}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    {resumoAmanha.qtdTotal} títulos
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Abas de Lojas da Coluna 2 */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pt-1">
-              <button
-                onClick={() => setLojaAtivaAmanha('todas')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${lojaAtivaAmanha === 'todas' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-sm' : 'bg-black/30 text-slate-400 hover:text-white border border-white/5'}`}
-              >
-                Todas as Lojas
-              </button>
-              <button
-                onClick={() => setLojaAtivaAmanha('1')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaAmanha === '1' ? 'bg-blue-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 01 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasAmanha[1] || 0)})</span>
-              </button>
-              <button
-                onClick={() => setLojaAtivaAmanha('2')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaAmanha === '2' ? 'bg-blue-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 02 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasAmanha[2] || 0)})</span>
-              </button>
-              <button
-                onClick={() => setLojaAtivaAmanha('3')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 flex items-center gap-1 ${lojaAtivaAmanha === '3' ? 'bg-blue-500 text-slate-950 shadow-sm' : 'bg-black/30 text-slate-300 hover:text-white border border-white/5'}`}
-              >
-                🏢 Loja 03 <span className="text-[10px] opacity-75">({fmtMoeda(totaisLojasAmanha[3] || 0)})</span>
-              </button>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+              <span>L1: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasAmanha[1] || 0)}</strong></span>
+              <span>•</span>
+              <span>L2: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasAmanha[2] || 0)}</strong></span>
+              <span>•</span>
+              <span>L3: <strong className="text-slate-200 font-mono">{fmtMoeda(totaisLojasAmanha[3] || 0)}</strong></span>
             </div>
           </div>
 
@@ -1746,6 +1535,7 @@ export function ContasPagarModule({ selectedStore = 'todas' }: ContasPagarModule
             </div>
           )}
         </div>
+        )}
       </div>
           </>
         )}

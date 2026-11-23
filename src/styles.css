@@ -180,18 +180,18 @@ html.light {
 
 @layer components {
   .glass {
-    background: var(--glass-bg);
+    background: rgba(16, 30, 56, 0.78);
     backdrop-filter: blur(18px) saturate(120%);
     -webkit-backdrop-filter: blur(18px) saturate(120%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-glass);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 8px 24px rgba(4, 10, 24, 0.32);
   }
   .glass-strong {
-    background: oklch(0.18 0.025 255 / 0.85);
-    backdrop-filter: blur(22px) saturate(140%);
-    -webkit-backdrop-filter: blur(22px) saturate(140%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-glass);
+    background: rgba(15, 29, 53, 0.90);
+    backdrop-filter: blur(22px) saturate(125%);
+    -webkit-backdrop-filter: blur(22px) saturate(125%);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 12px 30px rgba(4, 10, 24, 0.38);
   }
   .gradient-text {
     background: var(--gradient-primary);
@@ -199,9 +199,47 @@ html.light {
     background-clip: text;
     color: transparent;
   }
-  .glow { box-shadow: var(--shadow-glow); }
+  .glow { box-shadow: 0 0 22px rgba(0, 153, 255, 0.35); }
   .serif { font-family: var(--font-serif); }
   .tracking-executive { letter-spacing: 0.22em; text-transform: uppercase; }
+}
+
+/* ============================================================
+   DESIGN SYSTEM GLOBAL ESCURO — HORUS ANALYTICS (TODOS OS MÓDULOS)
+   ============================================================ */
+html.dark,
+html.dark body {
+  background-color: #0d182b !important;
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(56, 189, 248, 0.08), transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(59, 130, 246, 0.08), transparent 52%),
+    linear-gradient(180deg, #0f1d35 0%, #0d182b 55%, #0a1424 100%);
+  color: #f1f5f9;
+}
+
+html.dark table thead tr {
+  background-color: rgba(6, 18, 42, 0.92) !important;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.16) !important;
+}
+html.dark table thead th {
+  color: #93c5fd !important;
+}
+html.dark table tbody tr {
+  border-color: rgba(56, 189, 248, 0.08) !important;
+}
+html.dark table tbody tr:hover {
+  background-color: rgba(14, 165, 233, 0.08) !important;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  border-color: rgba(56, 189, 248, 0.20);
+}
+html.dark input:not([type="checkbox"]):not([type="radio"]):focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: rgba(34, 211, 238, 0.65);
 }
 
 @keyframes pulse-dot {
@@ -209,6 +247,27 @@ html.light {
   50% { opacity: 0.5; transform: scale(0.85); }
 }
 .pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+
+@keyframes horus-menu-leque {
+  0% {
+    opacity: 0;
+    transform: perspective(1200px) rotateY(-68deg) rotateZ(-3deg) scaleX(0.75) scaleY(0.94);
+  }
+  65% {
+    opacity: 1;
+    transform: perspective(1200px) rotateY(4deg) rotateZ(0.4deg) scaleX(1.01) scaleY(1);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1200px) rotateY(0deg) rotateZ(0deg) scaleX(1) scaleY(1);
+  }
+}
+
+.animate-horus-leque {
+  transform-origin: left center;
+  animation: horus-menu-leque 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
 
 @keyframes shimmer {
   0% { background-position: -200% 0; }
@@ -256,20 +315,20 @@ html, body, .glass, .glass-strong {
   transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 200ms ease;
 }
 
-/* Fundo da Página e Texto Base */
+/* Fundo da Página e Texto Base (Cinza Médio Corporativo) */
 html.light,
 html.light body {
-  background-color: #f4f7fc !important;
+  background-color: #bec7d4 !important;
   color: #0f172a !important;
   background-image: none !important;
 }
 
-/* Cards Glass em Modo Claro (Brancos, bordas discretas, sombras suaves) */
+/* Cards Glass em Modo Claro (Branco Gelo Fechado — zero ofuscamento) */
 html.light .glass,
 html.light .glass-strong {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
+  background-color: #e9eef5 !important;
+  border-color: #b4c0d0 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
@@ -411,159 +470,262 @@ html.light .dialog-content {
 }
 
 /* ============================================================
-   ESTILOS ESPECÍFICOS: CARDS DE FORMAS DE PAGAMENTO (LIGHT)
-   (Idênticos à imagem de referência oficial do HORUS ANALYTICS)
+   HORUS ANALYTICS - TEMA CLARO CORPORATIVO CINZA + BRANCO GELO
    ============================================================ */
 
-/* Dinheiro (Verde Pastel) */
-html.light .payment-card-dinheiro {
-  background: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
+html.light,
+html.light body {
+  background-color: #bec7d4 !important;
+  background-image: none !important;
+  color: #0f172a !important;
 }
-html.light .payment-card-dinheiro .payment-title {
-  color: #065f46 !important;
-}
-html.light .payment-card-dinheiro .payment-val {
-  color: #064e3b !important;
-}
-html.light .payment-card-dinheiro .payment-pill {
-  background-color: #d1fae5 !important;
-  border-color: #a7f3d0 !important;
-  color: #065f46 !important;
+html.light .glass .text-slate-400,
+html.light .glass-strong .text-slate-400 {
+  color: #334155 !important;
 }
 
-/* PIX (Ciano Pastel) */
-html.light .payment-card-pix {
-  background: #ecfeff !important;
-  border-color: #a5f3fc !important;
+/* Header Superior Branco Gelo Fechado no Tema Claro */
+html.light .horus-top-header {
+  background: #e4eaf2 !important;
+  background-image: none !important;
+  border-color: #b4c0d0 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08) !important;
+  color: #0f172a !important;
 }
-html.light .payment-card-pix .payment-title {
-  color: #155e75 !important;
+html.light .horus-top-header .text-slate-300,
+html.light .horus-top-header .text-slate-400,
+html.light .horus-top-header .text-slate-200 {
+  color: #475569 !important;
 }
-html.light .payment-card-pix .payment-val {
-  color: #083344 !important;
+html.light .horus-top-header .text-white,
+html.light .horus-top-header .text-slate-100 {
+  color: #0f172a !important;
 }
-html.light .payment-card-pix .payment-pill {
-  background-color: #cffafe !important;
-  border-color: #a5f3fc !important;
-  color: #155e75 !important;
+html.light .horus-top-header .text-cyan-200,
+html.light .horus-top-header .text-cyan-300 {
+  color: #0369a1 !important;
 }
-
-/* Cartão Débito (Azul Pastel) */
-html.light .payment-card-debito {
-  background: #eff6ff !important;
-  border-color: #bfdbfe !important;
+html.light .horus-top-header .bg-black\/45,
+html.light .horus-top-header .bg-black\/40 {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
 }
-html.light .payment-card-debito .payment-title {
-  color: #1e40af !important;
+html.light .horus-top-header select,
+html.light .horus-top-header input {
+  background-color: transparent !important;
+  color: #0f172a !important;
+  border-color: transparent !important;
 }
-html.light .payment-card-debito .payment-val {
-  color: #172554 !important;
-}
-html.light .payment-card-debito .payment-pill {
-  background-color: #dbeafe !important;
-  border-color: #bfdbfe !important;
-  color: #1e40af !important;
-}
-
-/* Cartão Crédito (Roxo Pastel) */
-html.light .payment-card-credito {
-  background: #faf5ff !important;
-  border-color: #e9d5ff !important;
-}
-html.light .payment-card-credito .payment-title {
-  color: #6b21a8 !important;
-}
-html.light .payment-card-credito .payment-val {
-  color: #3b0764 !important;
-}
-html.light .payment-card-credito .payment-pill {
-  background-color: #f3e8ff !important;
-  border-color: #e9d5ff !important;
-  color: #6b21a8 !important;
+html.light .horus-top-header input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
 }
 
-/* Convênios & Outros (Âmbar / Amarelo Pastel) */
+/* Neutraliza cards com gradientes escuros em outros módulos (Off-White descansado) */
+html.light [class*="via-[#"],
+html.light [class*="to-[#"],
+html.light [class*="from-cyan-950"],
+html.light [class*="from-blue-950"],
+html.light [class*="from-slate-900"] {
+  background: #f8fafd !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+}
+html.light [class*="via-[#"] .text-white,
+html.light [class*="to-[#"] .text-white,
+html.light [class*="via-[#"] .text-slate-100,
+html.light [class*="via-[#"] .text-slate-200 {
+  color: #0f172a !important;
+}
+html.light [class*="via-[#"] .text-slate-300,
+html.light [class*="via-[#"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+/* Cards de Formas de Pagamento: Branco Gelo Fechado com filete de cor discreto */
+html.light .payment-card-dinheiro,
+html.light .payment-card-pix,
+html.light .payment-card-debito,
+html.light .payment-card-credito,
 html.light .payment-card-convenio {
-  background: #fffbeb !important;
-  border-color: #fde68a !important;
+  background: #e9eef5 !important;
+  background-image: none !important;
+  border-color: #b4c0d0 !important;
+  border-left-width: 4px !important;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
 }
-html.light .payment-card-convenio .payment-title {
-  color: #92400e !important;
-}
-html.light .payment-card-convenio .payment-val {
-  color: #451a03 !important;
-}
-html.light .payment-card-convenio .payment-pill {
-  background-color: #fef3c7 !important;
-  border-color: #fde68a !important;
-  color: #92400e !important;
+html.light .payment-card-dinheiro { border-left-color: #16a34a !important; }
+html.light .payment-card-dinheiro .payment-title { color: #15803d !important; }
+html.light .payment-card-dinheiro .payment-val { color: #0f172a !important; }
+html.light .payment-card-dinheiro .payment-pill {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #15803d !important;
 }
 
-/* Pill Deep Navy "Total Recebido" */
+html.light .payment-card-pix { border-left-color: #0891b2 !important; }
+html.light .payment-card-pix .payment-title { color: #0e7490 !important; }
+html.light .payment-card-pix .payment-val { color: #0f172a !important; }
+html.light .payment-card-pix .payment-pill {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #0e7490 !important;
+}
+
+html.light .payment-card-debito { border-left-color: #2563eb !important; }
+html.light .payment-card-debito .payment-title { color: #1d4ed8 !important; }
+html.light .payment-card-debito .payment-val { color: #0f172a !important; }
+html.light .payment-card-debito .payment-pill {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #1d4ed8 !important;
+}
+
+html.light .payment-card-credito { border-left-color: #7c3aed !important; }
+html.light .payment-card-credito .payment-title { color: #6d28d9 !important; }
+html.light .payment-card-credito .payment-val { color: #0f172a !important; }
+html.light .payment-card-credito .payment-pill {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #6d28d9 !important;
+}
+
+html.light .payment-card-convenio { border-left-color: #d97706 !important; }
+html.light .payment-card-convenio .payment-title { color: #b45309 !important; }
+html.light .payment-card-convenio .payment-val { color: #0f172a !important; }
+html.light .payment-card-convenio .text-amber-300 { color: #b45309 !important; }
+html.light .payment-card-convenio .payment-pill {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #b45309 !important;
+}
+
+html.light .payment-card-dinheiro .text-slate-400,
+html.light .payment-card-pix .text-slate-400,
+html.light .payment-card-debito .text-slate-400,
+html.light .payment-card-credito .text-slate-400,
+html.light .payment-card-convenio .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Pill "Total Recebido" Soft Slate no Modo Claro */
 html.light .payment-total-received {
-  background-color: #0f172a !important;
-  border-color: #1e293b !important;
+  background: #e2e8f0 !important;
+  background-image: none !important;
+  border-color: #cbd5e1 !important;
 }
 html.light .payment-total-received .label-text {
-  color: #94a3b8 !important;
+  color: #475569 !important;
 }
 html.light .payment-total-received .value-text {
-  color: #38bdf8 !important;
+  color: #0369a1 !important;
 }
 
 /* Botões do Bloco de Formas de Pagamento */
 html.light .btn-gestao-convenios {
-  background-color: #fffbeb !important;
-  border-color: #fde68a !important;
-  color: #b45309 !important;
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #92400e !important;
+  box-shadow: none !important;
 }
 html.light .btn-gestao-convenios:hover {
   background-color: #fef3c7 !important;
+  border-color: #fcd34d !important;
 }
 
 html.light .btn-detalhar-modalidades {
   background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  color: #0a2540 !important;
 }
 html.light .btn-detalhar-modalidades:hover {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
 }
 
 /* Abas de Lojas em Modo Claro */
 html.light .store-tab-btn-active {
-  background-color: #0284c7 !important;
+  background-color: #0b5ed7 !important;
   color: #ffffff !important;
-  border-color: #0284c7 !important;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2) !important;
+  border-color: #0b5ed7 !important;
+  box-shadow: 0 4px 12px rgba(11, 94, 215, 0.25) !important;
 }
 
 html.light .store-tab-btn-inactive {
   background-color: #ffffff !important;
-  color: #475569 !important;
-  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
 }
 html.light .store-tab-btn-inactive:hover {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+  color: #0a2540 !important;
 }
 
-/* KPI Cards no Modo Claro */
+/* KPI Cards no Modo Claro (Branco Gelo Fechado) */
 html.light .kpi-metric-card {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  background: #e9eef5 !important;
+  background-image: none !important;
+  border-color: #b4c0d0 !important;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.07) !important;
+}
+html.light .kpi-metric-card .text-slate-300,
+html.light .kpi-metric-card .text-slate-300\/80,
+html.light .kpi-metric-card .text-blue-200\/85 {
+  color: #475569 !important;
 }
 html.light .kpi-icon-container {
-  background-color: #eff6ff !important;
-  color: #2563eb !important;
+  background: linear-gradient(135deg, #0066eb 0%, #004bb5 100%) !important;
+  color: #ffffff !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 4px 10px rgba(0, 102, 235, 0.25) !important;
 }
 html.light .kpi-value-text {
-  color: #0f172a !important;
+  color: #0a2540 !important;
 }
 html.light .kpi-label-text {
-  color: #64748b !important;
+  color: #475569 !important;
+}
+
+/* Contraste global de badges e textos claros sobre cartões brancos no Modo Claro */
+html.light .glass .text-cyan-300,
+html.light .glass-strong .text-cyan-300,
+html.light .glass .text-cyan-200,
+html.light .glass-strong .text-cyan-200 {
+  color: #0369a1 !important;
+}
+html.light .glass .text-blue-300,
+html.light .glass-strong .text-blue-300,
+html.light .glass .text-blue-200,
+html.light .glass-strong .text-blue-200 {
+  color: #1d4ed8 !important;
+}
+html.light .glass .text-emerald-300,
+html.light .glass-strong .text-emerald-300 {
+  color: #047857 !important;
+}
+html.light .glass .text-violet-300,
+html.light .glass-strong .text-violet-300 {
+  color: #6d28d9 !important;
+}
+html.light .glass .text-amber-300,
+html.light .glass-strong .text-amber-300 {
+  color: #b45309 !important;
+}
+html.light .glass .text-slate-100,
+html.light .glass-strong .text-slate-100,
+html.light .glass .text-slate-200,
+html.light .glass-strong .text-slate-200,
+html.light .glass .text-white,
+html.light .glass-strong .text-white {
+  color: #0f172a !important;
+}
+html.light .horus-top-header .text-white,
+html.light .horus-top-header .text-slate-100,
+html.light .horus-top-header .text-slate-200 {
+  color: #0f172a !important;
+}
+html.light .horus-top-header .text-cyan-200,
+html.light .horus-top-header .text-cyan-300 {
+  color: #0369a1 !important;
 }
 
 

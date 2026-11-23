@@ -1119,9 +1119,9 @@ app.post('/api/system/users/delete', (req, res) => {
     ];
 
     const lojas = [
-      { id: 1, nome: "Loja 1 - Atacado Marechal" },
+      { id: 1, nome: "Loja 1" },
       { id: 2, nome: "Loja 2" },
-      { id: 3, nome: "Loja 3 - Super Atacado Village" }
+      { id: 3, nome: "Loja 3" }
     ];
 
     const titulos = [];
@@ -2357,28 +2357,57 @@ app.get('/api/dashboard-executivo', async (req, res) => {
     const endDate = reqEndDate || `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     const endDateObj = new Date(endDate);
 
-    // 1. Faturamento Hoje (usa a data final solicitada ou a data mais recente com movimento no DB2)
+    // 1. Faturamento do Dia de Referência (usa a data final do filtro se <= maxDateStr, senão maxDateStr)
     const maxDateStr = String(maxDate).slice(0, 10);
-    const dataRefPrincipal = (reqEndDate && reqEndDate <= maxDateStr) ? reqEndDate : maxDateStr;
+    let dataRefPrincipal = (reqEndDate && reqEndDate <= maxDateStr) ? reqEndDate : maxDateStr;
     const fatHojeSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_hoje, COUNT(DISTINCT NUMNOTA) AS notas_hoje, COUNT(DISTINCT NUMNOTA) AS clientes_hoje FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${dataRefPrincipal}' ${whereEmpresa} WITH UR`;
     let fatHojeRes = await queryDB(fatHojeSql, params).catch(() => []);
-    if (!fatHojeRes[0]?.FAT_HOJE && dataRefPrincipal !== maxDateStr) {
+    if (!fatHojeRes[0]?.FAT_HOJE && dataRefPrincipal !== maxDateStr && !(reqStartDate && reqStartDate === reqEndDate)) {
+      dataRefPrincipal = maxDateStr;
       const fatMaxSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_hoje, COUNT(DISTINCT NUMNOTA) AS notas_hoje, COUNT(DISTINCT NUMNOTA) AS clientes_hoje FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${maxDateStr}' ${whereEmpresa} WITH UR`;
       fatHojeRes = await queryDB(fatMaxSql, params).catch(() => []);
     }
 
-    // 2. Faturamento Mês/Período, Ticket Médio
+    // 1b. Faturamento do Dia Anterior a dataRefPrincipal (para comparação dentro do card)
+    const [ry, rm, rd] = dataRefPrincipal.split('-').map(Number);
+    const ontemObj = new Date(ry, rm - 1, rd - 1);
+    const ontemDateStr = `${ontemObj.getFullYear()}-${String(ontemObj.getMonth() + 1).padStart(2, '0')}-${String(ontemObj.getDate()).padStart(2, '0')}`;
+    const fatOntemSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_ontem FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO = '${ontemDateStr}' ${whereEmpresa} WITH UR`;
+    const fatOntemRes = await queryDB(fatOntemSql, params).catch(() => []);
+
+    // 2. Faturamento Período, Ticket Médio
     const fatMesSql = `SELECT SUM(VALTOTLIQUIDO) AS fat_mes, COUNT(DISTINCT NUMNOTA) AS notas_mes FROM DBA.VW_GEA_VENDAS_DIARIAS WHERE DTMOVIMENTO BETWEEN '${startDate}' AND '${endDate}' ${whereEmpresa} WITH UR`;
     const fatMesRes = await queryDB(fatMesSql, params);
 
-    // 3. Lucro Líquido e Margem
+    // 3. Lucro Líquido e Margem Reais do DB2 (DBA.ESTOQUE_ANALITICO) para o filtro selecionado
     let lucroRes = [];
     try {
+      const whereEmpresaEa = isFiltered ? " AND EA.IDEMPRESA = ?" : "";
+      const lucroSql = `
+        SELECT
+          SUM(EA.VALLUCRO) AS lucro_mes,
+          SUM(EA.VALTOTLIQUIDO) AS fat_ea
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        WHERE EA.DTMOVIMENTO BETWEEN '${startDate}' AND '${endDate}'
+          AND OP.TIPOMOVIMENTO = 'V'
+          ${whereEmpresaEa}
+        WITH UR
+      `;
+      const dbLucro = await queryDB(lucroSql, params).catch(() => []);
+      if (dbLucro && dbLucro[0] && dbLucro[0].LUCRO_MES != null) {
+        const lucroReal = parseFloat(dbLucro[0].LUCRO_MES) || 0;
+        const fatEa = parseFloat(dbLucro[0].FAT_EA) || 0;
+        lucroRes = [{ LUCRO_MES: lucroReal, FAT_EA: fatEa, CUSTO_MES: Math.max(0, fatEa - lucroReal) }];
+      }
+    } catch(e) {}
+
+    if (lucroRes.length === 0) {
       const fatEstimado = parseFloat(fatMesRes[0]?.FAT_MES) || 0;
       const margens = { 1: 21.52, 2: 19.76, 3: 19.04, 4: 20.34, 5: 19.72, 6: 19.17, 7: 20.23 };
       const margemPct = isFiltered ? (margens[parseInt(idEmpresa)] || 18.0) : 20.19;
       lucroRes = [{ LUCRO_MES: fatEstimado * (margemPct / 100), CUSTO_MES: fatEstimado * ((100 - margemPct) / 100) }];
-    } catch(e) {}
+    }
 
     // 4. Estoque e Produtos sem Estoque (via DBA.ESTOQUE_SALDO_ATUAL nos locais ativos de venda)
     let estoqueRes = [{TOTAL_ESTOQUE: 15420, SEM_ESTOQUE: 120}];
@@ -2412,10 +2441,14 @@ app.get('/api/dashboard-executivo', async (req, res) => {
     
     res.json({
       faturamento_hoje: parseFloat(fatHojeRes[0]?.FAT_HOJE) || 0,
+      data_ref_dia: dataRefPrincipal,
+      faturamento_ontem: parseFloat(fatOntemRes[0]?.FAT_ONTEM) || 0,
+      data_ontem: ontemDateStr,
       faturamento_mes: fMes,
       lucro_liquido: lMes,
       margem_lucro: fMes > 0 ? (lMes / fMes) * 100 : 0,
       ticket_medio: (parseInt(fatMesRes[0]?.NOTAS_MES) || 0) > 0 ? fMes / parseInt(fatMesRes[0]?.NOTAS_MES) : 0,
+      qtd_tickets: parseInt(fatMesRes[0]?.NOTAS_MES) || 0,
       meta_realizado: fMes > 0 ? (fMes / (fMes * 1.2)) * 100 : 0, // Mock: Meta = faturamento * 1.2
       estoque_atual: parseInt(estoqueRes[0]?.TOTAL_ESTOQUE) || 0,
       produtos_sem_estoque: parseInt(estoqueRes[0]?.SEM_ESTOQUE) || 0,
@@ -7358,7 +7391,7 @@ app.get('/api/promocoes/lista', async (req, res) => {
       params.push(parseInt(idEmpresa));
     }
 
-    sql += ` GROUP BY P.IDPROMOCAO, P.DESCRPROMOCAO, P.DTINIPROMOCAO, P.DTFIMPROMOCAO ORDER BY RECEITA DESC FETCH FIRST 5000 ROWS ONLY WITH UR`;
+    sql += ` GROUP BY P.IDPROMOCAO, P.DESCRPROMOCAO, P.DTINIPROMOCAO, P.DTFIMPROMOCAO ORDER BY P.DTINIPROMOCAO DESC, P.IDPROMOCAO DESC FETCH FIRST 5000 ROWS ONLY WITH UR`;
 
     const data = await queryDB(sql, params).catch((e) => {
       console.error("ERRO promocoes lista:", e);
@@ -8119,7 +8152,7 @@ app.post('/api/ai/ask', async (req, res) => {
 
     // SAUDACAO primeiro, antes de qualquer regex
     if (['ola', 'olá', 'oi', 'oi!', 'olá!', 'bom dia', 'boa tarde', 'boa noite', 'hello', 'hey'].includes(query) || query.length < 4) {
-      return res.json({ reply: "Olá! Sou a IA da Cybertech, conectada ao banco DB2 em tempo real. Você pode me perguntar:\n- 'Quanto a loja Antares vendeu hoje?'\n- 'Quanto a compradora Yasmin comprou?'\n- 'Qual o estoque de Azeite?'" });
+      return res.json({ reply: "Olá! Sou a IA da Cybertech, conectada ao banco DB2 em tempo real. Você pode me perguntar:\n- 'Quanto a loja Itapuã vendeu hoje?'\n- 'Qual o faturamento desse mês?'\n- 'Qual o estoque de Azeite?'" });
     }
 
     // HEURISTICA 1: Vendas por Loja
@@ -8202,7 +8235,7 @@ app.post('/api/ai/ask', async (req, res) => {
       return res.json({ reply: `Volume de pedidos de compra de **ontem**: **${fmt(data[0]?.TOTAL || 0)}**.` });
     }
 
-    return res.json({ reply: "Não entendi bem a pergunta. Tente:\n- 'Quanto a loja Antares vendeu hoje?'\n- 'Quanto a compradora Yasmin comprou?'\n- 'Qual o estoque de Azeite?'" });
+    return res.json({ reply: "Não entendi bem a pergunta. Tente:\n- 'Quanto a loja Itapuã vendeu hoje?'\n- 'Qual o faturamento desse mês?'\n- 'Qual o estoque de Azeite?'" });
 
   } catch (err) {
     console.error('[AI/ASK ERROR]', err);

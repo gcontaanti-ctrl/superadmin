@@ -55,7 +55,7 @@ export function CategoryBreakdown({ mode, selectedStore, startDate, endDate }: {
   const formatCurrency = (val: number) => val?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) || "R$ 0";
 
   return (
-    <div className={`glass-strong rounded-2xl p-4 flex flex-col relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+    <div className={`glass-strong rounded-2xl p-4 h-full flex flex-col justify-between relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
       {loading && (
         <div className="absolute top-4 right-4 flex items-center justify-center">
            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -85,16 +85,16 @@ export function CategoryBreakdown({ mode, selectedStore, startDate, endDate }: {
           Sem dados de mix para o período
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {/* Top Half: Donut Chart with center summary */}
-          <div className="relative h-40 w-full flex items-center justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center flex-1">
+          {/* Donut Chart (esquerda) */}
+          <div className="lg:col-span-5 relative h-44 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie 
                   data={activeData} 
                   dataKey="value" 
-                  innerRadius={45} 
-                  outerRadius={65} 
+                  innerRadius={48} 
+                  outerRadius={70} 
                   paddingAngle={4} 
                   stroke="none"
                 >
@@ -121,8 +121,8 @@ export function CategoryBreakdown({ mode, selectedStore, startDate, endDate }: {
             </div>
           </div>
 
-          {/* Bottom Half: Detailed Category Breakdown List (fills space clean & compact) */}
-          <div className="flex flex-col gap-2 pt-1 border-t border-white/5">
+          {/* Lista de Categorias (direita) */}
+          <div className="lg:col-span-7 flex flex-col gap-2">
             {activeData.map((item: any, i: number) => (
               <div key={item.name || i} className="group bg-black/20 border border-white/[0.04] hover:border-primary/20 rounded-xl px-3 py-2 transition-all">
                 <div className="flex items-center justify-between text-xs mb-1">

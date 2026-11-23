@@ -33,15 +33,16 @@ import { UserManagementModule } from "@/components/executive/UserManagementModul
 import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
 import { DreDespesasModule } from "@/components/executive/DreDespesasModule";
 import { AtacarejoModule } from "@/components/executive/AtacarejoModule";
+import { CentralRelatoriosModule } from "@/components/executive/CentralRelatoriosModule";
 import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
 import { ThemeToggle } from "@/components/executive/ThemeToggle";
 import { useTheme } from "@/context/ThemeContext";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
 import { 
-  Building2, Package, Database, Shield, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
+  Building2, Package, Database, Shield, ShieldCheck, HelpCircle, BarChart3, Calendar, Loader2, LockKeyhole, LogIn, LogOut,
   Menu, X, Sparkles, Settings, Eye, EyeOff, User, Lock, LayoutDashboard, ShoppingBag, CreditCard, Wallet,
-  UserPlus, CheckCircle2, Clock, Store, ArrowLeft, AlertTriangle
+  UserPlus, CheckCircle2, Clock, Store, ArrowLeft, AlertTriangle, ChevronDown, ChevronRight
 } from "lucide-react";
 import { nav } from "@/components/executive/Sidebar";
 
@@ -49,11 +50,12 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const getTodayStr = () => new Date().toISOString().split('T')[0];
-const get30DaysAgoStr = () => {
+const fmtLocalDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const getTodayStr = () => fmtLocalDate(new Date());
+const getMonthStartStr = () => {
   const d = new Date();
-  d.setDate(d.getDate() - 30);
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
 function Dashboard() {
@@ -99,9 +101,10 @@ function Dashboard() {
   }, [activeTab]);
   const viewMode = "real";
   const [selectedStore, setSelectedStore] = useState("todas");
-  const [startDate, setStartDate] = useState<string>(get30DaysAgoStr());
+  const [startDate, setStartDate] = useState<string>(getMonthStartStr());
   const [endDate, setEndDate] = useState<string>(getTodayStr());
-  const [datePreset, setDatePreset] = useState<string>("30dias");
+  const [datePreset, setDatePreset] = useState<string>("mes");
+  const [showRegisteredStores, setShowRegisteredStores] = useState(false);
 
   const applyDatePreset = (preset: string) => {
     const today = new Date();
@@ -286,13 +289,10 @@ function Dashboard() {
 
   return (
     <div 
-      className="relative min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-primary/20 bg-cover bg-center bg-no-repeat bg-fixed"
-      style={{ backgroundImage: "url('/bg-login.png')" }}
+      className="relative min-h-screen bg-[#bec7d4] text-slate-900 dark:bg-gradient-to-b dark:from-[#0f1d35] dark:via-[#0d182b] dark:to-[#0a1424] dark:text-slate-100 antialiased selection:bg-primary/20 overflow-x-hidden"
     >
-      <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-[40px] pointer-events-none z-0"></div>
-      
-      <div className={`relative z-10 flex flex-col md:flex-row gap-2 md:gap-4 min-h-screen ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
-      {/* Static Sidebar removed to use Drawer format exclusively */}
+      <div className={`relative z-10 flex flex-col md:flex-row gap-2 md:gap-4 min-h-screen w-full ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
+      {/* Menu Gaveta (Drawer) universal em Desktop, Tablet e Mobile */}
 
       {/* Universal Drawer Overlay */}
       {isMobileMenuOpen && (
@@ -302,8 +302,8 @@ function Dashboard() {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          {/* Drawer */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-slate-950 border-r border-white/10 shadow-2xl p-2 flex flex-col transform transition-transform duration-300 ease-in-out z-50 overflow-hidden">
+          {/* Drawer com efeito 3D tipo leque */}
+          <div className="fixed inset-y-2 left-2 w-60 max-w-[80vw] rounded-3xl bg-white/95 dark:bg-[#0f1d35]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 shadow-2xl p-2 flex flex-col z-50 overflow-hidden animate-horus-leque">
             <div className="flex justify-end mb-2 px-2 pt-2">
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white rounded-full">
                 <X className="w-5 h-5" />
@@ -323,11 +323,11 @@ function Dashboard() {
         </div>
       )}
       
-      <main className={`flex-1 flex flex-col gap-3 md:gap-4 w-full min-h-0 ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pr-0 md:pr-1 lg:pr-4 pb-24 md:pb-6'}`}>
+      <main className={`flex-1 min-w-0 flex flex-col gap-3 md:gap-4 w-full min-h-0 ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pb-24 md:pb-6'}`}>
         {/* Top Header */}
         {!isFullscreen && (
-          <header className="glass-strong rounded-2xl px-3 md:px-6 py-2.5 md:py-4 flex items-center justify-between gap-2 md:gap-3">
-            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <header className="glass-strong horus-top-header rounded-2xl px-3 md:px-5 py-2.5 md:py-3 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 min-w-0">
               <Button
                 onClick={() => setIsMobileMenuOpen(true)}
                 variant="ghost"
@@ -337,14 +337,19 @@ function Dashboard() {
               >
                 <Menu className="w-5 h-5 text-cyan-400" />
               </Button>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab("visao-geral")}
+                title="Voltar ao Início (Visão Geral)"
+                className="flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-85 transition-opacity text-left"
+              >
                 <span className="font-serif font-bold text-lg md:text-xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
                   HORUS
                 </span>
                 <span className="font-sans font-light text-cyan-200 tracking-widest text-xs hidden sm:inline">
                   ANALYTICS
                 </span>
-              </div>
+              </button>
               <div className="hidden sm:block h-5 w-px bg-white/10 shrink-0" />
               <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 mr-1 md:mr-2 shrink-0">
                 <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -379,31 +384,7 @@ function Dashboard() {
               {/* Global Date Range Selector (Desktop) */}
               <div className="hidden lg:flex items-center gap-2 bg-black/45 px-2.5 py-1 rounded-xl border border-white/10 shadow-inner shrink-0">
                 <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
-                <div className="flex items-center gap-0.5 bg-white/5 p-0.5 rounded-lg border border-white/5">
-                  {[
-                    { id: "dia", label: "Dia" },
-                    { id: "ontem", label: "Ontem" },
-                    { id: "semana", label: "Semana" },
-                    { id: "mes", label: "Mês" },
-                    { id: "mes-anterior", label: "Mês Ant." },
-                    { id: "30dias", label: "30d" },
-                    { id: "personalizado", label: "Custom" },
-                  ].map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => applyDatePreset(opt.id)}
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
-                        datePreset === opt.id
-                          ? "bg-primary text-white shadow-sm"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-slate-300 pl-1 border-l border-white/10">
+                <div className="flex items-center gap-1.5 text-xs text-slate-300">
                   <input 
                     type="date" 
                     value={startDate} 
@@ -509,30 +490,6 @@ function Dashboard() {
                   />
                 </div>
               </div>
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-                {[
-                  { id: "dia", label: "Dia" },
-                  { id: "ontem", label: "Ontem" },
-                  { id: "semana", label: "Semana" },
-                  { id: "mes", label: "Mês" },
-                  { id: "mes-anterior", label: "Mês Ant." },
-                  { id: "30dias", label: "30 dias" },
-                  { id: "personalizado", label: "Personalizado" },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => applyDatePreset(opt.id)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all ${
-                      datePreset === opt.id
-                        ? "bg-primary text-white shadow-sm"
-                        : "bg-white/5 text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Mobile Breadcrumb: Módulo Ativo */}
@@ -556,62 +513,21 @@ function Dashboard() {
         {/* Tab Contents */}
         {activeTab === "visao-geral" && (
           <div className="flex flex-col gap-4">
-            <KpiCards selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+            {/* 1. Topo Executivo: KPIs Principais */}
+            <KpiCards selectedStore={selectedStore} startDate={startDate} endDate={endDate} datePreset={datePreset} />
+
+            {/* 2. Caixa & Meios de Pagamento */}
             <PaymentMethodsCard selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-4">
-                <DepartmentMarginPanel mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <StoreRanking mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
-                  <CategoryBreakdown mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
-                </div>
 
-                <div className="glass-strong rounded-2xl p-5 flex flex-col gap-4">
-                  <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-                    <Building2 className="w-5 h-5 text-primary" />
-                    <div>
-                      <h4 className="font-serif font-semibold text-sm">Empresas Cadastradas (View DBA.VW_GEA_EMPRESA)</h4>
-                      <p className="text-[10px] text-slate-400">Filiais carregadas dinamicamente com nomes comerciais corretos</p>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-white/5 text-slate-400 font-semibold">
-                          <th className="py-2 px-3">ID</th>
-                          <th className="py-2 px-3">Nome Comercial / Razão</th>
-                          <th className="py-2 px-3">CNPJ</th>
-                          <th className="py-2 px-3 text-center">Cidade</th>
-                          <th className="py-2 px-3 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dbLojas.map((loja: any) => (
-                          <tr 
-                            key={loja.IDEMPRESA} 
-                            onClick={() => { setSelectedStore(String(loja.IDEMPRESA)); toast.success(`Filtrando por: ${loja.DESCREMPRESA}`); }}
-                            className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${String(selectedStore) === String(loja.IDEMPRESA) ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
-                          >
-                            <td className="py-2.5 px-3 font-medium tabular-nums">{loja.IDEMPRESA}</td>
-                            <td className="py-2.5 px-3 font-semibold text-slate-200">{loja.DESCREMPRESA}</td>
-                            <td className="py-2.5 px-3 text-slate-300 font-mono">{loja.CNPJ || "Sem CNPJ"}</td>
-                            <td className="py-2.5 px-3 text-center text-slate-300 font-bold">{loja.UF || "MACEIO"}</td>
-                            <td className="py-2.5 px-3 text-right">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">
-                                Ativa
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+            {/* 3. Rentabilidade por Departamento */}
+            <DepartmentMarginPanel mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
 
-              </div>
+            {/* 4. Visão Comparativa no Rodapé: Ranking de Lojas + Mix de Categorias */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+              <StoreRanking mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
+              <CategoryBreakdown mode={viewMode} selectedStore={selectedStore} startDate={startDate} endDate={endDate} />
             </div>
+          </div>
         )}
 
         {/* Vendas Atacarejo Tab */}
@@ -806,8 +722,17 @@ function Dashboard() {
           />
         )}
 
+        {activeTab === "central-relatorios" && (
+          <CentralRelatoriosModule
+            selectedStore={selectedStore}
+            globalStartDate={startDate}
+            globalEndDate={endDate}
+            dbLojas={dbLojas}
+          />
+        )}
+
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "atacarejo" && activeTab !== "vendas-bandeira" && activeTab !== "contas-pagar" && activeTab !== "dre-despesas" && activeTab !== "gestao-usuarios" && activeTab !== "pedidos-compradores" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
+        {activeTab !== "visao-geral" && activeTab !== "atacarejo" && activeTab !== "vendas-bandeira" && activeTab !== "contas-pagar" && activeTab !== "dre-despesas" && activeTab !== "gestao-usuarios" && activeTab !== "pedidos-compradores" && activeTab !== "central-relatorios" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>

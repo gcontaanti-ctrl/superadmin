@@ -227,10 +227,10 @@ export function CybertechAdminModule() {
                 </tr>
                 <tr className="hover:bg-white/5 transition-colors">
                   <td className="py-3 px-4">
-                    <div className="font-bold text-slate-200">Maria Oliveira</div>
-                    <div className="text-[10px] text-slate-500">maria@superatacado.com.br</div>
+                    <div className="font-bold text-slate-200">Gerente Geral</div>
+                    <div className="text-[10px] text-slate-500">gerente@albuquerque.com.br</div>
                   </td>
-                  <td className="py-3 px-4">Super Atacadista LTDA</td>
+                  <td className="py-3 px-4">Supermercados Albuquerque</td>
                   <td className="py-3 px-4">
                     <span className="bg-blue-500/20 text-blue-400 text-[9px] font-bold px-2 py-0.5 rounded border border-blue-500/30">GERENTE GERAL</span>
                   </td>

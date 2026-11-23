@@ -100,7 +100,7 @@ function BatteryBudgetGauge({
   let batteryGrad = "from-emerald-500 via-emerald-400 to-green-300";
   let batteryBorder = "border-emerald-500/50";
   let badgeClass = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-  let statusText = "Carga Confortável";
+  let statusText = "Saldo Confortável";
   let StatusIcon = BatteryFull;
 
   if (isEstourado) {
@@ -113,7 +113,7 @@ function BatteryBudgetGauge({
     batteryGrad = "from-rose-500 via-red-500 to-orange-400";
     batteryBorder = "border-rose-500/50";
     badgeClass = "bg-rose-500/15 text-rose-400 border-rose-500/30";
-    statusText = "Bateria Baixa (<20%)";
+    statusText = "Saldo Baixo (<20%)";
     StatusIcon = BatteryLow;
   } else if (percRestante <= 45) {
     batteryGrad = "from-amber-400 via-yellow-400 to-amber-300";
@@ -155,42 +155,23 @@ function BatteryBudgetGauge({
         </span>
       </div>
 
-      {/* Gráfico da Bateria Física */}
+      {/* Barra Executiva de Consumo de Orçamento */}
       <div className="flex flex-col gap-1.5 mt-0.5">
         <div className="flex items-center justify-between text-[11px]">
           <span className="text-slate-400 font-medium flex items-center gap-1">
             <Zap className="w-3 h-3 text-amber-400" />
-            Nível da Verba:
+            Disponível:
           </span>
           <span className={`font-mono font-bold ${isEstourado ? 'text-rose-400' : 'text-slate-200'}`}>
-            {isEstourado ? `+${(percGasto - 100).toFixed(1)}% acima do teto` : `${percRestante.toFixed(1)}% disponível`}
+            {isEstourado ? `+${(percGasto - 100).toFixed(1)}% acima do teto` : `${percRestante.toFixed(1)}% livre (${percGasto.toFixed(0)}% usado)`}
           </span>
         </div>
 
-        {/* Bateria com Terminal */}
-        <div className="flex items-center">
-          <div className={`relative flex-1 h-8 bg-slate-950 rounded-lg border-2 p-0.5 flex items-center overflow-hidden shadow-inner ${batteryBorder}`}>
-            {/* Grade de segmentos (25% cada) */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff0c_1px,transparent_1px)] bg-[size:25%_100%] pointer-events-none z-10" />
-
-            {/* Barra de carga que vai diminuindo / descontando conforme consome */}
-            <div
-              className={`h-full rounded-sm transition-all duration-700 bg-gradient-to-r ${batteryGrad} relative z-0`}
-              style={{ width: `${Math.max(0, Math.min(100, percRestante))}%` }}
-            >
-              {/* Efeito de brilho na parte superior */}
-              <div className="absolute inset-x-0 top-0 h-1/2 bg-white/30 rounded-t-sm" />
-            </div>
-
-            {/* Texto interno sobreposto com contraste */}
-            <div className="absolute inset-0 flex items-center justify-between px-2.5 text-[10px] font-mono font-bold text-white drop-shadow z-20 pointer-events-none">
-              <span>{percGasto.toFixed(0)}% GASTO</span>
-              <span>{saldo >= 0 ? `${fmt(saldo)} RESTA` : 'ESGOTADO'}</span>
-            </div>
-          </div>
-
-          {/* Polo Positivo da Bateria (+) */}
-          <div className="w-1.5 h-4 bg-slate-600 rounded-r border-y-2 border-r-2 border-slate-600 shrink-0 -ml-px" />
+        <div className={`relative w-full h-3 bg-slate-950/90 rounded-full border overflow-hidden ${batteryBorder}`}>
+          <div
+            className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${batteryGrad}`}
+            style={{ width: `${Math.max(0, Math.min(100, percRestante))}%` }}
+          />
         </div>
       </div>
 
@@ -300,33 +281,18 @@ export function PedidosCompradoresModule({
   const [itensPedido, setItensPedido] = useState<any[]>([]);
   const [loadingItens, setLoadingItens] = useState(false);
 
-  // Inicializar datas padrão
+  // Sincronizar datas com o filtro global do cabeçalho (padrão: mês atual)
   useEffect(() => {
-    const today = new Date();
-    const endStr = today.toISOString().split('T')[0];
-    let startStr = '';
-
-    if (periodoPreset === 'mes_atual') {
-      startStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-    } else if (periodoPreset === '7d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 7);
-      startStr = d.toISOString().split('T')[0];
-    } else if (periodoPreset === '15d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 15);
-      startStr = d.toISOString().split('T')[0];
-    } else if (periodoPreset === '30d') {
-      const d = new Date();
-      d.setDate(d.getDate() - 30);
-      startStr = d.toISOString().split('T')[0];
+    if (globalStartDate && globalEndDate) {
+      setStartDate(globalStartDate);
+      setEndDate(globalEndDate);
+    } else {
+      const today = new Date();
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      setStartDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`);
+      setEndDate(fmt(today));
     }
-
-    if (periodoPreset !== 'custom') {
-      setStartDate(startStr);
-      setEndDate(endStr);
-    }
-  }, [periodoPreset]);
+  }, [globalStartDate, globalEndDate]);
 
   // Carregar lista de Lojas
   useEffect(() => {
@@ -645,32 +611,46 @@ export function PedidosCompradoresModule({
   const cores = ['#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb923c', '#4ade80', '#2dd4bf'];
 
   return (
-    <div className="flex flex-col gap-6 w-full animate-fade-in text-slate-100">
-      {/* 1. CABEÇALHO DO MÓDULO */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-strong p-6 rounded-2xl border border-white/5 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase tracking-wider">
-              Módulo CISS ERP
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-              Validação por Nota Fiscal
-            </span>
+    <div className="flex flex-col gap-4 w-full animate-fade-in text-slate-100">
+      {/* 1. CABEÇALHO COMPACTO + ATUALIZAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 glass-strong px-5 py-3.5 rounded-2xl border border-white/10">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-400/25 shrink-0">
+            <ShoppingCart className="w-5 h-5" />
           </div>
-          <h1 className="text-2xl font-bold font-serif text-slate-100 tracking-tight flex items-center gap-3">
-            Gestão de Pedidos & Orçamentos
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
-            Acompanhamento analítico de pedidos digitados por comprador, conferência de entregas validadas pela entrada da nota fiscal e controle de orçamentos lançados no CISS.
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg md:text-xl font-bold font-serif text-slate-100 tracking-tight">
+                Gestão de Pedidos & Orçamentos
+              </h1>
+              <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[10px] font-bold uppercase">
+                CISS ERP
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 truncate">
+              Valores, saldo de verba por comprador e validação de entregas por NF
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex items-center gap-2 shrink-0">
+          {filtroComprador !== 'todos' && (
+            <button
+              type="button"
+              onClick={() => setFiltroComprador('todos')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/25 transition"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>
+                {compradores.find((c) => String(c.IDUSUARIO) === String(filtroComprador))?.COMPRADOR || 'Comprador'}
+              </span>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             onClick={carregarDados}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary rounded-xl text-xs font-semibold transition active:scale-95 disabled:opacity-50"
+            className="flex items-center gap-2 px-3.5 py-2 bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary rounded-xl text-xs font-semibold transition active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Atualizar CISS
@@ -678,276 +658,98 @@ export function PedidosCompradoresModule({
         </div>
       </div>
 
-      {/* 2. BARRA DE FILTROS AVANÇADOS */}
-      <div className="glass-strong p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row flex-wrap items-center justify-between gap-4 text-xs">
-        {/* Preset de Período */}
-        <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/5">
-          <button
-            onClick={() => setPeriodoPreset('mes_atual')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition ${periodoPreset === 'mes_atual' ? 'bg-primary text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            Este Mês
-          </button>
-          <button
-            onClick={() => setPeriodoPreset('7d')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition ${periodoPreset === '7d' ? 'bg-primary text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            7 Dias
-          </button>
-          <button
-            onClick={() => setPeriodoPreset('15d')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition ${periodoPreset === '15d' ? 'bg-primary text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            15 Dias
-          </button>
-          <button
-            onClick={() => setPeriodoPreset('30d')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition ${periodoPreset === '30d' ? 'bg-primary text-slate-950 font-bold shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
-          >
-            30 Dias
-          </button>
-        </div>
-
-        {/* Datas Manuais */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-1.5">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPeriodoPreset('custom');
-              }}
-              className="bg-transparent text-slate-200 focus:outline-none text-xs"
-            />
-            <span className="text-slate-500">até</span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPeriodoPreset('custom');
-              }}
-              className="bg-transparent text-slate-200 focus:outline-none text-xs"
-            />
-          </div>
-        </div>
-
-        {/* Filtro por Loja */}
-        <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-slate-400" />
-          <select
-            value={filtroLoja}
-            onChange={(e) => setFiltroLoja(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary text-xs"
-          >
-            <option value="todas">Todas as Lojas (Rede)</option>
-            {empresas.map((emp) => (
-              <option key={emp.IDEMPRESA} value={emp.IDEMPRESA}>
-                {emp.IDEMPRESA} - {emp.DESCREMPRESA || emp.NOMEFANTASIA || `Loja ${emp.IDEMPRESA}`}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Filtro por Comprador */}
-        <div className="flex items-center gap-2">
-          <User className="w-4 h-4 text-slate-400" />
-          <select
-            value={filtroComprador}
-            onChange={(e) => setFiltroComprador(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary text-xs"
-          >
-            <option value="todos">Todos os Compradores</option>
-            {compradores.map((c) => (
-              <option key={c.IDUSUARIO} value={c.IDUSUARIO}>
-                {c.COMPRADOR}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Botão Expandir Filtros Avançados */}
-        <button
-          onClick={() => setFiltrosExpanded(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition ${
-            filtrosExpanded || filtroSecao !== 'todas' || filtroDepartamento !== 'todos'
-              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-              : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          Filtros Avançados
-          {(filtroSecao !== 'todas' || filtroDepartamento !== 'todos') && (
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-          )}
-        </button>
-      </div>
-
-      {/* Filtros Avançados (Seção e Departamento) */}
-      {filtrosExpanded && (
-        <div className="glass-strong px-4 py-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex flex-wrap items-center gap-4 text-xs">
-          <div className="flex items-center gap-2 text-amber-400 font-semibold shrink-0">
-            <SlidersHorizontal className="w-4 h-4" />
-            Filtros de Gastos Detalhados:
-          </div>
-
-          {/* Filtro por Seção */}
-          <div className="flex items-center gap-2">
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={filtroSecao}
-              onChange={(e) => setFiltroSecao(e.target.value)}
-              disabled={loadingFiltros}
-              className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500 text-xs disabled:opacity-50"
-            >
-              <option value="todas">Todas as Seções</option>
-              {secoesFiltro.map((s) => (
-                <option key={s.id} value={s.id}>{s.descr}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtro por Departamento */}
-          <div className="flex items-center gap-2">
-            <Tag className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={filtroDepartamento}
-              onChange={(e) => setFiltroDepartamento(e.target.value)}
-              disabled={loadingFiltros}
-              className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-amber-500 text-xs disabled:opacity-50"
-            >
-              <option value="todos">Todos os Departamentos</option>
-              {departamentosFiltro.map((d) => (
-                <option key={d.id} value={d.id}>{d.descr}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Indicadores de filtros ativos */}
-          {(filtroSecao !== 'todas' || filtroDepartamento !== 'todos') && (
-            <div className="flex items-center gap-2 ml-auto">
-              {filtroSecao !== 'todas' && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
-                  <Layers className="w-3 h-3" />
-                  {secoesFiltro.find(s => String(s.id) === String(filtroSecao))?.descr || 'Seção'}
-                  <button onClick={() => setFiltroSecao('todas')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              {filtroDepartamento !== 'todos' && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
-                  <Tag className="w-3 h-3" />
-                  {departamentosFiltro.find(d => String(d.id) === String(filtroDepartamento))?.descr || 'Depto'}
-                  <button onClick={() => setFiltroDepartamento('todos')} className="ml-0.5 hover:text-white"><X className="w-3 h-3" /></button>
-                </span>
-              )}
-              <button
-                onClick={() => { setFiltroSecao('todas'); setFiltroDepartamento('todos'); }}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 text-[10px] font-bold transition"
-              >
-                <X className="w-3 h-3" /> Limpar Filtros
-              </button>
-            </div>
-          )}
-          {loadingFiltros && (
-            <span className="text-slate-500 text-[10px] animate-pulse ml-auto">Carregando opções...</span>
-          )}
-        </div>
-      )}
-
-      {/* 3. CARDS DE KPIS EXECUTIVOS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. CARDS DE KPIS EXECUTIVOS COMPACTOS (Padrão Horus) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Pedidos Digitados */}
-        <div className="glass-strong rounded-2xl p-5 border border-white/5 flex flex-col justify-between hover:border-cyan-500/20 transition group">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
+        <div className="rounded-xl p-3.5 border border-cyan-400/30 bg-gradient-to-br from-cyan-600/20 via-[#071c36] to-[#051022] shadow-md flex flex-col justify-between transition group">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-300 block truncate">
                 Pedidos Digitados
               </span>
-              <h2 className="text-3xl font-bold font-serif text-slate-100 mt-1 tabular-nums">
+              <h2 className="text-xl font-bold font-serif text-white mt-0.5 tabular-nums">
                 {kpis.totalPedidos.toLocaleString('pt-BR')}
               </h2>
             </div>
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:scale-110 transition">
-              <ShoppingCart className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shrink-0">
+              <ShoppingCart className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] pt-3 mt-3 border-t border-white/5 text-slate-400">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              {kpis.pedidosEntregues} Entregues (NF)
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/10 text-slate-300">
+            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+              <CheckCircle2 className="w-3 h-3" />
+              {kpis.pedidosEntregues} Entregues
             </span>
-            <span className="flex items-center gap-1.5 text-amber-400 font-semibold">
-              <Clock className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 text-amber-400 font-semibold">
+              <Clock className="w-3 h-3" />
               {kpis.pedidosPendentes} Pendentes
             </span>
           </div>
         </div>
 
         {/* Total Comprado (R$) */}
-        <div className="glass-strong rounded-2xl p-5 border border-white/5 flex flex-col justify-between hover:border-indigo-500/20 transition group">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
-                Total Comprado (R$)
+        <div className="rounded-xl p-3.5 border border-blue-400/30 bg-gradient-to-br from-blue-600/20 via-[#071838] to-[#051022] shadow-md flex flex-col justify-between transition group">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-300 block truncate">
+                Total Comprado
               </span>
-              <h2 className="text-3xl font-bold font-serif text-indigo-400 mt-1 tabular-nums">
+              <h2 className="text-xl font-bold font-serif text-white mt-0.5 tabular-nums">
                 {fmtCompacto(kpis.valorTotalComprado)}
               </h2>
             </div>
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition">
-              <DollarSign className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-400/30 shrink-0">
+              <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-[11px] pt-3 mt-3 border-t border-white/5 text-slate-400 flex justify-between">
-            <span>Ticket Médio por Pedido:</span>
-            <span className="font-semibold text-slate-200">
+          <div className="text-[10px] pt-2 mt-2 border-t border-white/10 text-slate-300 flex justify-between">
+            <span>Ticket Médio:</span>
+            <span className="font-semibold text-white">
               {fmtMoeda(kpis.totalPedidos > 0 ? kpis.valorTotalComprado / kpis.totalPedidos : 0)}
             </span>
           </div>
         </div>
 
         {/* Mercadorias Entregues vs Pendentes */}
-        <div className="glass-strong rounded-2xl p-5 border border-white/5 flex flex-col justify-between hover:border-emerald-500/20 transition group">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
-                Entregue com Nota Fiscal
+        <div className="rounded-xl p-3.5 border border-emerald-400/30 bg-gradient-to-br from-emerald-600/20 via-[#062420] to-[#051415] shadow-md flex flex-col justify-between transition group">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-300 block truncate">
+                Entregue com NF
               </span>
-              <h2 className="text-3xl font-bold font-serif text-emerald-400 mt-1 tabular-nums">
+              <h2 className="text-xl font-bold font-serif text-emerald-300 mt-0.5 tabular-nums">
                 {fmtCompacto(kpis.valorEntregue)}
               </h2>
             </div>
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-110 transition">
-              <CheckCircle2 className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] pt-3 mt-3 border-t border-white/5 text-slate-400">
-            <span>Pendente de Entrega:</span>
-            <span className="text-amber-400 font-bold tabular-nums">
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/10 text-slate-300">
+            <span>Pendente:</span>
+            <span className="text-amber-300 font-bold tabular-nums">
               {fmtCompacto(kpis.valorPendente)}
             </span>
           </div>
         </div>
 
         {/* Orçamento CISS vs Saldo */}
-        <div className="glass-strong rounded-2xl p-5 border border-white/5 flex flex-col justify-between hover:border-purple-500/20 transition group">
-          <div className="flex items-start justify-between">
-            <div>
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">
-                Orçamento Lançado (CISS)
+        <div className="rounded-xl p-3.5 border border-violet-400/30 bg-gradient-to-br from-violet-600/20 via-[#181238] to-[#0b0a22] shadow-md flex flex-col justify-between transition group">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-300 block truncate">
+                Orçamento (CISS)
               </span>
-              <h2 className="text-3xl font-bold font-serif text-purple-400 mt-1 tabular-nums">
+              <h2 className="text-xl font-bold font-serif text-violet-300 mt-0.5 tabular-nums">
                 {fmtCompacto(kpis.totalOrcado)}
               </h2>
             </div>
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:scale-110 transition">
-              <FileSpreadsheet className="w-5 h-5" />
+            <div className="p-2 rounded-lg bg-violet-500/20 text-violet-300 border border-violet-400/30 shrink-0">
+              <FileSpreadsheet className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between text-[11px] pt-3 mt-3 border-t border-white/5 text-slate-400">
-            <span>Saldo da Verba:</span>
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/10 text-slate-300">
+            <span>Saldo Verba:</span>
             <span className={`font-bold tabular-nums ${kpis.saldoOrcamento >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {fmtCompacto(kpis.saldoOrcamento)}
             </span>
@@ -956,296 +758,328 @@ export function PedidosCompradoresModule({
       </div>
 
       {/* 4. SELETOR DE ABAS DO MÓDULO */}
-      <div className="flex items-center gap-4 border-b border-white/10 pb-1 flex-wrap">
+      <div className="inline-flex items-center gap-1.5 bg-white/[0.04] p-1.5 rounded-2xl border border-white/10 flex-wrap self-start">
         <button
           onClick={() => setActiveTab('compradores')}
-          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'compradores' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs transition ${activeTab === 'compradores' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}`}
         >
-          <User className="w-4 h-4" />
-          Acompanhamento por Comprador
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-primary/10 text-primary font-mono">
+          <User className="w-3.5 h-3.5" />
+          Compradores & Verba
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${activeTab === 'compradores' ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-300'}`}>
             {compradores.length}
           </span>
         </button>
 
         <button
-          onClick={() => setActiveTab('baterias')}
-          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'baterias' ? 'border-emerald-400 text-emerald-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          onClick={() => setActiveTab('pedidos')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs transition ${activeTab === 'pedidos' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}`}
         >
-          <BatteryCharging className="w-4 h-4 text-emerald-400" />
-          Baterias de Orçamento (Carga)
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 font-mono font-bold animate-pulse">
-            AO VIVO
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('graficos')}
-          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'graficos' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          Gráficos & Análises
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-400 font-mono font-bold">
-            NOVO
+          <ShoppingCart className="w-3.5 h-3.5" />
+          Pedidos & Validação NF
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${activeTab === 'pedidos' ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-300'}`}>
+            {pedidosFiltrados.length}
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('orcamentos')}
-          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'orcamentos' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs transition ${activeTab === 'orcamentos' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}`}
         >
-          <FileSpreadsheet className="w-4 h-4" />
-          Orçamentos Lançados (CISS)
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-purple-500/10 text-purple-400 font-mono">
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          Orçamentos CISS
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${activeTab === 'orcamentos' ? 'bg-white/20 text-white' : 'bg-white/10 text-slate-300'}`}>
             {orcamentos.length}
           </span>
         </button>
 
         <button
-          onClick={() => setActiveTab('pedidos')}
-          className={`flex items-center gap-2 pb-3 font-serif font-bold text-sm border-b-2 transition ${activeTab === 'pedidos' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
+          onClick={() => setActiveTab('graficos')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs transition ${activeTab === 'graficos' ? 'bg-primary text-white shadow-md' : 'text-slate-400 hover:text-slate-100 hover:bg-white/5'}`}
         >
-          <ShoppingCart className="w-4 h-4" />
-          Lista de Pedidos & Validação NF
-          <span className="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/10 text-cyan-400 font-mono">
-            {pedidosFiltrados.length}
-          </span>
+          <BarChart3 className="w-3.5 h-3.5" />
+          Gráficos & Análises
         </button>
       </div>
 
       {/* 5. CONTEÚDO DAS ABAS */}
 
-      {/* ABA 1: COMPRADORES COM PAINEL LATERAL DE BATERIAS */}
+      {/* ABA 1: COMPRADORES & ORÇAMENTO (VISÃO EXECUTIVA COMPLETA) */}
       {activeTab === 'compradores' && (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-          {/* COLUNA PRINCIPAL (ESQUERDA - 8 COLS): TABELA DETALHADA */}
-          <div className="xl:col-span-8 flex flex-col gap-4">
-            <div className="glass-strong rounded-2xl p-6 border border-white/5 flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-bold font-serif text-slate-100 flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    Desempenho & Pedidos por Comprador
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    Relação de pedidos digitados, status de entrega validado pela entrada de NF e cumprimento da verba orçamentária.
-                  </p>
+        <div className="flex flex-col gap-4">
+          {/* Gráfico em Destaque no Topo: Compras por Seção */}
+          <div className="glass-strong rounded-2xl p-4 sm:p-5 border border-white/10 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold font-serif text-slate-100 flex items-center gap-2">
+                  <Package className="w-4 h-4 text-emerald-400" />
+                  Compras por Seção (Valor & Participação)
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Total comprado por seção no período e loja selecionados
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 font-semibold">Exibir:</span>
+                <select
+                  value={limiteSecoes}
+                  onChange={(e) => setLimiteSecoes(Number(e.target.value))}
+                  className="bg-black/40 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-slate-200 focus:outline-none focus:border-primary"
+                >
+                  <option value={6}>Top 6 Seções</option>
+                  <option value={10}>Top 10 Seções</option>
+                  <option value={15}>Top 15 Seções</option>
+                  <option value={50}>Todas</option>
+                </select>
+              </div>
+            </div>
+
+            {(graficos.totalPorSecao || []).length === 0 ? (
+              <div className="h-44 flex items-center justify-center text-xs text-slate-500 italic">
+                Sem dados de compras por seção para o filtro selecionado.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                <div className="lg:col-span-8 h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={(graficos.totalPorSecao || []).slice(0, limiteSecoes)}
+                      margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.25} />
+                      <XAxis type="number" tickFormatter={fmtCompacto} stroke="#94a3b8" tick={{ fontSize: 10, fill: '#cbd5e1' }} />
+                      <YAxis
+                        type="category"
+                        dataKey="secao"
+                        width={115}
+                        stroke="#94a3b8"
+                        tick={{ fontSize: 10, fill: '#e2e8f0' }}
+                      />
+                      <Tooltip content={<CustomTooltipGrafico />} />
+                      <Bar dataKey="total" name="Total Comprado (R$)" fill="#10b981" radius={[0, 6, 6, 0]}>
+                        {(graficos.totalPorSecao || []).slice(0, limiteSecoes).map((_: any, index: number) => (
+                          <Cell key={`top-sec-cell-${index}`} fill={PALETA_CORES[index % PALETA_CORES.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="lg:col-span-4 bg-black/30 rounded-xl p-3.5 border border-white/5 flex flex-col gap-2.5 overflow-y-auto max-h-64">
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10 pb-1.5">
+                    Ranking por Seção (%)
+                  </h4>
+                  {(graficos.totalPorSecao || []).slice(0, limiteSecoes).map((sec: any, idx: number) => {
+                    const totalCompras = kpis.valorTotalComprado || 1;
+                    const percentual = (sec.total / totalCompras) * 100;
+                    return (
+                      <div key={idx} className="flex flex-col gap-1 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-semibold text-slate-200 truncate flex items-center gap-1.5 text-[11px]">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: PALETA_CORES[idx % PALETA_CORES.length] }}
+                            />
+                            {sec.secao}
+                          </span>
+                          <span className="font-mono font-bold text-slate-100 text-[11px] shrink-0">
+                            {fmtCompacto(sec.total)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.min(percentual, 100)}%`,
+                                backgroundColor: PALETA_CORES[idx % PALETA_CORES.length]
+                              }}
+                            />
+                          </div>
+                          <span className="font-mono text-[10px] text-slate-400 w-10 text-right shrink-0">
+                            {percentual.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            )}
+          </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-3 font-semibold">Comprador</th>
-                      <th className="py-3 px-2 font-semibold text-center">Pedidos</th>
-                      <th className="py-3 px-2 font-semibold text-center">Entregues</th>
-                      <th className="py-3 px-2 font-semibold text-center">% Ent.</th>
-                      <th className="py-3 px-3 font-semibold text-right">Comprado (R$)</th>
-                      <th className="py-3 px-3 font-semibold text-right">Orçado (CISS)</th>
-                      <th className="py-3 px-3 font-semibold text-right">Saldo Verba</th>
-                      <th className="py-3 px-2 font-semibold text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {compradores.map((comp, idx) => {
-                      const percEnt = comp.TOTAL_PEDIDOS > 0 ? (comp.PEDIDOS_ENTREGUES / comp.TOTAL_PEDIDOS) * 100 : 0;
-                      const saldo = comp.ORCADO > 0 ? comp.ORCADO - comp.VALOR_TOTAL_COMPRADO : 0;
-                      const isFiltroAtivo = String(filtroComprador) === String(comp.IDUSUARIO);
+          {/* Faixa Resumo Horizontal: Orçamento Geral da Rede */}
+          {kpis.totalOrcado > 0 && (() => {
+            const pctUsadoRede = Math.min(100, (kpis.valorTotalComprado / kpis.totalOrcado) * 100);
+            const pctLivreRede = Math.max(0, 100 - pctUsadoRede);
+            const estourado = kpis.saldoOrcamento < 0;
+            return (
+              <div className="glass-strong rounded-2xl p-4 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl border ${estourado ? 'bg-rose-500/20 border-rose-500/30 text-rose-300' : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'}`}>
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Orçamento Consolidado da Rede</div>
+                    <div className="text-[11px] text-slate-400">
+                      {estourado ? 'Teto ultrapassado' : `${pctLivreRede.toFixed(1)}% disponível (${pctUsadoRede.toFixed(1)}% utilizado)`}
+                    </div>
+                  </div>
+                </div>
 
-                      return (
-                        <tr 
-                          key={comp.IDUSUARIO || idx} 
-                          className={`hover:bg-white/[0.04] transition cursor-pointer ${isFiltroAtivo ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
-                          onClick={() => setFiltroComprador(isFiltroAtivo ? 'todos' : String(comp.IDUSUARIO))}
-                        >
-                          <td className="py-3.5 px-3 font-semibold text-slate-200 flex items-center gap-2">
+                <div className="flex-1 max-w-md w-full">
+                  <div className="h-2.5 w-full rounded-full bg-slate-950/90 border border-white/10 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${estourado ? 'bg-rose-500' : pctLivreRede < 20 ? 'bg-amber-400' : 'bg-gradient-to-r from-emerald-500 to-cyan-400'}`}
+                      style={{ width: `${Math.max(4, pctUsadoRede)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-5 text-xs shrink-0 flex-wrap">
+                  <div>
+                    <span className="block text-[10px] text-slate-400 uppercase">Orçado</span>
+                    <span className="font-mono font-bold text-violet-300">{fmtMoeda(kpis.totalOrcado)}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-400 uppercase">Comprado</span>
+                    <span className="font-mono font-bold text-blue-300">{fmtMoeda(kpis.valorTotalComprado)}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] text-slate-400 uppercase">Saldo Verba</span>
+                    <span className={`font-mono font-bold ${estourado ? 'text-rose-400' : 'text-emerald-400'}`}>
+                      {fmtMoeda(kpis.saldoOrcamento)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Tabela Executiva de Compradores (Largura Total) */}
+          <div className="glass-strong rounded-2xl p-5 border border-white/10 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-bold font-serif text-slate-100 flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Desempenho & Verba por Comprador
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Clique em um comprador para filtrar ou abra diretamente seus pedidos.
+                </p>
+              </div>
+              <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-white/5 text-slate-300 border border-white/10">
+                {compradores.length} compradores ativos
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="py-2.5 px-3 font-semibold">Comprador</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">Pedidos / Entregues</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Orçado (CISS)</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Comprado (R$)</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">Saldo Verba</th>
+                    <th className="py-2.5 px-3 font-semibold w-44">Consumo da Verba</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {compradores.map((comp, idx) => {
+                    const percEnt = comp.TOTAL_PEDIDOS > 0 ? (comp.PEDIDOS_ENTREGUES / comp.TOTAL_PEDIDOS) * 100 : 0;
+                    const saldo = comp.ORCADO > 0 ? comp.ORCADO - comp.VALOR_TOTAL_COMPRADO : 0;
+                    const percUsado = comp.ORCADO > 0 ? (comp.VALOR_TOTAL_COMPRADO / comp.ORCADO) * 100 : 0;
+                    const isEstourado = comp.ORCADO > 0 && saldo < 0;
+                    const isFiltroAtivo = String(filtroComprador) === String(comp.IDUSUARIO);
+
+                    return (
+                      <tr
+                        key={comp.IDUSUARIO || idx}
+                        className={`hover:bg-white/[0.04] transition cursor-pointer ${isFiltroAtivo ? 'bg-primary/10 border-l-2 border-primary' : ''}`}
+                        onClick={() => setFiltroComprador(isFiltroAtivo ? 'todos' : String(comp.IDUSUARIO))}
+                      >
+                        <td className="py-3 px-3 font-semibold text-slate-100">
+                          <div className="flex items-center gap-2.5">
                             <span
                               className="w-2.5 h-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: cores[idx % cores.length] }}
                             />
                             <div>
-                              <span>{comp.COMPRADOR}</span>
+                              <span className="block">{comp.COMPRADOR}</span>
                               <span className="block text-[10px] text-slate-500 font-mono">ID {comp.IDUSUARIO}</span>
                             </div>
-                          </td>
-                          <td className="py-3.5 px-2 text-center font-mono font-bold text-slate-100">
-                            {comp.TOTAL_PEDIDOS}
-                          </td>
-                          <td className="py-3.5 px-2 text-center font-mono font-bold text-emerald-400">
-                            {comp.PEDIDOS_ENTREGUES}
-                          </td>
-                          <td className="py-3.5 px-2 text-center">
-                            <span className="font-mono text-[10px] text-slate-300">
-                              {percEnt.toFixed(0)}%
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="font-mono font-bold text-slate-100">
+                            {comp.TOTAL_PEDIDOS} <span className="text-slate-500 font-normal">/</span> <span className="text-emerald-400">{comp.PEDIDOS_ENTREGUES} NF</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">{percEnt.toFixed(0)}% entregue</div>
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-violet-300">
+                          {comp.ORCADO > 0 ? fmtMoeda(comp.ORCADO) : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-blue-300">
+                          {fmtMoeda(comp.VALOR_TOTAL_COMPRADO)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-bold">
+                          {comp.ORCADO > 0 ? (
+                            <span className={`px-2 py-0.5 rounded-md ${isEstourado ? 'bg-rose-500/15 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                              {fmtMoeda(saldo)}
                             </span>
-                          </td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold text-indigo-400">
-                            {fmtMoeda(comp.VALOR_TOTAL_COMPRADO)}
-                          </td>
-                          <td className="py-3.5 px-3 text-right font-mono text-purple-400">
-                            {comp.ORCADO > 0 ? fmtMoeda(comp.ORCADO) : '-'}
-                          </td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold">
-                            {comp.ORCADO > 0 ? (
-                              <span className={saldo >= 0 ? 'text-emerald-400' : 'text-rose-400 font-black'}>
-                                {fmtMoeda(saldo)}
-                              </span>
-                            ) : (
-                              <span className="text-slate-500">-</span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-2 text-center">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFiltroComprador(String(comp.IDUSUARIO));
-                                setActiveTab('pedidos');
-                              }}
-                              className="px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition"
-                            >
-                              Ver Pedidos
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {compradores.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="py-8 text-center text-slate-500">
-                          Nenhum dado encontrado para o período selecionado.
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3">
+                          {comp.ORCADO > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex justify-between text-[10px] font-mono">
+                                <span className={isEstourado ? 'text-rose-400 font-bold' : 'text-slate-300'}>
+                                  {percUsado.toFixed(0)}% usado
+                                </span>
+                                <span className="text-slate-400">
+                                  {isEstourado ? 'Estourado' : `${Math.max(0, 100 - percUsado).toFixed(0)}% livre`}
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${isEstourado ? 'bg-rose-500' : percUsado > 80 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                                  style={{ width: `${Math.min(100, Math.max(3, percUsado))}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-500">Sem orçamento CISS</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFiltroComprador(String(comp.IDUSUARIO));
+                              setActiveTab('pedidos');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/25 text-[11px] font-semibold transition"
+                          >
+                            Ver Pedidos
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  })}
+                  {compradores.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-500">
+                        Nenhum dado encontrado para o período selecionado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
-
-          {/* COLUNA LATERAL (DIREITA - 4 COLS): PAINEL DE BATERIAS DE ORÇAMENTO */}
-          <div className="xl:col-span-4 flex flex-col gap-4 sticky top-4">
-            {/* Header do Painel Lateral */}
-            <div className="glass-strong rounded-2xl p-4 border border-white/10 flex items-center justify-between bg-gradient-to-r from-slate-900 to-emerald-950/30">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                  <BatteryCharging className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-white">Nível das Baterias</h4>
-                  <p className="text-[10px] text-slate-400">Saldo restante descontado em tempo real</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {compradores.length} COMPRADORES
-              </span>
-            </div>
-
-            {/* Bateria Consolidada da Rede */}
-            {kpis.totalOrcado > 0 && (
-              <BatteryBudgetGauge
-                compradorNome="Bateria Geral da Rede"
-                idUsuario={0}
-                orcado={kpis.totalOrcado}
-                comprado={kpis.valorTotalComprado}
-                saldo={kpis.saldoOrcamento}
-                totalPedidos={kpis.totalPedidos}
-              />
-            )}
-
-            {/* Baterias Individuais por Comprador */}
-            <div className="flex flex-col gap-3">
-              {compradores.map((comp) => (
-                <BatteryBudgetGauge
-                  key={comp.IDUSUARIO}
-                  compradorNome={comp.COMPRADOR}
-                  idUsuario={comp.IDUSUARIO}
-                  orcado={comp.ORCADO}
-                  comprado={comp.VALOR_TOTAL_COMPRADO}
-                  saldo={comp.SALDO_ORCAMENTO}
-                  totalPedidos={comp.TOTAL_PEDIDOS}
-                  selected={String(filtroComprador) === String(comp.IDUSUARIO)}
-                  onVerPedidos={() => {
-                    setFiltroComprador(String(comp.IDUSUARIO));
-                    setActiveTab('pedidos');
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ABA NOVA: BATERIAS DE ORÇAMENTO (VISÃO DEDICADA AMPLA) */}
-      {activeTab === 'baterias' && (
-        <div className="flex flex-col gap-6">
-          <div className="glass-strong rounded-2xl p-6 border border-white/10 relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-lg shadow-emerald-500/20 flex items-center justify-center">
-                  <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                    <BatteryCharging className="size-6 text-emerald-400" />
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white font-serif flex items-center gap-2">
-                    Monitoramento de Carga de Orçamento (Baterias de Compra)
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Acompanhamento simultâneo do consumo da verba por comprador — a bateria descarrega conforme novos pedidos são digitados
-                  </p>
-                </div>
-              </div>
-
-              {/* Legenda de Cores da Bateria */}
-              <div className="flex items-center gap-3 text-xs bg-black/40 border border-white/10 px-3.5 py-2 rounded-xl">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  &gt; 45% (Confortável)
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  20% a 45% (Atenção)
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-400 font-semibold text-[11px]">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  &lt; 20% (Crítico / Esgotado)
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Grid Panorâmico de Baterias */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Bateria Master da Rede */}
-            <div className="md:col-span-2 lg:col-span-3">
-              <BatteryBudgetGauge
-                compradorNome="Bateria Geral Consolidada da Rede (Todos os Compradores)"
-                idUsuario={0}
-                orcado={kpis.totalOrcado}
-                comprado={kpis.valorTotalComprado}
-                saldo={kpis.saldoOrcamento}
-                totalPedidos={kpis.totalPedidos}
-              />
-            </div>
-
-            {/* Baterias Individuais */}
-            {compradores.map((comp) => (
-              <BatteryBudgetGauge
-                key={comp.IDUSUARIO}
-                compradorNome={comp.COMPRADOR}
-                idUsuario={comp.IDUSUARIO}
-                orcado={comp.ORCADO}
-                comprado={comp.VALOR_TOTAL_COMPRADO}
-                saldo={comp.SALDO_ORCAMENTO}
-                totalPedidos={comp.TOTAL_PEDIDOS}
-                selected={String(filtroComprador) === String(comp.IDUSUARIO)}
-                onVerPedidos={() => {
-                  setFiltroComprador(String(comp.IDUSUARIO));
-                  setActiveTab('pedidos');
-                }}
-              />
-            ))}
           </div>
         </div>
       )}
@@ -1728,17 +1562,12 @@ export function PedidosCompradoresModule({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-3 font-semibold">Nº Pedido</th>
-                  <th className="py-3 px-3 font-semibold">Condição / Boleto</th>
-                  <th className="py-3 px-3 font-semibold">Loja</th>
-                  <th className="py-3 px-3 font-semibold">Data / Hora</th>
-                  <th className="py-3 px-3 font-semibold">Comprador</th>
-                  <th className="py-3 px-3 font-semibold">Fornecedor</th>
-                  <th className="py-3 px-3 font-semibold text-center">Itens</th>
-                  <th className="py-3 px-3 font-semibold text-right">Valor Total (R$)</th>
-                  <th className="py-3 px-3 font-semibold text-center">Status Entrega</th>
-                  <th className="py-3 px-3 font-semibold text-left">Nota Fiscal (Entrada)</th>
-                  <th className="py-3 px-3 font-semibold text-left">Conferente</th>
+                  <th className="py-3 px-3 font-semibold">Pedido / Loja / Data</th>
+                  <th className="py-3 px-3 font-semibold">Fornecedor & Comprador</th>
+                  <th className="py-3 px-3 font-semibold text-right">Valor Total / Itens</th>
+                  <th className="py-3 px-3 font-semibold">Pagamento / Boleto</th>
+                  <th className="py-3 px-3 font-semibold">Status & NF Entrada</th>
+                  <th className="py-3 px-3 font-semibold">Conferente</th>
                   <th className="py-3 px-3 font-semibold text-center">Ações</th>
                 </tr>
               </thead>
@@ -1746,74 +1575,71 @@ export function PedidosCompradoresModule({
                 {pedidosFiltrados.map((ped) => {
                   const entregue = ped.STATUS === 'Entregue';
                   return (
-                    <tr key={`${ped.IDPEDIDO}-${ped.IDEMPRESA}`} className="hover:bg-white/[0.02] transition">
-                      <td className="py-3 px-3 font-mono font-bold text-slate-100">
-                        #{ped.IDPEDIDO}
-                      </td>
+                    <tr key={`${ped.IDPEDIDO}-${ped.IDEMPRESA}`} className="hover:bg-white/[0.03] transition">
                       <td className="py-3 px-3">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate-200 text-[11px] truncate max-w-[160px]" title={ped.CONDICAO_PAGTO || 'Não Informado'}>
-                            {ped.CONDICAO_PAGTO || 'Não Informado'}
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-100">#{ped.IDPEDIDO}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-300 text-[10px] font-medium">
+                            Loja {ped.IDEMPRESA}
                           </span>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 font-mono font-medium">
-                              <Clock className="w-2.5 h-2.5" />
-                              {ped.PRAZO && ped.PRAZO !== '0' ? `${ped.PRAZO}d` : 'À vista'}
-                            </span>
-                            {ped.DATA_BOLETO && (
-                              <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-300 font-mono" title={`Data de Vencimento do Boleto: ${ped.DATA_BOLETO}`}>
-                                <Calendar className="w-2.5 h-2.5 text-cyan-400" />
-                                {ped.DATA_BOLETO}
-                              </span>
-                            )}
-                          </div>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          {fmtData(ped.DATA_PEDIDO)} {ped.HORA_PEDIDO ? ped.HORA_PEDIDO.substring(0, 5) : ''}
                         </div>
                       </td>
-                      <td className="py-3 px-3 font-medium text-slate-300">
-                        Loja {ped.IDEMPRESA}
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-slate-200 max-w-[240px] truncate" title={ped.FORNECEDOR}>
+                          {ped.FORNECEDOR}
+                        </div>
+                        <div className="text-[11px] text-cyan-300/90 mt-0.5">
+                          Comprador: {ped.COMPRADOR}
+                        </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">
-                        {fmtData(ped.DATA_PEDIDO)} {ped.HORA_PEDIDO ? ped.HORA_PEDIDO.substring(0, 5) : ''}
+                      <td className="py-3 px-3 text-right">
+                        <div className="font-mono font-bold text-sm text-blue-300 tabular-nums">
+                          {fmtMoeda(ped.VALOR_TOTAL)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {ped.QTD_ITENS} {ped.QTD_ITENS === 1 ? 'item' : 'itens'}
+                        </div>
                       </td>
-                      <td className="py-3 px-3 font-semibold text-slate-200">
-                        {ped.COMPRADOR}
+                      <td className="py-3 px-3">
+                        <div className="font-semibold text-slate-200 text-[11px] truncate max-w-[160px]" title={ped.CONDICAO_PAGTO || 'Não Informado'}>
+                          {ped.CONDICAO_PAGTO || 'Não Informado'}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400 font-mono">
+                            <Clock className="w-2.5 h-2.5" />
+                            {ped.PRAZO && ped.PRAZO !== '0' ? `${ped.PRAZO}d` : 'À vista'}
+                          </span>
+                          {ped.DATA_BOLETO && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] text-cyan-300 font-mono" title={`Vencimento Boleto: ${ped.DATA_BOLETO}`}>
+                              <Calendar className="w-2.5 h-2.5 text-cyan-400" />
+                              {ped.DATA_BOLETO}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-300 max-w-xs truncate" title={ped.FORNECEDOR}>
-                        {ped.FORNECEDOR}
-                      </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-300">
-                        {ped.QTD_ITENS}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-indigo-400">
-                        {fmtMoeda(ped.VALOR_TOTAL)}
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${entregue ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${entregue ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-amber-500/10 border-amber-500/25 text-amber-400'}`}
                         >
                           {entregue ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                           {entregue ? 'Entregue' : 'Pendente'}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-[11px]">
-                        {ped.NOTAS_FISCAIS ? (
-                          <div className="flex flex-col">
-                            <span className="text-emerald-300 font-bold">NF: {ped.NOTAS_FISCAIS}</span>
-                            {ped.DATA_ENTRADA_NF && (
-                              <span className="text-[10px] text-slate-500">
-                                Entrada: {fmtData(ped.DATA_ENTRADA_NF)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 italic">Aguardando NF</span>
-                        )}
+                        <div className="font-mono text-[10px] mt-1">
+                          {ped.NOTAS_FISCAIS ? (
+                            <span className="text-emerald-300 font-semibold">
+                              NF {ped.NOTAS_FISCAIS}{ped.DATA_ENTRADA_NF ? ` • ${fmtData(ped.DATA_ENTRADA_NF)}` : ''}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 italic">Aguardando NF</span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-3">
                         {ped.NOME_CONFERENTE ? (
-                          <div className="flex flex-col">
-                            <span className="text-cyan-300 font-semibold text-[11px]">{ped.NOME_CONFERENTE}</span>
-                          </div>
+                          <span className="text-cyan-300 font-semibold text-[11px]">{ped.NOME_CONFERENTE}</span>
                         ) : (
                           <span className="text-slate-600 italic text-[10px]">—</span>
                         )}
@@ -1821,7 +1647,7 @@ export function PedidosCompradoresModule({
                       <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => abrirItensPedido(ped)}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[10px] font-semibold transition flex items-center gap-1 mx-auto"
+                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-[11px] font-semibold transition flex items-center gap-1 mx-auto"
                         >
                           <Eye className="w-3 h-3 text-primary" />
                           Itens

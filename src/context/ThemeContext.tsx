@@ -20,10 +20,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("horus_theme");
+        const saved = localStorage.getItem("horus_theme_v2");
         if (saved === "light" || saved === "dark") return saved;
       } catch (e) {
-        console.error("Erro ao ler horus_theme:", e);
+        console.error("Erro ao ler horus_theme_v2:", e);
       }
     }
     return "dark";
@@ -49,9 +49,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      localStorage.setItem("horus_theme", nextTheme);
+      localStorage.setItem("horus_theme_v2", nextTheme);
     } catch (e) {
-      console.error("Erro ao salvar horus_theme:", e);
+      console.error("Erro ao salvar horus_theme_v2:", e);
     }
   };
 

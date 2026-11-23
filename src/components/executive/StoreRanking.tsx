@@ -71,7 +71,7 @@ export function StoreRanking({ mode, selectedStore, startDate, endDate }: { mode
   }
 
   return (
-    <div className={`glass-strong rounded-2xl p-4 min-h-[220px] flex flex-col relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
+    <div className={`glass-strong rounded-2xl p-4 h-full min-h-[220px] flex flex-col relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
       {loading && (
         <div className="absolute top-4 right-4 flex items-center justify-center">
            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -138,7 +138,7 @@ export function StoreRanking({ mode, selectedStore, startDate, endDate }: { mode
                   </span>
                   <div className="min-w-0">
                     <div className="truncate font-semibold text-sm text-slate-100 group-hover:text-white transition-colors">
-                      {loja.name}
+                      {String(loja.name || "").replace(/Itapu\uFFFD/gi, "Itapuã")}
                     </div>
                     <div className="text-[10px] text-slate-500">
                       {loja.numNotas > 0 ? `${loja.numNotas} notas` : ""}

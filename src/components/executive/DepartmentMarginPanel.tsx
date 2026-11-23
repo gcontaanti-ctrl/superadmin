@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useTheme } from "@/context/ThemeContext";
 import {
   ComposedChart,
   Bar,
@@ -8,7 +9,9 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Legend
+  Legend,
+  LabelList,
+  Cell
 } from "recharts";
 import {
   Loader2,
@@ -93,76 +96,16 @@ interface ComparativoResponse {
 
 const DEMO_RESPONSE: ApiResponse = {
   summary: {
-    totalFaturamento: 11030842,
-    totalLucro: 2562419,
-    totalNotas: 340263,
-    margemMediaGeral: 23.23,
-    totalDepartamentos: 16,
-    topDepartamento: "AÇOUGUE",
-    maiorMargemDept: "RESTAURANTE"
+    totalFaturamento: 0,
+    totalLucro: 0,
+    totalNotas: 0,
+    margemMediaGeral: 0,
+    totalDepartamentos: 0,
+    topDepartamento: "-",
+    maiorMargemDept: "-"
   },
-  departamentos: [
-    {
-      departamento: "AÇOUGUE",
-      faturamento: 2214917,
-      lucro: 448066,
-      custo: 1766851,
-      margemPct: 20.23,
-      notas: 24051,
-      lojas: [
-        { idEmpresa: 1, nomeLoja: "Super Atacado Antares", faturamento: 598810, lucro: 128744, custo: 470066, margemPct: 21.5, notas: 5326 },
-        { idEmpresa: 2, nomeLoja: "Super Atacado Marechal", faturamento: 557675, lucro: 110420, custo: 447255, margemPct: 19.8, notas: 5271 },
-        { idEmpresa: 3, nomeLoja: "Super Atacado Village", faturamento: 312400, lucro: 59356, custo: 253044, margemPct: 19.0, notas: 3410 },
-        { idEmpresa: 4, nomeLoja: "Super Atacado Graciliano", faturamento: 289500, lucro: 58768, custo: 230732, margemPct: 20.3, notas: 3105 },
-        { idEmpresa: 5, nomeLoja: "Super Atacado Praia", faturamento: 245100, lucro: 48285, custo: 196815, margemPct: 19.7, notas: 2890 },
-        { idEmpresa: 6, nomeLoja: "Super Varejo Satuba", faturamento: 112432, lucro: 21587, custo: 90845, margemPct: 19.2, notas: 1950 },
-        { idEmpresa: 7, nomeLoja: "Super Atacado Paripueira", faturamento: 99000, lucro: 20097, custo: 78903, margemPct: 20.3, notas: 2099 }
-      ]
-    },
-    {
-      departamento: "CONGELADO",
-      faturamento: 2060271,
-      lucro: 510305,
-      custo: 1549966,
-      margemPct: 24.77,
-      notas: 37969,
-      lojas: [
-        { idEmpresa: 2, nomeLoja: "Super Atacado Marechal", faturamento: 466700, lucro: 112941, custo: 353759, margemPct: 24.2, notas: 8196 },
-        { idEmpresa: 1, nomeLoja: "Super Atacado Antares", faturamento: 466497, lucro: 123155, custo: 343342, margemPct: 26.4, notas: 7724 },
-        { idEmpresa: 3, nomeLoja: "Super Atacado Village", faturamento: 320100, lucro: 74903, custo: 245197, margemPct: 23.4, notas: 5900 },
-        { idEmpresa: 4, nomeLoja: "Super Atacado Graciliano", faturamento: 310500, lucro: 77314, custo: 233186, margemPct: 24.9, notas: 5610 },
-        { idEmpresa: 5, nomeLoja: "Super Atacado Praia", faturamento: 265000, lucro: 64130, custo: 200870, margemPct: 24.2, notas: 5040 },
-        { idEmpresa: 6, nomeLoja: "Super Varejo Satuba", faturamento: 124000, lucro: 29140, custo: 94860, margemPct: 23.5, notas: 2900 },
-        { idEmpresa: 7, nomeLoja: "Super Atacado Paripueira", faturamento: 107474, lucro: 26653, custo: 80821, margemPct: 24.8, notas: 2599 }
-      ]
-    },
-    {
-      departamento: "BEBIDAS",
-      faturamento: 1643629,
-      lucro: 306483,
-      custo: 1337146,
-      margemPct: 18.65,
-      notas: 46607,
-      lojas: [
-        { idEmpresa: 2, nomeLoja: "Super Atacado Marechal", faturamento: 418857, lucro: 76650, custo: 342207, margemPct: 18.3, notas: 9604 },
-        { idEmpresa: 1, nomeLoja: "Super Atacado Antares", faturamento: 395400, lucro: 78684, custo: 316716, margemPct: 19.9, notas: 9100 },
-        { idEmpresa: 4, nomeLoja: "Super Atacado Graciliano", faturamento: 275000, lucro: 51700, custo: 223300, margemPct: 18.8, notas: 8200 },
-        { idEmpresa: 3, nomeLoja: "Super Atacado Village", faturamento: 255000, lucro: 44880, custo: 210120, margemPct: 17.6, notas: 7900 },
-        { idEmpresa: 5, nomeLoja: "Super Atacado Praia", faturamento: 189000, lucro: 34398, custo: 154602, margemPct: 18.2, notas: 5900 },
-        { idEmpresa: 7, nomeLoja: "Super Atacado Paripueira", faturamento: 56000, lucro: 10472, custo: 45528, margemPct: 18.7, notas: 3100 },
-        { idEmpresa: 6, nomeLoja: "Super Varejo Satuba", faturamento: 54372, lucro: 9678, custo: 44694, margemPct: 17.8, notas: 2803 }
-      ]
-    }
-  ],
-  lojas: [
-    { idEmpresa: 1, nome: "Super Atacado Antares" },
-    { idEmpresa: 2, nome: "Super Atacado Marechal" },
-    { idEmpresa: 3, nome: "Super Atacado Village" },
-    { idEmpresa: 4, nome: "Super Atacado Graciliano" },
-    { idEmpresa: 5, nome: "Super Atacado Praia" },
-    { idEmpresa: 6, nome: "Super Varejo Satuba" },
-    { idEmpresa: 7, nome: "Super Atacado Paripueira" }
-  ],
+  departamentos: [],
+  lojas: [],
   rawData: []
 };
 
@@ -177,6 +120,7 @@ export function DepartmentMarginPanel({
   startDate?: string;
   endDate?: string;
 }) {
+  const { isDark } = useTheme();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [comparativoData, setComparativoData] = useState<ComparativoResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -359,8 +303,8 @@ export function DepartmentMarginPanel({
         </div>
 
         {/* Mini KPIs Executivos */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="bg-black/30 border border-white/5 rounded-xl px-3.5 py-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
+          <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-2">
             <div className="text-[10px] text-slate-400 flex items-center gap-1">
               <DollarSign className="w-3 h-3 text-cyan-400" /> Faturamento Total
             </div>
@@ -369,7 +313,7 @@ export function DepartmentMarginPanel({
             </div>
           </div>
 
-          <div className="bg-black/30 border border-white/5 rounded-xl px-3.5 py-2">
+          <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-2">
             <div className="text-[10px] text-slate-400 flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-emerald-400" /> Lucro Bruto
             </div>
@@ -378,7 +322,7 @@ export function DepartmentMarginPanel({
             </div>
           </div>
 
-          <div className="bg-black/30 border border-white/5 rounded-xl px-3.5 py-2">
+          <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-2">
             <div className="text-[10px] text-slate-400 flex items-center gap-1">
               <Percent className="w-3 h-3 text-purple-400" /> Margem Média
             </div>
@@ -387,7 +331,7 @@ export function DepartmentMarginPanel({
             </div>
           </div>
 
-          <div className="hidden sm:block bg-black/30 border border-white/5 rounded-xl px-3.5 py-2">
+          <div className="bg-black/30 border border-white/10 rounded-xl px-3 py-2">
             <div className="text-[10px] text-slate-400 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-400" /> Maior Margem
             </div>
@@ -401,144 +345,10 @@ export function DepartmentMarginPanel({
         </div>
       </div>
 
-      {/* Barra de Filtros e Controles de Visualização */}
+      {/* Barra de Controles de Visualização e Ordenação */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        {/* Controles de Loja, Data e Ordenação */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Seletor de Loja Interno */}
-          <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={localStoreFilter}
-              onChange={(e) => setLocalStoreFilter(e.target.value)}
-              className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer pr-1"
-            >
-              <option value="todas" className="bg-slate-900 text-slate-200">
-                Todas as Lojas (Consolidado)
-              </option>
-              {activeData.lojas?.map((l) => (
-                <option key={l.idEmpresa} value={String(l.idEmpresa)} className="bg-slate-900 text-slate-200">
-                  {l.nome || `Loja ${l.idEmpresa}`}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filtro de Data Integrado (apenas quando não em modo comparativo 3 meses) */}
-          {viewType !== "comparativo" && (
-            <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-slate-400 text-[11px] hidden sm:inline">Período:</span>
-              <input
-                type="date"
-                value={localStartDate}
-                onChange={(e) => {
-                  setLocalStartDate(e.target.value);
-                  setSelectedPeriodPreset("custom");
-                }}
-                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-xs font-semibold [color-scheme:dark] max-w-[110px]"
-                title="Data Inicial"
-              />
-              <span className="text-slate-500 text-[10px]">até</span>
-              <input
-                type="date"
-                value={localEndDate}
-                onChange={(e) => {
-                  setLocalEndDate(e.target.value);
-                  setSelectedPeriodPreset("custom");
-                }}
-                className="bg-transparent border-none text-slate-200 focus:outline-none cursor-pointer text-xs font-semibold [color-scheme:dark] max-w-[110px]"
-                title="Data Final"
-              />
-            </div>
-          )}
-
-          {/* Presets Rápidos */}
-          <div className="hidden xl:flex items-center gap-1 bg-black/20 border border-white/5 rounded-xl p-0.5 text-[11px]">
-            <button
-              type="button"
-              onClick={() => applyPreset("maio-2026")}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
-                selectedPeriodPreset === "maio-2026" && viewType !== "comparativo"
-                  ? "bg-primary/20 text-primary font-semibold border border-primary/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Maio/26
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset("abril-2026")}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
-                selectedPeriodPreset === "abril-2026" && viewType !== "comparativo"
-                  ? "bg-primary/20 text-primary font-semibold border border-primary/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Abril/26
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset("ultimos-7-dias")}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
-                selectedPeriodPreset === "ultimos-7-dias" && viewType !== "comparativo"
-                  ? "bg-primary/20 text-primary font-semibold border border-primary/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              7 dias
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset("ultimos-15-dias")}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
-                selectedPeriodPreset === "ultimos-15-dias" && viewType !== "comparativo"
-                  ? "bg-primary/20 text-primary font-semibold border border-primary/30"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              15 dias
-            </button>
-            <button
-              type="button"
-              onClick={() => applyPreset("ultimos-3-meses")}
-              className={`px-2.5 py-0.5 rounded-lg transition-colors flex items-center gap-1 ${
-                viewType === "comparativo"
-                  ? "bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40"
-                  : "text-emerald-400/80 hover:text-emerald-300 hover:bg-emerald-500/10"
-              }`}
-            >
-              <History className="w-3 h-3" />
-              3 Meses
-            </button>
-          </div>
-
-          {/* Ordenação */}
-          {viewType !== "comparativo" && (
-            <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1 text-xs">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-slate-400 text-[11px]">Ordenar:</span>
-              <select
-                value={sortBy}
-                onChange={(e: any) => setSortBy(e.target.value)}
-                className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer"
-              >
-                <option value="faturamento" className="bg-slate-900 text-slate-200">
-                  Maior Faturamento
-                </option>
-                <option value="margemPct" className="bg-slate-900 text-slate-200">
-                  Maior Margem %
-                </option>
-                <option value="lucro" className="bg-slate-900 text-slate-200">
-                  Maior Lucro R$
-                </option>
-              </select>
-            </div>
-          )}
-        </div>
-
         {/* Alternar Gráfico vs Tabela vs Comparativo 3 Meses */}
-        <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5">
+        <div className="flex items-center bg-black/40 border border-white/10 rounded-xl p-0.5 overflow-x-auto">
           <button
             onClick={() => setViewType("chart")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -563,7 +373,7 @@ export function DepartmentMarginPanel({
           </button>
           <button
             onClick={() => setViewType("comparativo")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               viewType === "comparativo"
                 ? "bg-emerald-400 text-slate-950 shadow-md font-bold"
                 : "text-emerald-400 hover:text-emerald-300"
@@ -573,6 +383,29 @@ export function DepartmentMarginPanel({
             <span>Comparativo 3 Meses</span>
           </button>
         </div>
+
+        {/* Ordenação */}
+        {viewType !== "comparativo" && (
+          <div className="flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1.5 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-400 text-[11px]">Ordenar:</span>
+            <select
+              value={sortBy}
+              onChange={(e: any) => setSortBy(e.target.value)}
+              className="bg-transparent text-slate-200 text-xs font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="faturamento" className="bg-slate-900 text-slate-200">
+                Maior Faturamento
+              </option>
+              <option value="margemPct" className="bg-slate-900 text-slate-200">
+                Maior Margem %
+              </option>
+              <option value="lucro" className="bg-slate-900 text-slate-200">
+                Maior Lucro R$
+              </option>
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Conteúdo Principal */}
@@ -862,82 +695,144 @@ export function DepartmentMarginPanel({
         /* VISUALIZAÇÃO GRÁFICA NORMAL                                               */
         /* ========================================================================= */
         <div className="flex flex-col gap-4">
-          <div className="h-72 w-full -ml-3">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={sortedDepartamentos.slice(0, 15)}
-                margin={{ top: 10, right: 20, left: 10, bottom: 25 }}
-              >
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#0891b2" stopOpacity={0.6} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
-                <XAxis
-                  dataKey="departamento"
-                  tick={{ fill: "#94a3b8", fontSize: 9.5 }}
-                  interval={0}
-                  angle={-25}
-                  textAnchor="end"
-                  height={50}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={fmtCompactBRL}
-                  tick={{ fill: "#94a3b8", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tickFormatter={(v) => `${v}%`}
-                  tick={{ fill: "#10b981", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  domain={[0, 50]}
-                />
-                <Tooltip
-                  formatter={(value: any, name: any) => {
-                    if (name === "Faturamento") return [fmtCurrency(Number(value)), name];
-                    if (name === "Margem %") return [`${Number(value).toFixed(2)}%`, name];
-                    if (name === "Lucro Bruto") return [fmtCurrency(Number(value)), name];
-                    return [value, name];
-                  }}
-                  labelFormatter={(label) => `Departamento: ${label}`}
-                  contentStyle={{
-                    backgroundColor: "rgba(15, 23, 42, 0.95)",
-                    borderColor: "rgba(255, 255, 255, 0.12)",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                    fontSize: "12px",
-                    color: "#f8fafc"
-                  }}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="faturamento"
-                  name="Faturamento"
-                  fill="url(#barGradient)"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={36}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="margemPct"
-                  name="Margem %"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: "#10b981", stroke: "#0f172a", strokeWidth: 1.5 }}
-                  activeDot={{ r: 6, fill: "#34d399" }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="w-full overflow-x-auto pb-1">
+            <div className="h-80 min-w-[680px] w-full -ml-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={sortedDepartamentos.slice(0, 12)}
+                  margin={{ top: 24, right: 20, left: 10, bottom: 28 }}
+                >
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#0284c7" stopOpacity={0.55} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(15, 23, 42, 0.09)"} vertical={false} />
+                  <XAxis
+                    dataKey="departamento"
+                    tick={{ fill: isDark ? "#cbd5e1" : "#1e293b", fontSize: 10, fontWeight: 600 }}
+                    interval={0}
+                    angle={-22}
+                    textAnchor="end"
+                    height={54}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => String(v || "").length > 16 ? String(v).slice(0, 15) + "…" : v}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    tickFormatter={fmtCompactBRL}
+                    tick={{ fill: isDark ? "#94a3b8" : "#334155", fontSize: 10, fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.35)]}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickFormatter={(v) => `${v}%`}
+                    tick={{ fill: isDark ? "#34d399" : "#047857", fontSize: 10, fontWeight: 700 }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={[0, 28]}
+                  />
+                  <Tooltip
+                    formatter={(value: any, name: any) => {
+                      if (name === "Faturamento") return [fmtCurrency(Number(value)), name];
+                      if (name === "Margem %") return [`${Number(value).toFixed(2)}%`, name];
+                      if (name === "Lucro Bruto") return [fmtCurrency(Number(value)), name];
+                      return [value, name];
+                    }}
+                    labelFormatter={(label) => `Departamento: ${label}`}
+                    contentStyle={{
+                      backgroundColor: "rgba(9, 17, 36, 0.96)",
+                      borderColor: "rgba(34, 211, 238, 0.25)",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6)",
+                      fontSize: "12px",
+                      color: "#f8fafc"
+                    }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="margemPct"
+                    name="Margem %"
+                    stroke="#34d399"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: "#10b981", stroke: "#061229", strokeWidth: 2 }}
+                    activeDot={{ r: 6, fill: "#6ee7b7" }}
+                  />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="faturamento"
+                    name="Faturamento"
+                    fill="#06b6d4"
+                    radius={[7, 7, 0, 0]}
+                    maxBarSize={42}
+                  >
+                    {sortedDepartamentos.slice(0, 12).map((_, idx) => {
+                      const barColors = [
+                        "#06b6d4", // Cyan
+                        "#3b82f6", // Blue
+                        "#8b5cf6", // Violet
+                        "#10b981", // Emerald
+                        "#f59e0b", // Amber
+                        "#ec4899", // Pink
+                        "#14b8a6", // Teal
+                        "#6366f1", // Indigo
+                        "#84cc16", // Lime
+                        "#f97316", // Orange
+                        "#a855f7", // Purple
+                        "#0ea5e9", // Sky
+                      ];
+                      return (
+                        <Cell
+                          key={`dept-bar-${idx}`}
+                          fill={barColors[idx % barColors.length]}
+                          fillOpacity={0.9}
+                        />
+                      );
+                    })}
+                    <LabelList
+                      dataKey="faturamento"
+                      position="top"
+                      content={(props: any) => {
+                        const { x, y, width, value } = props;
+                        if (x == null || y == null || width == null) return null;
+                        const label = fmtCompactBRL(Number(value));
+                        const cx = x + width / 2;
+                        const boxW = Math.max(40, label.length * 6.5 + 8);
+                        return (
+                          <g>
+                            <rect
+                              x={cx - boxW / 2}
+                              y={y - 20}
+                              width={boxW}
+                              height={16}
+                              rx={4}
+                              fill={isDark ? "#061229" : "#e2e8f0"}
+                              fillOpacity={0.95}
+                            />
+                            <text
+                              x={cx}
+                              y={y - 9}
+                              textAnchor="middle"
+                              fill={isDark ? "#f1f5f9" : "#0f172a"}
+                              fontSize={10}
+                              fontWeight={700}
+                            >
+                              {label}
+                            </text>
+                          </g>
+                        );
+                      }}
+                    />
+                  </Bar>
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Legenda Explicativa do Gráfico */}

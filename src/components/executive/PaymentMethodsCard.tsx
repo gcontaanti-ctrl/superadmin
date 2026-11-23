@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   CreditCard, Banknote, Zap, Users, ChevronDown, ChevronUp, 
-  ArrowUpRight, Wallet, PieChart, Layers, Store, Building2, BarChart2
+  ArrowUpRight, Wallet, PieChart, Layers, Store, Building2, BarChart2, Calendar
 } from "lucide-react";
 import { ConveniosDetailsModal } from "./ConveniosDetailsModal";
 
@@ -104,15 +104,15 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
   const getGradient = (id: string) => {
     switch (id) {
       case "dinheiro":
-        return "from-emerald-500/20 to-green-600/5 border-emerald-500/30 text-emerald-400";
+        return "bg-[#101e36]/85 border-white/10 border-l-4 border-l-emerald-400/80 text-emerald-400";
       case "pix":
-        return "from-cyan-500/20 to-teal-600/5 border-cyan-500/30 text-cyan-400";
+        return "bg-[#101e36]/85 border-white/10 border-l-4 border-l-cyan-400/80 text-cyan-400";
       case "debito":
-        return "from-blue-500/20 to-indigo-600/5 border-blue-500/30 text-blue-400";
+        return "bg-[#101e36]/85 border-white/10 border-l-4 border-l-blue-400/80 text-blue-400";
       case "credito":
-        return "from-purple-500/20 to-violet-600/5 border-purple-500/30 text-purple-400";
+        return "bg-[#101e36]/85 border-white/10 border-l-4 border-l-violet-400/80 text-violet-400";
       default:
-        return "from-amber-500/20 to-orange-600/5 border-amber-500/30 text-amber-400";
+        return "bg-[#101e36]/85 border-white/10 border-l-4 border-l-amber-400/80 text-amber-400";
     }
   };
 
@@ -152,7 +152,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
   const detalhes = data?.detalhes || [];
 
   return (
-    <div className={`glass-strong rounded-2xl p-5 border border-white/5 bg-black/25 flex flex-col gap-5 transition-opacity duration-300 ${loading ? 'opacity-60' : 'opacity-100'}`}>
+    <div className={`glass-strong rounded-2xl p-4 border border-white/5 bg-black/25 flex flex-col gap-3.5 transition-opacity duration-300 ${loading ? 'opacity-60' : 'opacity-100'}`}>
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -160,16 +160,27 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
             <Wallet className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-bold font-serif text-slate-100">
                 Vendas por Forma de Pagamento
               </h3>
               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
                 <ArrowUpRight className="w-2.5 h-2.5" /> DB2 REAL
               </span>
+              {startDate && endDate && (
+                <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3 text-cyan-400" />
+                  {startDate === endDate
+                    ? startDate.split("-").reverse().join("/")
+                    : `${startDate.split("-").reverse().join("/")} até ${endDate.split("-").reverse().join("/")}`}
+                </span>
+              )}
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                {selectedLojaTab === "todas" ? "Todas as Lojas" : `Loja ${selectedLojaTab}`}
+              </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Valores reais recebidos no caixa (PIX, Cartões e Dinheiro líquido) por filial
+              Valores reais recebidos no caixa (PIX, Cartões e Dinheiro líquido) conforme filtro acima
             </p>
           </div>
         </div>
@@ -193,50 +204,100 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
 
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-2 rounded-xl border border-white/10 transition-colors btn-detalhar-modalidades"
+            className={`flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl border transition-colors btn-detalhar-modalidades ${
+              showDetails
+                ? "bg-cyan-500/20 border-cyan-400/40 text-cyan-200"
+                : "text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border-white/10"
+            }`}
           >
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{showDetails ? "Ocultar Detalhes" : "Detalhar Modalidades"}</span>
+            <span>{showDetails ? "Ocultar Modalidades" : "Detalhar Modalidades"}</span>
             {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* Seletor de Loja (Abas Rápidas) */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 border-b border-white/5">
-        <span className="text-xs font-semibold text-slate-400 flex items-center gap-1 shrink-0 mr-1">
-          <Store className="w-3.5 h-3.5 text-cyan-400" /> Filtrar Loja:
-        </span>
-        <button
-          onClick={() => setSelectedLojaTab("todas")}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-            selectedLojaTab === 'todas' 
-              ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)] store-tab-btn-active' 
-              : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5 store-tab-btn-inactive'
-          }`}
-        >
-          <Building2 className="w-3.5 h-3.5" />
-          Todas as Lojas (Consolidado)
-        </button>
+      {/* Gaveta com Detalhamento de cada Finalizadora — Lojas Lado a Lado */}
+      {showDetails && (() => {
+        const cleanStoreName = (raw?: string, id?: number) => {
+          const s = String(raw || "")
+            .replace(/Supermercados Albuquerque\s*/gi, "")
+            .replace(/Itapu\uFFFD/gi, "Itapuã")
+            .replace(/Canafistula/gi, "Canafístula")
+            .trim();
+          return s ? `Loja ${id} — ${s}` : `Loja ${id}`;
+        };
 
-        {porLoja.map((loja) => (
-          <button
-            key={loja.id}
-            onClick={() => setSelectedLojaTab(String(loja.id))}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-              selectedLojaTab === String(loja.id) 
-                ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.3)] store-tab-btn-active' 
-                : 'bg-black/30 border border-white/10 text-slate-300 hover:bg-white/5 store-tab-btn-inactive'
-            }`}
-          >
-            <Store className="w-3.5 h-3.5" />
-            Loja {loja.id} - {loja.nome}
-          </button>
-        ))}
-      </div>
+        const groupedMap: Record<string, { idLoja: number; nome: string; total: number; itens: PaymentDetail[] }> = {};
+        detalhes.forEach((d) => {
+          const key = String(d.idLoja || 0);
+          if (!groupedMap[key]) {
+            groupedMap[key] = {
+              idLoja: d.idLoja || 0,
+              nome: cleanStoreName(d.nomeLoja, d.idLoja),
+              total: 0,
+              itens: [],
+            };
+          }
+          groupedMap[key].total += Number(d.valor) || 0;
+          groupedMap[key].itens.push(d);
+        });
+        const lojasAgrupadas = Object.values(groupedMap).sort((a, b) => a.idLoja - b.idLoja);
 
-      {/* Cards de Formas de Pagamento (Grid de 5 Cards) */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 md:gap-3">
+        return (
+          <div className="border-y border-white/10 py-3.5 flex flex-col gap-3 bg-black/20 rounded-xl px-3.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+                <Store className="w-3.5 h-3.5 text-cyan-400" />
+                Finalizadoras no Caixa por Filial
+              </h4>
+              <span className="text-[11px] text-cyan-300 font-semibold">
+                {lojasAgrupadas.length} {lojasAgrupadas.length === 1 ? "filial" : "filiais"} • {detalhes.length} modalidades
+              </span>
+            </div>
+
+            {lojasAgrupadas.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-500 border border-dashed border-white/10 rounded-xl">
+                Nenhuma modalidade detalhada para o filtro atual.
+              </div>
+            ) : (
+              <div className={`grid gap-3 ${lojasAgrupadas.length === 1 ? "grid-cols-1" : lojasAgrupadas.length === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"}`}>
+                {lojasAgrupadas.map((loja) => (
+                  <div key={loja.idLoja} className="bg-black/35 border border-white/10 rounded-xl p-3 flex flex-col gap-2">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="text-xs font-bold text-cyan-300 truncate">{loja.nome}</span>
+                      <span className="text-xs font-extrabold font-serif text-white tabular-nums shrink-0">
+                        {formatBRL(loja.total)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col divide-y divide-white/5 max-h-56 overflow-y-auto no-scrollbar">
+                      {loja.itens.map((d, idx) => {
+                        const part = loja.total > 0 ? ((d.valor / loja.total) * 100).toFixed(1) : "0.0";
+                        return (
+                          <div key={`${d.id}-${idx}`} className="py-1.5 flex items-center justify-between gap-2 text-[11px]">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-slate-200 truncate">{d.forma}</div>
+                              <div className="text-[10px] text-slate-400">{d.qtd.toLocaleString("pt-BR")} trans.</div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="font-mono font-bold text-slate-100">{formatBRL(d.valor)}</div>
+                              <div className="text-[10px] font-mono font-semibold text-cyan-400">{part}%</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Cards de Formas de Pagamento (Grid de 5 Cards Compactos) */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {resumo.map((item) => {
           const isConvenio = item.id === "convenio";
           return (
@@ -245,53 +306,46 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
               onClick={() => {
                 if (isConvenio) setIsConvenioModalOpen(true);
               }}
-              className={`rounded-xl p-3 md:p-4 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${getCardThemeClass(item.id)} ${
+              className={`rounded-xl px-3 py-2.5 border bg-gradient-to-br flex flex-col justify-between relative overflow-hidden transition-all duration-300 ${getCardThemeClass(item.id)} ${
                 isConvenio
-                  ? "cursor-pointer hover:scale-[1.03] hover:border-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] group"
-                  : "hover:scale-[1.02]"
+                  ? "cursor-pointer hover:scale-[1.02] hover:border-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] group"
+                  : "hover:scale-[1.01]"
               } ${getGradient(item.id)}`}
               title={isConvenio ? "Clique para gerenciar baixas e pendências de convênios" : undefined}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
                   {getIcon(item.id)}
-                  <span className="text-[11px] md:text-xs font-bold text-slate-200 truncate payment-title">{item.nome}</span>
+                  <span className="text-[11px] font-bold text-slate-200 truncate payment-title">{item.nome}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[10px] md:text-xs font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100 payment-pill">
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-black/40 border border-white/10 text-slate-100 payment-pill">
                     {item.percentual}%
                   </span>
                   {isConvenio && (
-                    <ArrowUpRight className="w-3 h-3 md:w-3.5 md:h-3.5 text-amber-400 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpRight className="w-3 h-3 text-amber-400 opacity-75 group-hover:opacity-100 transition-all" />
                   )}
                 </div>
               </div>
 
-              <div className="mt-1">
-                <div className="text-sm md:text-lg font-bold font-serif text-slate-100 tabular-nums truncate payment-val">
+              <div>
+                <div className="text-sm md:text-base font-bold font-serif text-slate-100 tabular-nums truncate payment-val">
                   {formatBRL(item.valor)}
                 </div>
-                <div className="flex items-center justify-between text-[9px] md:text-[10px] text-slate-400 mt-1">
-                  <span className="truncate">{item.qtd.toLocaleString('pt-BR')} transações</span>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5 gap-1">
+                  <span className="truncate">{item.qtd.toLocaleString('pt-BR')} trans.</span>
                   {item.troco !== undefined && item.troco < 0 && (
-                    <span className="text-emerald-300/80 font-mono shrink-0 ml-1" title={`Troco abatido: ${formatBRL(Math.abs(item.troco))}`}>
+                    <span className="text-emerald-300/80 font-mono shrink-0" title={`Troco abatido: ${formatBRL(Math.abs(item.troco))}`}>
                       Líq.
+                    </span>
+                  )}
+                  {isConvenio && (
+                    <span className="text-amber-300 font-semibold shrink-0 group-hover:text-amber-100">
+                      Baixas →
                     </span>
                   )}
                 </div>
               </div>
-
-              {/* Ativação do Card de Convênio: Badge interativo de Baixas & Pendentes */}
-              {isConvenio && (
-                <div className="mt-2.5 pt-2 border-t border-amber-500/20 flex items-center justify-between text-[10px] text-amber-300 font-semibold group-hover:text-amber-100 transition-colors">
-                  <span className="flex items-center gap-1">
-                    <Layers className="w-3 h-3 text-amber-400" /> Baixas & Pendentes
-                  </span>
-                  <span className="bg-amber-500/25 px-1.5 py-0.5 rounded border border-amber-500/35 text-[9px] font-bold">
-                    Ver Detalhes →
-                  </span>
-                </div>
-              )}
             </div>
           );
         })}
@@ -361,7 +415,7 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
                       <span className="size-6 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-black grid place-items-center">
                         {l.id}
                       </span>
-                      <h5 className="font-bold text-sm text-slate-100">{l.nome}</h5>
+                      <h5 className="font-bold text-sm text-slate-100">{String(l.nome || "").replace(/Itapu\uFFFD/gi, "Itapuã").replace(/Canafistula/gi, "Canafístula")}</h5>
                     </div>
                     <span className="text-[10px] text-slate-400 mt-0.5 block">
                       {l.qtdTotal.toLocaleString('pt-BR')} transações de caixa
@@ -439,58 +493,6 @@ export function PaymentMethodsCard({ selectedStore: initialStore, startDate, end
                 )}
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Gaveta com Detalhamento de cada Finalizadora */}
-      {showDetails && (
-        <div className="border-t border-white/10 pt-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-              Detalhamento de Todas as Finalizadoras no Caixa
-            </h4>
-            <span className="text-[11px] text-slate-400">
-              {detalhes.length} modalidades registradas
-            </span>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto no-scrollbar border border-white/5 rounded-xl bg-black/40">
-            <table className="w-full text-left text-xs">
-              <thead className="sticky top-0 bg-slate-900 border-b border-white/10 text-slate-400 uppercase text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-3">Loja</th>
-                  <th className="py-2.5 px-3">Forma de Pagamento</th>
-                  <th className="py-2.5 px-3 text-right">Qtd Transações</th>
-                  <th className="py-2.5 px-3 text-right">Valor Total (R$)</th>
-                  <th className="py-2.5 px-3 text-right">Part. %</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {detalhes.map((d, idx) => {
-                  const part = totalGeral > 0 ? ((d.valor / totalGeral) * 100).toFixed(1) : "0.0";
-                  return (
-                    <tr key={`${d.id}-${d.idLoja || idx}`} className="hover:bg-white/[0.02]">
-                      <td className="py-2 px-3 text-slate-400 font-medium">
-                        Loja {d.idLoja} {d.nomeLoja ? `(${d.nomeLoja})` : ''}
-                      </td>
-                      <td className="py-2 px-3 font-semibold text-slate-200">
-                        {d.forma}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono text-slate-400">
-                        {d.qtd.toLocaleString('pt-BR')}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono font-bold text-slate-100">
-                        {formatBRL(d.valor)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono text-cyan-400 font-bold">
-                        {part}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
       )}

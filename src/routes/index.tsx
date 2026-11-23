@@ -289,7 +289,7 @@ function Dashboard() {
 
   return (
     <div 
-      className="relative min-h-screen bg-[#bec7d4] text-slate-900 dark:bg-gradient-to-b dark:from-[#0f1d35] dark:via-[#0d182b] dark:to-[#0a1424] dark:text-slate-100 antialiased selection:bg-primary/20 overflow-x-hidden"
+      className="relative min-h-screen bg-[#c7cdd6] text-slate-900 dark:bg-gradient-to-b dark:from-[#0f1d35] dark:via-[#0d182b] dark:to-[#0a1424] dark:text-slate-100 antialiased selection:bg-primary/20 overflow-x-hidden"
     >
       <div className={`relative z-10 flex flex-col md:flex-row gap-2 md:gap-4 min-h-screen w-full ${isFullscreen ? 'p-0' : 'p-2 md:p-4'}`}>
       {/* Menu Gaveta (Drawer) universal em Desktop, Tablet e Mobile */}
@@ -326,7 +326,7 @@ function Dashboard() {
       <main className={`flex-1 min-w-0 flex flex-col gap-3 md:gap-4 w-full min-h-0 ${isFullscreen ? 'h-screen p-2 overflow-y-auto' : 'pb-24 md:pb-6'}`}>
         {/* Top Header */}
         {!isFullscreen && (
-          <header className="glass-strong horus-top-header rounded-2xl px-3 md:px-5 py-2.5 md:py-3 flex flex-wrap items-center justify-between gap-2.5">
+          <header className="glass-strong horus-top-header rounded-2xl px-3 md:px-5 py-2 flex flex-wrap items-center justify-between gap-2.5">
             <div className="flex flex-wrap items-center gap-2 md:gap-3 min-w-0">
               <Button
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -341,14 +341,13 @@ function Dashboard() {
                 type="button"
                 onClick={() => setActiveTab("visao-geral")}
                 title="Voltar ao Início (Visão Geral)"
-                className="flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-85 transition-opacity text-left"
+                className="flex items-center shrink-0 cursor-pointer hover:opacity-85 transition-opacity text-left"
               >
-                <span className="font-serif font-bold text-lg md:text-xl text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-                  HORUS
-                </span>
-                <span className="font-sans font-light text-cyan-200 tracking-widest text-xs hidden sm:inline">
-                  ANALYTICS
-                </span>
+                <img
+                  src="/cybertech_eagle_hd.png"
+                  alt="CYBERTECH HORUS"
+                  className="h-12 sm:h-14 md:h-16 w-auto object-contain drop-shadow-sm"
+                />
               </button>
               <div className="hidden sm:block h-5 w-px bg-white/10 shrink-0" />
               <div className="text-[10px] md:text-xs text-slate-400 flex items-center gap-1.5 mr-1 md:mr-2 shrink-0">
@@ -786,7 +785,11 @@ function Dashboard() {
         </button>
       </nav>
 
-      <WhatsNewModal isOpen={isWhatsNewOpen} onClose={() => setIsWhatsNewOpen(false)} />
+      <WhatsNewModal
+        isOpen={isWhatsNewOpen}
+        onClose={() => setIsWhatsNewOpen(false)}
+        onNavigate={(tab) => setActiveTab(tab)}
+      />
       <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} closeButton />
     </div>
   </div>
@@ -873,45 +876,44 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#ffffff] text-slate-800 flex items-center justify-center lg:justify-end lg:pr-16 xl:pr-32 p-4 sm:p-6 md:p-8 overflow-hidden select-none bg-cover bg-center lg:bg-[url('/login_seamless_bg.png')]">
-      {/* Grafismos decorativos nos cantos para Mobile/Tablet (onde a imagem de fundo widescreen nao se aplica) */}
-      <img 
-        src="/corner_top_left_hd.png" 
-        alt="" 
-        className="lg:hidden absolute top-0 left-0 w-36 sm:w-52 pointer-events-none select-none z-0 object-contain" 
-      />
-
-      <img 
-        src="/corner_bottom_right_hd.png" 
-        alt="" 
-        className="lg:hidden absolute bottom-0 right-0 w-36 sm:w-52 pointer-events-none select-none z-0 object-contain" 
-      />
+    <div className="relative min-h-screen w-full bg-[#06142e] bg-[url('/login_supermarket_bg.jpg')] bg-cover bg-center text-slate-800 flex flex-col lg:flex-row items-center justify-center lg:justify-between lg:gap-12 lg:px-16 xl:px-28 p-4 sm:p-6 md:p-8 overflow-hidden select-none">
+      {/* Camada sutil de contraste para destacar logo e card */}
+      <div className="pointer-events-none select-none absolute inset-0 bg-slate-950/25 z-0" />
 
       {/* Botão de Tema Flutuante no Topo */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
 
-      <div className="relative z-10 w-full max-w-md my-auto animate-in fade-in zoom-in-95 duration-500">
+      {/* Esquerda no Desktop: Nova Logo em Altíssima Definição */}
+      <div className="hidden lg:flex flex-1 items-center justify-center relative z-10 animate-in fade-in slide-in-from-left-4 duration-500">
+        <img 
+          src="/cybertech_eagle_hd.png" 
+          alt="CYBERTECH HORUS - SYSTEM AND APP DEVELOP" 
+          className="w-full max-w-[540px] xl:max-w-[620px] object-contain drop-shadow-[0_12px_32px_rgba(0,0,0,0.65)]" 
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-[420px] sm:max-w-md my-auto animate-in fade-in zoom-in-95 duration-500">
         {/* Topo no Mobile: A Águia Centralizada em Altíssima Definição */}
-        <div className="flex lg:hidden flex-col items-center justify-center text-center pt-2 mb-2">
+        <div className="flex lg:hidden flex-col items-center justify-center text-center pt-4 mb-4">
           <img 
             src="/cybertech_eagle_hd.png" 
             alt="CYBERTECH HORUS - SYSTEM AND APP DEVELOP" 
-            className="w-full max-w-[280px] sm:max-w-[320px] object-contain drop-shadow-md" 
+            className="w-full max-w-[260px] sm:max-w-[300px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]" 
           />
         </div>
 
         {/* O Card de Login */}
-        <div className="w-full bg-white rounded-[2.5rem] p-6 sm:p-9 shadow-[0_25px_60px_-15px_rgba(0,102,255,0.15)] border border-slate-100 flex flex-col gap-5">
+        <div className="w-full bg-white/95 backdrop-blur-md rounded-[2.5rem] p-6 sm:p-9 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.55)] border border-white/40 flex flex-col gap-5">
           
           {/* Topo do Card no Desktop: Bem-vindo(a) ao + Mini Logo */}
           <div className="hidden lg:flex flex-col items-center justify-center text-center mb-1">
             <span className="text-slate-600 text-sm font-medium">Bem-vindo(a) ao</span>
             <img 
-              src="/cybertech_card_logo.png" 
-              alt="CYBERTECH HORUS" 
-              className="h-13 w-auto object-contain mt-1" 
+              src="/cybertech_eagle_hd.png" 
+              alt="CYBERTECH HORUS - SYSTEM AND APP DEVELOP" 
+              className="h-24 w-auto object-contain mt-1" 
             />
           </div>
 
@@ -988,7 +990,7 @@ function LoginScreen({ username, setUsername, password, setPassword, loading, on
               <button
                 type="submit"
                 disabled={loading || !username || !password}
-                className="w-full bg-gradient-to-r from-[#0062ff] to-[#009bf5] hover:from-[#0051db] hover:to-[#0089e0] active:scale-[0.99] text-white font-bold h-12 rounded-2xl text-base shadow-[0_8px_20px_rgba(0,98,255,0.30)] hover:shadow-[0_10px_25px_rgba(0,98,255,0.40)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+                className="w-full bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 active:scale-[0.99] !text-white font-bold h-12 rounded-2xl text-base shadow-[0_8px_20px_rgba(0,98,255,0.30)] hover:shadow-[0_10px_25px_rgba(0,98,255,0.40)] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-1"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

@@ -101,17 +101,13 @@ export function Sidebar({
           if (onItemClick) onItemClick();
         }}
         title="Voltar ao Início (Visão Geral)"
-        className="flex items-center gap-3 px-2 py-2 text-left cursor-pointer hover:opacity-85 transition-opacity shrink-0"
+        className="flex items-center justify-center px-2 py-2 cursor-pointer hover:opacity-85 transition-opacity shrink-0"
       >
-        <div className="size-10 rounded-xl bg-black/40 border border-cyan-500/25 grid place-items-center overflow-hidden shrink-0">
-          <Eye className="size-5 text-cyan-400" />
-        </div>
-        <div>
-          <div className="font-serif text-lg tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 font-bold leading-none">
-            HORUS
-          </div>
-          <div className="text-[10px] text-cyan-200/80 font-sans tracking-[0.22em] font-light uppercase mt-1">Analytics</div>
-        </div>
+        <img
+          src="/cybertech_eagle_hd.png"
+          alt="CYBERTECH HORUS"
+          className="h-20 w-auto max-w-full object-contain drop-shadow-sm"
+        />
       </button>
 
       {/* Busca Rápida de Tela */}

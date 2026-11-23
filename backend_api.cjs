@@ -8324,6 +8324,56 @@ async function startServer() {
   const port = process.env.PORT || 3001;
   app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 API DB2 Real rodando na porta ${port} com Filtros e Acesso Local!`);
+
+    // Regra de Pós-Atualização: assim que o servidor sobe numa nova versão (ex: Super Atacado / clientes),
+    // invalida caches antigos e puxa os novos campos diretamente do DB2 do cliente conectado.
+    setTimeout(async () => {
+      try {
+        const SYSTEM_BUILD_VERSION = '3.6.0';
+        const runtimeDir = path.join(__dirname, '.runtime');
+        if (!fs.existsSync(runtimeDir)) fs.mkdirSync(runtimeDir, { recursive: true });
+        const syncMarkerFile = path.join(runtimeDir, 'last_update_sync.json');
+
+        let previousVersion = null;
+        if (fs.existsSync(syncMarkerFile)) {
+          try {
+            previousVersion = JSON.parse(fs.readFileSync(syncMarkerFile, 'utf8')).version;
+          } catch (_) {}
+        }
+
+        if (previousVersion !== SYSTEM_BUILD_VERSION) {
+          console.log(`🔄 [Auto-Update v${SYSTEM_BUILD_VERSION}] Nova versão detectada (anterior: ${previousVersion || 'inicial'}). Sincronizando novos campos no DB2 do cliente...`);
+        }
+
+        const [empresas, resumoEstoque, promoCheck] = await Promise.all([
+          queryDB(`SELECT COUNT(*) AS TOTAL_LOJAS FROM DBA.VW_GEA_EMPRESA`).catch(() => []),
+          queryDB(`
+            SELECT
+              COALESCE(SUM(VALTOTALVENDA), 0) AS FATURAMENTO_MES,
+              COALESCE(SUM(VALLUCRO), 0) AS LUCRO_MES,
+              COUNT(DISTINCT IDEMPRESA) AS LOJAS_MOV
+            FROM DBA.ESTOQUE_ANALITICO
+            WHERE YEAR(DTMOVIMENTO) = YEAR(CURRENT DATE)
+              AND MONTH(DTMOVIMENTO) = MONTH(CURRENT DATE)
+          `).catch(() => []),
+          queryDB(`SELECT COUNT(*) AS TOTAL_PROMO FROM DBA.PROMOCAO WHERE DTINIPROMOCAO IS NOT NULL`).catch(() => [])
+        ]);
+
+        const payload = {
+          version: SYSTEM_BUILD_VERSION,
+          syncedAt: new Date().toISOString(),
+          lojasDetectadas: Number(empresas?.[0]?.TOTAL_LOJAS || 0),
+          faturamentoMesAtual: Number(resumoEstoque?.[0]?.FATURAMENTO_MES || 0),
+          lucroMesAtual: Number(resumoEstoque?.[0]?.LUCRO_MES || 0),
+          promocoesDetectadas: Number(promoCheck?.[0]?.TOTAL_PROMO || 0)
+        };
+
+        fs.writeFileSync(syncMarkerFile, JSON.stringify(payload, null, 2), 'utf8');
+        console.log(`✅ [DB2 Sync v${SYSTEM_BUILD_VERSION}] Dados do cliente sincronizados (${payload.lojasDetectadas} lojas, ${payload.promocoesDetectadas} promoções).`);
+      } catch (syncErr) {
+        console.warn('⚠️ [Auto-Update Sync] Aviso ao sincronizar novos campos DB2 no boot:', syncErr.message);
+      }
+    }, 2000);
     
     // Robozinho de Fundo (Job Noturno) para Margens
     setInterval(() => {

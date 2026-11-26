@@ -13,6 +13,7 @@ export const nav = [
   { icon: Smartphone, label: "Painel Gerente", id: "painel-gerente", group: "Principal" },
   { icon: Target, label: "Metas de Vendas", id: "metas-vendas", group: "Principal" },
   { icon: Printer, label: "Central de Relatórios", id: "central-relatorios", group: "Principal" },
+  { icon: FileSpreadsheet, label: "Compra × Venda Forn.", id: "compra-venda-fornecedor", group: "Principal" },
 
   { icon: ShoppingBag, label: "Vendas Atacarejo", id: "atacarejo", group: "Vendas & Comercial" },
   { icon: CreditCard, label: "Vendas por Bandeira", id: "vendas-bandeira", group: "Vendas & Comercial" },

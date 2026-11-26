@@ -10855,6 +10855,271 @@ async function startServer() {
     }
   });
 
+  // Busca rápida de fornecedores (por código ou nome) para o relatório Compra x Venda
+  app.get('/api/fornecedores/busca', async (req, res) => {
+    try {
+      const qTerm = String(req.query.q || '').trim();
+      if (!qTerm) {
+        const top = await queryDB(`
+          SELECT DISTINCT CF.IDCLIFOR, TRIM(CF.NOME) AS NOME, TRIM(COALESCE(CF.CNPJCPF, '')) AS CNPJ
+          FROM DBA.CLIENTE_FORNECEDOR CF
+          JOIN DBA.NOTAS N ON N.IDCLIFOR = CF.IDCLIFOR
+          WHERE N.TIPONOTAFISCAL = 'E'
+            AND N.DTMOVIMENTO >= (CURRENT DATE - 180 DAYS)
+            AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          ORDER BY NOME ASC
+          FETCH FIRST 30 ROWS ONLY
+          WITH UR
+        `).catch(() => []);
+        return res.json(top.map(r => ({ id: Number(r.IDCLIFOR), nome: r.NOME, cnpj: r.CNPJ })));
+      }
+
+      const isNum = /^\d+$/.test(qTerm);
+      const safeTerm = qTerm.toUpperCase().replace(/'/g, "''");
+      const sql = isNum
+        ? `SELECT IDCLIFOR, TRIM(NOME) AS NOME, TRIM(COALESCE(CNPJCPF, '')) AS CNPJ
+           FROM DBA.CLIENTE_FORNECEDOR
+           WHERE IDCLIFOR = ${Number(qTerm)} OR UPPER(NOME) LIKE '%${safeTerm}%'
+           ORDER BY CASE WHEN IDCLIFOR = ${Number(qTerm)} THEN 0 ELSE 1 END, NOME ASC
+           FETCH FIRST 25 ROWS ONLY WITH UR`
+        : `SELECT IDCLIFOR, TRIM(NOME) AS NOME, TRIM(COALESCE(CNPJCPF, '')) AS CNPJ
+           FROM DBA.CLIENTE_FORNECEDOR
+           WHERE UPPER(NOME) LIKE '%${safeTerm}%'
+           ORDER BY NOME ASC
+           FETCH FIRST 25 ROWS ONLY WITH UR`;
+
+      const rows = await queryDB(sql);
+      res.json(rows.map(r => ({ id: Number(r.IDCLIFOR), nome: r.NOME, cnpj: r.CNPJ })));
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Relatório Compra x Venda x CMV x Lucro por Fornecedor(es) e Loja
+  app.get('/api/relatorios/fornecedor-compra-venda', async (req, res) => {
+    try {
+      const { fornecedores, startDate, endDate, idEmpresa = 'todas' } = req.query;
+      const fornIds = String(fornecedores || '')
+        .split(',')
+        .map(x => parseInt(x.trim(), 10))
+        .filter(n => !isNaN(n) && n > 0);
+
+      if (fornIds.length === 0) {
+        return res.status(400).json({ error: 'Informe ao menos um fornecedor válido.' });
+      }
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'Informe startDate e endDate.' });
+      }
+
+      const isFilteredLoja = idEmpresa && idEmpresa !== 'todas';
+      const empIdFilter = isFilteredLoja ? parseInt(idEmpresa, 10) : null;
+      const fornListSql = fornIds.join(',');
+
+      const [lojasDb, fornInfoDb] = await Promise.all([
+        queryDB(`SELECT IDEMPRESA, TRIM(NOMEFANTASIA) AS LOJA FROM DBA.VW_GEA_EMPRESA ORDER BY IDEMPRESA WITH UR`),
+        queryDB(`SELECT IDCLIFOR, TRIM(NOME) AS NOME FROM DBA.CLIENTE_FORNECEDOR WHERE IDCLIFOR IN (${fornListSql}) WITH UR`)
+      ]);
+
+      const lojasFiltradas = isFilteredLoja ? lojasDb.filter(l => Number(l.IDEMPRESA) === empIdFilter) : lojasDb;
+      const fornNomeMap = {};
+      for (const f of fornInfoDb) fornNomeMap[Number(f.IDCLIFOR)] = f.NOME;
+
+      const whereLoja = isFilteredLoja ? ` AND EA.IDEMPRESA = ${empIdFilter}` : '';
+
+      // 1. Compras diretas das notas fiscais dos fornecedores
+      const compras = await queryDB(`
+        SELECT
+          N.IDCLIFOR AS FORN_ID,
+          YEAR(EA.DTMOVIMENTO) AS ANO,
+          MONTH(EA.DTMOVIMENTO) AS MES,
+          EA.IDEMPRESA,
+          SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VALOR_COMPRA
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        WHERE N.IDCLIFOR IN (${fornListSql})
+          AND OP.TIPOMOVIMENTO = 'C'
+          AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          AND DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'
+          ${whereLoja}
+        GROUP BY N.IDCLIFOR, YEAR(EA.DTMOVIMENTO), MONTH(EA.DTMOVIMENTO), EA.IDEMPRESA
+        WITH UR
+      `);
+
+      // 2. Produtos vinculados a cada fornecedor
+      const prodsPorForn = await queryDB(`
+        SELECT DISTINCT N.IDCLIFOR AS FORN_ID, EA.IDSUBPRODUTO
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        WHERE N.IDCLIFOR IN (${fornListSql})
+          AND OP.TIPOMOVIMENTO = 'C'
+          AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
+        UNION
+        SELECT DISTINCT PF.IDCLIFOR AS FORN_ID, G.IDSUBPRODUTO
+        FROM DBA.PRODUTO_FORNECEDOR PF
+        JOIN DBA.PRODUTO_GRADE G ON G.IDPRODUTO = PF.IDPRODUTO
+        WHERE PF.IDCLIFOR IN (${fornListSql})
+        WITH UR
+      `).catch(async () => {
+        return await queryDB(`
+          SELECT DISTINCT N.IDCLIFOR AS FORN_ID, EA.IDSUBPRODUTO
+          FROM DBA.ESTOQUE_ANALITICO EA
+          JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+          WHERE N.IDCLIFOR IN (${fornListSql})
+            AND OP.TIPOMOVIMENTO = 'C'
+            AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+            AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
+          WITH UR
+        `);
+      });
+
+      const vendasList = [];
+      for (const fId of fornIds) {
+        const subIds = [...new Set(prodsPorForn.filter(p => Number(p.FORN_ID) === fId).map(p => Number(p.IDSUBPRODUTO)))];
+        for (let i = 0; i < subIds.length; i += 400) {
+          const chunk = subIds.slice(i, i + 400).join(',');
+          const part = await queryDB(`
+            SELECT
+              YEAR(EA.DTMOVIMENTO) AS ANO,
+              MONTH(EA.DTMOVIMENTO) AS MES,
+              EA.IDEMPRESA,
+              SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VALOR_VENDA,
+              SUM(COALESCE(EA.VALLUCRO, 0)) AS VALOR_LUCRO
+            FROM DBA.ESTOQUE_ANALITICO EA
+            JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+            WHERE EA.IDSUBPRODUTO IN (${chunk})
+              AND OP.TIPOMOVIMENTO = 'V'
+              AND DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'
+              ${whereLoja}
+            GROUP BY YEAR(EA.DTMOVIMENTO), MONTH(EA.DTMOVIMENTO), EA.IDEMPRESA
+            WITH UR
+          `);
+          for (const r of part) {
+            vendasList.push({
+              fornId: fId,
+              ano: Number(r.ANO),
+              mes: Number(r.MES),
+              idEmpresa: Number(r.IDEMPRESA),
+              venda: Number(r.VALOR_VENDA || 0),
+              lucro: Number(r.VALOR_LUCRO || 0)
+            });
+          }
+        }
+      }
+
+      const mesesMap = {};
+      const addKey = (fornId, ano, mes, idEmpresa, c, v, l) => {
+        const key = `${fornId}|${ano}|${mes}|${idEmpresa}`;
+        if (!mesesMap[key]) {
+          mesesMap[key] = {
+            fornId,
+            fornNome: `${fornId} - ${fornNomeMap[fornId] || 'FORNECEDOR'}`,
+            ano,
+            mes,
+            mesLabel: `${String(mes).padStart(2, '0')}/${ano}`,
+            idEmpresa,
+            lojaNome: (lojasDb.find(lj => Number(lj.IDEMPRESA) === idEmpresa)?.LOJA || `Loja ${idEmpresa}`).replace(/Itapu./i, 'Itapuã'),
+            compra: 0,
+            venda: 0,
+            lucro: 0
+          };
+        }
+        mesesMap[key].compra += c;
+        mesesMap[key].venda += v;
+        mesesMap[key].lucro += l;
+      };
+
+      for (const c of compras) {
+        addKey(Number(c.FORN_ID), Number(c.ANO), Number(c.MES), Number(c.IDEMPRESA), Number(c.VALOR_COMPRA || 0), 0, 0);
+      }
+      for (const v of vendasList) {
+        addKey(v.fornId, v.ano, v.mes, v.idEmpresa, 0, v.venda, v.lucro);
+      }
+
+      const calcMetrics = (item) => {
+        const cmv = Math.max(0, item.venda - item.lucro);
+        const cmvPct = item.venda > 0 ? (cmv / item.venda) * 100 : 0;
+        const margemPct = item.venda > 0 ? (item.lucro / item.venda) * 100 : 0;
+        const markupCmvPct = cmv > 0 ? (item.lucro / cmv) * 100 : 0;
+        return {
+          ...item,
+          compra: Number(item.compra.toFixed(2)),
+          venda: Number(item.venda.toFixed(2)),
+          cmv: Number(cmv.toFixed(2)),
+          cmvPct: Number(cmvPct.toFixed(2)),
+          lucro: Number(item.lucro.toFixed(2)),
+          margemPct: Number(margemPct.toFixed(2)),
+          markupCmvPct: Number(markupCmvPct.toFixed(2))
+        };
+      };
+
+      const mensal = Object.values(mesesMap)
+        .map(calcMetrics)
+        .sort((a, b) => a.fornId - b.fornId || a.ano - b.ano || a.mes - b.mes || a.idEmpresa - b.idEmpresa);
+
+      // Resumo consolidado por Fornecedor x Loja
+      const resumoMap = {};
+      for (const fId of fornIds) {
+        for (const lj of lojasFiltradas) {
+          const emp = Number(lj.IDEMPRESA);
+          const key = `${fId}|${emp}`;
+          resumoMap[key] = {
+            fornId: fId,
+            fornNome: `${fId} - ${fornNomeMap[fId] || 'FORNECEDOR'}`,
+            idEmpresa: emp,
+            lojaNome: String(lj.LOJA || `Loja ${emp}`).replace(/Itapu./i, 'Itapuã'),
+            compra: 0,
+            venda: 0,
+            lucro: 0
+          };
+        }
+      }
+      for (const m of mensal) {
+        const key = `${m.fornId}|${m.idEmpresa}`;
+        if (!resumoMap[key]) {
+          resumoMap[key] = {
+            fornId: m.fornId,
+            fornNome: m.fornNome,
+            idEmpresa: m.idEmpresa,
+            lojaNome: m.lojaNome,
+            compra: 0,
+            venda: 0,
+            lucro: 0
+          };
+        }
+        resumoMap[key].compra += m.compra;
+        resumoMap[key].venda += m.venda;
+        resumoMap[key].lucro += m.lucro;
+      }
+
+      const resumoPorLoja = Object.values(resumoMap)
+        .map(calcMetrics)
+        .sort((a, b) => a.fornId - b.fornId || a.idEmpresa - b.idEmpresa);
+
+      const totaisGeral = calcMetrics(
+        resumoPorLoja.reduce((acc, r) => ({
+          compra: acc.compra + r.compra,
+          venda: acc.venda + r.venda,
+          lucro: acc.lucro + r.lucro
+        }), { compra: 0, venda: 0, lucro: 0 })
+      );
+
+      res.json({
+        fornecedores: fornIds.map(id => ({ id, nome: fornNomeMap[id] || `Fornecedor ${id}` })),
+        startDate,
+        endDate,
+        totaisGeral,
+        resumoPorLoja,
+        mensal
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 }
 
 startServer().catch((err) => {

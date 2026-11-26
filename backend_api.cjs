@@ -10926,19 +10926,24 @@ async function startServer() {
 
       const whereLoja = isFilteredLoja ? ` AND EA.IDEMPRESA = ${empIdFilter}` : '';
 
-      // 1. Compras diretas das notas fiscais dos fornecedores
+      // 1. Compras líquidas (entradas de compra menos devoluções de compra)
       const compras = await queryDB(`
         SELECT
           N.IDCLIFOR AS FORN_ID,
           YEAR(EA.DTMOVIMENTO) AS ANO,
           MONTH(EA.DTMOVIMENTO) AS MES,
           EA.IDEMPRESA,
-          SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VALOR_COMPRA
+          SUM(CASE
+            WHEN OP.TIPOMOVIMENTO = 'C' THEN COALESCE(EA.VALTOTLIQUIDO, 0)
+            WHEN (OP.TIPOMOVIMENTO = 'O' AND OP.IDOPERACAO <> 1035) OR OP.IDOPERACAO IN (1030, 1031, 1181) THEN -COALESCE(EA.VALTOTLIQUIDO, 0)
+            ELSE 0
+          END) AS VALOR_COMPRA
         FROM DBA.ESTOQUE_ANALITICO EA
         JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
         JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
         WHERE N.IDCLIFOR IN (${fornListSql})
-          AND OP.TIPOMOVIMENTO = 'C'
+          AND (OP.TIPOMOVIMENTO IN ('C', 'O') OR OP.IDOPERACAO IN (1030, 1031, 1181))
+          AND OP.IDOPERACAO <> 1035
           AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
           AND DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'
           ${whereLoja}
@@ -10986,12 +10991,12 @@ async function startServer() {
               YEAR(EA.DTMOVIMENTO) AS ANO,
               MONTH(EA.DTMOVIMENTO) AS MES,
               EA.IDEMPRESA,
-              SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VALOR_VENDA,
-              SUM(COALESCE(EA.VALLUCRO, 0)) AS VALOR_LUCRO
+              SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALTOTLIQUIDO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALTOTLIQUIDO, 0) ELSE 0 END) AS VALOR_VENDA,
+              SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALLUCRO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALLUCRO, 0) ELSE 0 END) AS VALOR_LUCRO
             FROM DBA.ESTOQUE_ANALITICO EA
             JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
             WHERE EA.IDSUBPRODUTO IN (${chunk})
-              AND OP.TIPOMOVIMENTO = 'V'
+              AND OP.TIPOMOVIMENTO IN ('V', 'E')
               AND DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'
               ${whereLoja}
             GROUP BY YEAR(EA.DTMOVIMENTO), MONTH(EA.DTMOVIMENTO), EA.IDEMPRESA
@@ -11172,7 +11177,11 @@ async function startServer() {
           SELECT
             COALESCE(P.IDSECAO, 0) AS IDSECAO,
             COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO') AS SECAO,
-            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS COMPRA
+            SUM(CASE
+              WHEN OP.TIPOMOVIMENTO = 'C' THEN COALESCE(EA.VALTOTLIQUIDO, 0)
+              WHEN (OP.TIPOMOVIMENTO = 'O' AND OP.IDOPERACAO <> 1035) OR OP.IDOPERACAO IN (1030, 1031, 1181) THEN -COALESCE(EA.VALTOTLIQUIDO, 0)
+              ELSE 0
+            END) AS COMPRA
           FROM DBA.ESTOQUE_ANALITICO EA
           JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
           JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
@@ -11181,7 +11190,8 @@ async function startServer() {
           LEFT JOIN DBA.SECAO SC ON SC.IDSECAO = P.IDSECAO
           WHERE N.IDCLIFOR = ${fornId}
             AND EA.IDEMPRESA = ${empId}
-            AND OP.TIPOMOVIMENTO = 'C'
+            AND (OP.TIPOMOVIMENTO IN ('C', 'O') OR OP.IDOPERACAO IN (1030, 1031, 1181))
+            AND OP.IDOPERACAO <> 1035
             AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
             AND ${dateFilter}
           GROUP BY COALESCE(P.IDSECAO, 0), COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO')
@@ -11208,8 +11218,8 @@ async function startServer() {
           SELECT
             COALESCE(P.IDSECAO, 0) AS IDSECAO,
             COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO') AS SECAO,
-            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VENDA,
-            SUM(COALESCE(EA.VALLUCRO, 0)) AS LUCRO
+            SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALTOTLIQUIDO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALTOTLIQUIDO, 0) ELSE 0 END) AS VENDA,
+            SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALLUCRO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALLUCRO, 0) ELSE 0 END) AS LUCRO
           FROM DBA.ESTOQUE_ANALITICO EA
           JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
           JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
@@ -11217,7 +11227,7 @@ async function startServer() {
           LEFT JOIN DBA.SECAO SC ON SC.IDSECAO = P.IDSECAO
           WHERE EA.IDSUBPRODUTO IN (${chunk})
             AND EA.IDEMPRESA = ${empId}
-            AND OP.TIPOMOVIMENTO = 'V'
+            AND OP.TIPOMOVIMENTO IN ('V', 'E')
             AND ${dateFilter}
           GROUP BY COALESCE(P.IDSECAO, 0), COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO')
           WITH UR
@@ -11273,7 +11283,12 @@ async function startServer() {
           SELECT
             EA.IDSUBPRODUTO AS CODIGO,
             TRIM(P.DESCRCOMPRODUTO) AS DESCRICAO,
-            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS COMPRA
+            COALESCE(NULLIF(TRIM(P.EMBALAGEMSAIDA), ''), 'UN') AS UNIDADE,
+            SUM(CASE
+              WHEN OP.TIPOMOVIMENTO = 'C' THEN COALESCE(EA.VALTOTLIQUIDO, 0)
+              WHEN (OP.TIPOMOVIMENTO = 'O' AND OP.IDOPERACAO <> 1035) OR OP.IDOPERACAO IN (1030, 1031, 1181) THEN -COALESCE(EA.VALTOTLIQUIDO, 0)
+              ELSE 0
+            END) AS COMPRA
           FROM DBA.ESTOQUE_ANALITICO EA
           JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
           JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
@@ -11282,25 +11297,26 @@ async function startServer() {
           WHERE N.IDCLIFOR = ${fornId}
             AND EA.IDEMPRESA = ${empId}
             AND COALESCE(P.IDSECAO, 0) = ${secId}
-            AND OP.TIPOMOVIMENTO = 'C'
+            AND (OP.TIPOMOVIMENTO IN ('C', 'O') OR OP.IDOPERACAO IN (1030, 1031, 1181))
+            AND OP.IDOPERACAO <> 1035
             AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
             AND ${dateFilter}
-          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO)
+          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO), COALESCE(NULLIF(TRIM(P.EMBALAGEMSAIDA), ''), 'UN')
           WITH UR
         `),
         getSubprodutosFornecedor(fornId)
       ]);
 
       const mapa = {};
-      const ensureProd = (cod, desc) => {
+      const ensureProd = (cod, desc, unid) => {
         if (!mapa[cod]) {
-          mapa[cod] = { codigo: Number(cod), descricao: desc, compra: 0, venda: 0, lucro: 0, qtdVenda: 0 };
+          mapa[cod] = { codigo: Number(cod), descricao: desc, unidade: unid || 'UN', compra: 0, venda: 0, lucro: 0, qtdVenda: 0 };
         }
         return mapa[cod];
       };
 
       for (const c of comprasProd) {
-        ensureProd(c.CODIGO, c.DESCRICAO).compra += Number(c.COMPRA || 0);
+        ensureProd(c.CODIGO, c.DESCRICAO, c.UNIDADE).compra += Number(c.COMPRA || 0);
       }
 
       for (let i = 0; i < subIds.length; i += 400) {
@@ -11309,9 +11325,10 @@ async function startServer() {
           SELECT
             EA.IDSUBPRODUTO AS CODIGO,
             TRIM(P.DESCRCOMPRODUTO) AS DESCRICAO,
-            SUM(ABS(COALESCE(EA.QTDPRODUTO, 0))) AS QTD_VENDA,
-            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VENDA,
-            SUM(COALESCE(EA.VALLUCRO, 0)) AS LUCRO
+            COALESCE(NULLIF(TRIM(P.EMBALAGEMSAIDA), ''), 'UN') AS UNIDADE,
+            SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN ABS(COALESCE(EA.QTDPRODUTO, 0)) WHEN OP.TIPOMOVIMENTO = 'E' THEN -ABS(COALESCE(EA.QTDPRODUTO, 0)) ELSE 0 END) AS QTD_VENDA,
+            SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALTOTLIQUIDO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALTOTLIQUIDO, 0) ELSE 0 END) AS VENDA,
+            SUM(CASE WHEN OP.TIPOMOVIMENTO = 'V' THEN COALESCE(EA.VALLUCRO, 0) WHEN OP.TIPOMOVIMENTO = 'E' THEN -COALESCE(EA.VALLUCRO, 0) ELSE 0 END) AS LUCRO
           FROM DBA.ESTOQUE_ANALITICO EA
           JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
           JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
@@ -11319,13 +11336,13 @@ async function startServer() {
           WHERE EA.IDSUBPRODUTO IN (${chunk})
             AND EA.IDEMPRESA = ${empId}
             AND COALESCE(P.IDSECAO, 0) = ${secId}
-            AND OP.TIPOMOVIMENTO = 'V'
+            AND OP.TIPOMOVIMENTO IN ('V', 'E')
             AND ${dateFilter}
-          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO)
+          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO), COALESCE(NULLIF(TRIM(P.EMBALAGEMSAIDA), ''), 'UN')
           WITH UR
         `);
         for (const v of vRows) {
-          const item = ensureProd(v.CODIGO, v.DESCRICAO);
+          const item = ensureProd(v.CODIGO, v.DESCRICAO, v.UNIDADE);
           item.qtdVenda += Number(v.QTD_VENDA || 0);
           item.venda += Number(v.VENDA || 0);
           item.lucro += Number(v.LUCRO || 0);
@@ -11340,7 +11357,8 @@ async function startServer() {
           return {
             codigo: p.codigo,
             descricao: p.descricao,
-            qtdVenda: Number(p.qtdVenda.toFixed(2)),
+            unidade: p.unidade,
+            qtdVenda: Number(p.qtdVenda.toFixed(3)),
             compra: Number(p.compra.toFixed(2)),
             venda: Number(p.venda.toFixed(2)),
             cmv: Number(cmv.toFixed(2)),

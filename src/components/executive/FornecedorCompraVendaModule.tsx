@@ -44,6 +44,7 @@ interface SecaoMetrica {
 interface ProdutoMetrica {
   codigo: number;
   descricao: string;
+  unidade?: string;
   qtdVenda: number;
   compra: number;
   venda: number;
@@ -597,7 +598,7 @@ export function FornecedorCompraVendaModule({
                                                         <tr className="text-slate-400 border-b border-white/10">
                                                           <th className="py-1 px-2 text-left">Código</th>
                                                           <th className="py-1 px-2 text-left">Produto</th>
-                                                          <th className="py-1 px-2 text-right">Qtd.</th>
+                                                          <th className="py-1 px-2 text-right">Qtd. / Medida</th>
                                                           <th className="py-1 px-2 text-right">Compra</th>
                                                           <th className="py-1 px-2 text-right">Venda</th>
                                                           <th className="py-1 px-2 text-right">CMV</th>
@@ -611,7 +612,20 @@ export function FornecedorCompraVendaModule({
                                                           <tr key={pr.codigo} className="hover:bg-white/5">
                                                             <td className="py-1 px-2 font-mono text-cyan-300">{pr.codigo}</td>
                                                             <td className="py-1 px-2 text-slate-200">{pr.descricao}</td>
-                                                            <td className="py-1 px-2 text-right font-mono">{pr.qtdVenda}</td>
+                                                            <td className="py-1 px-2 text-right font-mono whitespace-nowrap">
+                                                              <span>
+                                                                {pr.unidade === "KG"
+                                                                  ? pr.qtdVenda.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+                                                                  : pr.qtdVenda.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                                                              </span>
+                                                              <span className={`ml-1.5 inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                                                pr.unidade === "KG"
+                                                                  ? "bg-amber-500/20 text-amber-300"
+                                                                  : "bg-cyan-500/20 text-cyan-300"
+                                                              }`}>
+                                                                {pr.unidade || "UN"}
+                                                              </span>
+                                                            </td>
                                                             <td className="py-1 px-2 text-right font-mono">{fmtBRL(pr.compra)}</td>
                                                             <td className="py-1 px-2 text-right font-mono font-semibold text-white">{fmtBRL(pr.venda)}</td>
                                                             <td className="py-1 px-2 text-right font-mono text-slate-300">{fmtBRL(pr.cmv)}</td>

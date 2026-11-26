@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Search, Printer, FileSpreadsheet, Loader2, Plus, X, Building2, Calendar, TrendingUp, ShoppingCart, DollarSign, Percent
+  Search, Printer, FileSpreadsheet, Loader2, Plus, X, Building2, Calendar, TrendingUp, ShoppingCart, DollarSign, Percent,
+  ChevronRight, ChevronDown, Layers, Package
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,6 +28,29 @@ interface LinhaMetrica {
   lucro: number;
   margemPct: number;
   markupCmvPct: number;
+}
+
+interface SecaoMetrica {
+  idSecao: number;
+  secao: string;
+  compra: number;
+  venda: number;
+  cmv: number;
+  cmvPct: number;
+  lucro: number;
+  margemPct: number;
+}
+
+interface ProdutoMetrica {
+  codigo: number;
+  descricao: string;
+  qtdVenda: number;
+  compra: number;
+  venda: number;
+  cmv: number;
+  cmvPct: number;
+  lucro: number;
+  margemPct: number;
 }
 
 interface RelatorioResponse {
@@ -75,6 +99,15 @@ export function FornecedorCompraVendaModule({
   const [dados, setDados] = useState<RelatorioResponse | null>(null);
   const [viewMode, setViewMode] = useState<"resumo" | "mensal">("resumo");
 
+  // Nível 2 (Seções por Loja) e Nível 3 (Produtos por Seção)
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [secoesCache, setSecoesCache] = useState<Record<string, SecaoMetrica[]>>({});
+  const [loadingSecoes, setLoadingSecoes] = useState<Record<string, boolean>>({});
+
+  const [expandedSecoes, setExpandedSecoes] = useState<Record<string, boolean>>({});
+  const [produtosCache, setProdutosCache] = useState<Record<string, ProdutoMetrica[]>>({});
+  const [loadingProdutos, setLoadingProdutos] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     const timer = setTimeout(async () => {
       setSearchingForn(true);
@@ -122,11 +155,75 @@ export function FornecedorCompraVendaModule({
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || "Erro ao consultar DB2");
       setDados(json);
+      setExpandedRows({});
+      setSecoesCache({});
+      setExpandedSecoes({});
+      setProdutosCache({});
       toast.success("Relatório carregado direto do DB2!");
     } catch (err: any) {
       toast.error(err.message || "Falha ao buscar dados no DB2.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleRowSecoes = async (r: LinhaMetrica) => {
+    const rowKey = viewMode === "mensal" ? `${r.fornId}|${r.ano}|${r.mes}|${r.idEmpresa}` : `${r.fornId}|${r.idEmpresa}`;
+    const nextOpen = !expandedRows[rowKey];
+    setExpandedRows(prev => ({ ...prev, [rowKey]: nextOpen }));
+    if (!nextOpen || secoesCache[rowKey]) return;
+
+    setLoadingSecoes(prev => ({ ...prev, [rowKey]: true }));
+    try {
+      const qs = new URLSearchParams({
+        fornecedor: String(r.fornId),
+        idEmpresa: String(r.idEmpresa),
+        startDate,
+        endDate
+      });
+      if (viewMode === "mensal" && r.ano && r.mes) {
+        qs.set("ano", String(r.ano));
+        qs.set("mes", String(r.mes));
+      }
+      const res = await fetch(`/api/relatorios/fornecedor-compra-venda/secoes?${qs.toString()}`);
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || "Erro ao carregar seções");
+      setSecoesCache(prev => ({ ...prev, [rowKey]: json.secoes || [] }));
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao abrir seções");
+    } finally {
+      setLoadingSecoes(prev => ({ ...prev, [rowKey]: false }));
+    }
+  };
+
+  const toggleSecaoProdutos = async (r: LinhaMetrica, sec: SecaoMetrica) => {
+    const rowKey = viewMode === "mensal" ? `${r.fornId}|${r.ano}|${r.mes}|${r.idEmpresa}` : `${r.fornId}|${r.idEmpresa}`;
+    const secKey = `${rowKey}|sec-${sec.idSecao}`;
+    const nextOpen = !expandedSecoes[secKey];
+    setExpandedSecoes(prev => ({ ...prev, [secKey]: nextOpen }));
+    if (!nextOpen || produtosCache[secKey]) return;
+
+    setLoadingProdutos(prev => ({ ...prev, [secKey]: true }));
+    try {
+      const qs = new URLSearchParams({
+        fornecedor: String(r.fornId),
+        idEmpresa: String(r.idEmpresa),
+        idSecao: String(sec.idSecao),
+        startDate,
+        endDate
+      });
+      if (viewMode === "mensal" && r.ano && r.mes) {
+        qs.set("ano", String(r.ano));
+        qs.set("mes", String(r.mes));
+      }
+      const res = await fetch(`/api/relatorios/fornecedor-compra-venda/produtos?${qs.toString()}`);
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || "Erro ao carregar produtos");
+      setProdutosCache(prev => ({ ...prev, [secKey]: json.produtos || [] }));
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao abrir produtos");
+    } finally {
+      setLoadingProdutos(prev => ({ ...prev, [secKey]: false }));
     }
   };
 
@@ -137,12 +234,12 @@ export function FornecedorCompraVendaModule({
     if (!dados) return;
     const rows = viewMode === "resumo" ? dados.resumoPorLoja : dados.mensal;
     const header = viewMode === "resumo"
-      ? "FORNECEDOR;LOJA;COMPRA_R$;VENDA_R$;CMV_R$;CMV_PCT;LUCRO_R$;MARGEM_VENDA_PCT;LUCRO_CMV_PCT"
-      : "FORNECEDOR;MES;LOJA;COMPRA_R$;VENDA_R$;CMV_R$;CMV_PCT;LUCRO_R$;MARGEM_VENDA_PCT;LUCRO_CMV_PCT";
+      ? "FORNECEDOR;LOJA;COMPRA_R$;VENDA_R$;CMV_R$;CMV_PCT;LUCRO_R$;MARGEM_VENDA_PCT"
+      : "FORNECEDOR;MES;LOJA;COMPRA_R$;VENDA_R$;CMV_R$;CMV_PCT;LUCRO_R$;MARGEM_VENDA_PCT";
 
     const lines = rows.map(r => {
       const base = viewMode === "resumo" ? `${r.fornNome};${r.lojaNome}` : `${r.fornNome};${r.mesLabel};${r.lojaNome}`;
-      return `${base};${r.compra.toFixed(2).replace(".", ",")};${r.venda.toFixed(2).replace(".", ",")};${r.cmv.toFixed(2).replace(".", ",")};${r.cmvPct.toFixed(2).replace(".", ",")}%;${r.lucro.toFixed(2).replace(".", ",")};${r.margemPct.toFixed(2).replace(".", ",")}%;${r.markupCmvPct.toFixed(2).replace(".", ",")}%`;
+      return `${base};${r.compra.toFixed(2).replace(".", ",")};${r.venda.toFixed(2).replace(".", ",")};${r.cmv.toFixed(2).replace(".", ",")};${r.cmvPct.toFixed(2).replace(".", ",")}%;${r.lucro.toFixed(2).replace(".", ",")};${r.margemPct.toFixed(2).replace(".", ",")}%`;
     });
 
     const blob = new Blob(["\uFEFF" + [header, ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -331,7 +428,7 @@ export function FornecedorCompraVendaModule({
           </div>
 
           {/* KPIs Totais */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card className="glass border-white/10 rounded-2xl">
               <CardContent className="p-3.5">
                 <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
@@ -366,14 +463,6 @@ export function FornecedorCompraVendaModule({
                 <div className="text-lg font-bold text-emerald-400 mt-1">
                   {fmtBRL(dados.totaisGeral.lucro)} <span className="text-xs">({dados.totaisGeral.margemPct.toFixed(2)}%)</span>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="glass border-white/10 rounded-2xl">
-              <CardContent className="p-3.5">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                  <Percent className="size-3.5 text-purple-400" /> Lucro % s/ CMV
-                </div>
-                <div className="text-lg font-bold text-purple-300 mt-1">{dados.totaisGeral.markupCmvPct.toFixed(2)}%</div>
               </CardContent>
             </Card>
           </div>
@@ -413,24 +502,143 @@ export function FornecedorCompraVendaModule({
                     <th className="py-2.5 px-3 text-right">% CMV</th>
                     <th className="py-2.5 px-3 text-right">Lucro (R$)</th>
                     <th className="py-2.5 px-3 text-right">Margem %</th>
-                    <th className="py-2.5 px-3 text-right">% s/ CMV</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {(viewMode === "resumo" ? dados.resumoPorLoja : dados.mensal).map((r, i) => (
-                    <tr key={i} className="hover:bg-white/5">
-                      <td className="py-2 px-3 font-medium text-slate-200">{r.fornNome}</td>
-                      {viewMode === "mensal" && <td className="py-2 px-3 text-cyan-300 font-semibold">{r.mesLabel}</td>}
-                      <td className="py-2 px-3 text-slate-300">{r.idEmpresa} - {r.lojaNome}</td>
-                      <td className="py-2 px-3 text-right font-mono">{fmtBRL(r.compra)}</td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-white">{fmtBRL(r.venda)}</td>
-                      <td className="py-2 px-3 text-right font-mono text-slate-300">{fmtBRL(r.cmv)}</td>
-                      <td className="py-2 px-3 text-right font-semibold text-amber-400">{r.cmvPct.toFixed(2)}%</td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-emerald-400">{fmtBRL(r.lucro)}</td>
-                      <td className="py-2 px-3 text-right font-semibold text-emerald-400">{r.margemPct.toFixed(2)}%</td>
-                      <td className="py-2 px-3 text-right font-semibold text-purple-300">{r.markupCmvPct.toFixed(2)}%</td>
-                    </tr>
-                  ))}
+                  {(viewMode === "resumo" ? dados.resumoPorLoja : dados.mensal).map((r, i) => {
+                    const rowKey = viewMode === "mensal" ? `${r.fornId}|${r.ano}|${r.mes}|${r.idEmpresa}` : `${r.fornId}|${r.idEmpresa}`;
+                    const isOpen = !!expandedRows[rowKey];
+                    const secoes = secoesCache[rowKey] || [];
+                    const isLoadingSec = !!loadingSecoes[rowKey];
+                    const colSpan = viewMode === "mensal" ? 9 : 8;
+
+                    return (
+                      <Fragment key={rowKey + "-" + i}>
+                        <tr
+                          onClick={() => toggleRowSecoes(r)}
+                          className={`cursor-pointer transition-colors ${isOpen ? "bg-cyan-500/10" : "hover:bg-white/5"}`}
+                          title="Clique para abrir as Seções"
+                        >
+                          <td className="py-2.5 px-3 font-medium text-slate-200 flex items-center gap-1.5">
+                            {isOpen ? <ChevronDown className="size-4 text-cyan-400 shrink-0" /> : <ChevronRight className="size-4 text-slate-400 shrink-0" />}
+                            <span>{r.fornNome}</span>
+                          </td>
+                          {viewMode === "mensal" && <td className="py-2.5 px-3 text-cyan-300 font-semibold">{r.mesLabel}</td>}
+                          <td className="py-2.5 px-3 text-slate-300">{r.idEmpresa} - {r.lojaNome}</td>
+                          <td className="py-2.5 px-3 text-right font-mono">{fmtBRL(r.compra)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-white">{fmtBRL(r.venda)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-300">{fmtBRL(r.cmv)}</td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-amber-400">{r.cmvPct.toFixed(2)}%</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-400">{fmtBRL(r.lucro)}</td>
+                          <td className="py-2.5 px-3 text-right font-semibold text-emerald-400">{r.margemPct.toFixed(2)}%</td>
+                        </tr>
+
+                        {/* NÍVEL 2: SEÇÕES */}
+                        {isOpen && (
+                          <tr className="bg-slate-950/45">
+                            <td colSpan={colSpan} className="p-0">
+                              <div className="pl-6 pr-3 py-2 border-l-2 border-cyan-500/50 space-y-1">
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 pb-1">
+                                  <Layers className="size-3.5" />
+                                  Nível 2 — Seções ({r.idEmpresa} - {r.lojaNome}) {isLoadingSec && <Loader2 className="size-3.5 animate-spin ml-1" />}
+                                </div>
+                                {!isLoadingSec && secoes.length === 0 && (
+                                  <div className="text-[11px] text-slate-400 py-1">Nenhuma seção movimentada neste filtro.</div>
+                                )}
+                                {secoes.length > 0 && (
+                                  <table className="w-full text-[11px]">
+                                    <thead>
+                                      <tr className="text-slate-400 border-b border-white/10">
+                                        <th className="py-1 px-2 text-left">Seção</th>
+                                        <th className="py-1 px-2 text-right">Compra</th>
+                                        <th className="py-1 px-2 text-right">Venda</th>
+                                        <th className="py-1 px-2 text-right">CMV (R$)</th>
+                                        <th className="py-1 px-2 text-right">% CMV</th>
+                                        <th className="py-1 px-2 text-right">Lucro (R$)</th>
+                                        <th className="py-1 px-2 text-right">Margem %</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                      {secoes.map(sec => {
+                                        const secKey = `${rowKey}|sec-${sec.idSecao}`;
+                                        const isSecOpen = !!expandedSecoes[secKey];
+                                        const prods = produtosCache[secKey] || [];
+                                        const isLoadingProd = !!loadingProdutos[secKey];
+                                        return (
+                                          <Fragment key={secKey}>
+                                            <tr
+                                              onClick={(e) => { e.stopPropagation(); toggleSecaoProdutos(r, sec); }}
+                                              className={`cursor-pointer ${isSecOpen ? "bg-blue-500/10" : "hover:bg-white/5"}`}
+                                              title="Clique para abrir os Produtos desta Seção"
+                                            >
+                                              <td className="py-1.5 px-2 font-medium text-slate-200 flex items-center gap-1.5">
+                                                {isSecOpen ? <ChevronDown className="size-3.5 text-blue-400 shrink-0" /> : <ChevronRight className="size-3.5 text-slate-400 shrink-0" />}
+                                                <span>{sec.idSecao} - {sec.secao}</span>
+                                              </td>
+                                              <td className="py-1.5 px-2 text-right font-mono">{fmtBRL(sec.compra)}</td>
+                                              <td className="py-1.5 px-2 text-right font-mono font-semibold text-white">{fmtBRL(sec.venda)}</td>
+                                              <td className="py-1.5 px-2 text-right font-mono text-slate-300">{fmtBRL(sec.cmv)}</td>
+                                              <td className="py-1.5 px-2 text-right text-amber-400 font-semibold">{sec.cmvPct.toFixed(2)}%</td>
+                                              <td className="py-1.5 px-2 text-right font-mono text-emerald-400 font-semibold">{fmtBRL(sec.lucro)}</td>
+                                              <td className="py-1.5 px-2 text-right text-emerald-400 font-semibold">{sec.margemPct.toFixed(2)}%</td>
+                                            </tr>
+
+                                            {/* NÍVEL 3: PRODUTOS DA SEÇÃO */}
+                                            {isSecOpen && (
+                                              <tr className="bg-black/30">
+                                                <td colSpan={7} className="pl-6 pr-2 py-2 border-l-2 border-blue-500/40">
+                                                  <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1 pb-1">
+                                                    <Package className="size-3" />
+                                                    Nível 3 — Produtos ({sec.secao}) {isLoadingProd && <Loader2 className="size-3 animate-spin ml-1" />}
+                                                  </div>
+                                                  {!isLoadingProd && prods.length > 0 && (
+                                                    <table className="w-full text-[10px]">
+                                                      <thead>
+                                                        <tr className="text-slate-400 border-b border-white/10">
+                                                          <th className="py-1 px-2 text-left">Código</th>
+                                                          <th className="py-1 px-2 text-left">Produto</th>
+                                                          <th className="py-1 px-2 text-right">Qtd.</th>
+                                                          <th className="py-1 px-2 text-right">Compra</th>
+                                                          <th className="py-1 px-2 text-right">Venda</th>
+                                                          <th className="py-1 px-2 text-right">CMV</th>
+                                                          <th className="py-1 px-2 text-right">% CMV</th>
+                                                          <th className="py-1 px-2 text-right">Lucro</th>
+                                                          <th className="py-1 px-2 text-right">Margem %</th>
+                                                        </tr>
+                                                      </thead>
+                                                      <tbody className="divide-y divide-white/5">
+                                                        {prods.map(pr => (
+                                                          <tr key={pr.codigo} className="hover:bg-white/5">
+                                                            <td className="py-1 px-2 font-mono text-cyan-300">{pr.codigo}</td>
+                                                            <td className="py-1 px-2 text-slate-200">{pr.descricao}</td>
+                                                            <td className="py-1 px-2 text-right font-mono">{pr.qtdVenda}</td>
+                                                            <td className="py-1 px-2 text-right font-mono">{fmtBRL(pr.compra)}</td>
+                                                            <td className="py-1 px-2 text-right font-mono font-semibold text-white">{fmtBRL(pr.venda)}</td>
+                                                            <td className="py-1 px-2 text-right font-mono text-slate-300">{fmtBRL(pr.cmv)}</td>
+                                                            <td className="py-1 px-2 text-right text-amber-400">{pr.cmvPct.toFixed(2)}%</td>
+                                                            <td className="py-1 px-2 text-right font-mono text-emerald-400">{fmtBRL(pr.lucro)}</td>
+                                                            <td className="py-1 px-2 text-right text-emerald-400 font-semibold">{pr.margemPct.toFixed(2)}%</td>
+                                                          </tr>
+                                                        ))}
+                                                      </tbody>
+                                                    </table>
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </Fragment>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

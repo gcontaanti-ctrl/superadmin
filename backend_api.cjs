@@ -11120,6 +11120,243 @@ async function startServer() {
     }
   });
 
+  // Helper compartilhado: produtos vinculados a um fornecedor
+  async function getSubprodutosFornecedor(fornId) {
+    const rows = await queryDB(`
+      SELECT DISTINCT EA.IDSUBPRODUTO
+      FROM DBA.ESTOQUE_ANALITICO EA
+      JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+      JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+      WHERE N.IDCLIFOR = ${Number(fornId)}
+        AND OP.TIPOMOVIMENTO = 'C'
+        AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+        AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
+      UNION
+      SELECT DISTINCT G.IDSUBPRODUTO
+      FROM DBA.PRODUTO_FORNECEDOR PF
+      JOIN DBA.PRODUTO_GRADE G ON G.IDPRODUTO = PF.IDPRODUTO
+      WHERE PF.IDCLIFOR = ${Number(fornId)}
+      WITH UR
+    `).catch(async () => {
+      return await queryDB(`
+        SELECT DISTINCT EA.IDSUBPRODUTO
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        WHERE N.IDCLIFOR = ${Number(fornId)}
+          AND OP.TIPOMOVIMENTO = 'C'
+          AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
+        WITH UR
+      `);
+    });
+    return [...new Set(rows.map(r => Number(r.IDSUBPRODUTO)).filter(n => !isNaN(n) && n > 0))];
+  }
+
+  // Nível 2 Drill-down: Seções por Fornecedor e Loja (opcionalmente filtrado por ano/mês)
+  app.get('/api/relatorios/fornecedor-compra-venda/secoes', async (req, res) => {
+    try {
+      const { fornecedor, idEmpresa, startDate, endDate, ano, mes } = req.query;
+      const fornId = parseInt(fornecedor, 10);
+      const empId = parseInt(idEmpresa, 10);
+      if (!fornId || !empId || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Parâmetros inválidos.' });
+      }
+
+      const dateFilter = ano && mes
+        ? `YEAR(EA.DTMOVIMENTO) = ${parseInt(ano, 10)} AND MONTH(EA.DTMOVIMENTO) = ${parseInt(mes, 10)}`
+        : `DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'`;
+
+      const [comprasSec, subIds] = await Promise.all([
+        queryDB(`
+          SELECT
+            COALESCE(P.IDSECAO, 0) AS IDSECAO,
+            COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO') AS SECAO,
+            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS COMPRA
+          FROM DBA.ESTOQUE_ANALITICO EA
+          JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+          JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
+          JOIN DBA.PRODUTO P ON P.IDPRODUTO = G.IDPRODUTO
+          LEFT JOIN DBA.SECAO SC ON SC.IDSECAO = P.IDSECAO
+          WHERE N.IDCLIFOR = ${fornId}
+            AND EA.IDEMPRESA = ${empId}
+            AND OP.TIPOMOVIMENTO = 'C'
+            AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+            AND ${dateFilter}
+          GROUP BY COALESCE(P.IDSECAO, 0), COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO')
+          WITH UR
+        `),
+        getSubprodutosFornecedor(fornId)
+      ]);
+
+      const mapa = {};
+      const ensureSec = (idSec, nomeSec) => {
+        if (!mapa[idSec]) {
+          mapa[idSec] = { idSecao: Number(idSec), secao: nomeSec, compra: 0, venda: 0, lucro: 0 };
+        }
+        return mapa[idSec];
+      };
+
+      for (const c of comprasSec) {
+        ensureSec(c.IDSECAO, c.SECAO).compra += Number(c.COMPRA || 0);
+      }
+
+      for (let i = 0; i < subIds.length; i += 400) {
+        const chunk = subIds.slice(i, i + 400).join(',');
+        const vRows = await queryDB(`
+          SELECT
+            COALESCE(P.IDSECAO, 0) AS IDSECAO,
+            COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO') AS SECAO,
+            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VENDA,
+            SUM(COALESCE(EA.VALLUCRO, 0)) AS LUCRO
+          FROM DBA.ESTOQUE_ANALITICO EA
+          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+          JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
+          JOIN DBA.PRODUTO P ON P.IDPRODUTO = G.IDPRODUTO
+          LEFT JOIN DBA.SECAO SC ON SC.IDSECAO = P.IDSECAO
+          WHERE EA.IDSUBPRODUTO IN (${chunk})
+            AND EA.IDEMPRESA = ${empId}
+            AND OP.TIPOMOVIMENTO = 'V'
+            AND ${dateFilter}
+          GROUP BY COALESCE(P.IDSECAO, 0), COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO')
+          WITH UR
+        `);
+        for (const v of vRows) {
+          const item = ensureSec(v.IDSECAO, v.SECAO);
+          item.venda += Number(v.VENDA || 0);
+          item.lucro += Number(v.LUCRO || 0);
+        }
+      }
+
+      const secoes = Object.values(mapa)
+        .map(s => {
+          const cmv = Math.max(0, s.venda - s.lucro);
+          const cmvPct = s.venda > 0 ? (cmv / s.venda) * 100 : 0;
+          const margemPct = s.venda > 0 ? (s.lucro / s.venda) * 100 : 0;
+          return {
+            idSecao: s.idSecao,
+            secao: s.secao,
+            compra: Number(s.compra.toFixed(2)),
+            venda: Number(s.venda.toFixed(2)),
+            cmv: Number(cmv.toFixed(2)),
+            cmvPct: Number(cmvPct.toFixed(2)),
+            lucro: Number(s.lucro.toFixed(2)),
+            margemPct: Number(margemPct.toFixed(2))
+          };
+        })
+        .sort((a, b) => b.venda - a.venda || b.compra - a.compra);
+
+      res.json({ secoes });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Nível 3 Drill-down: Produtos de uma Seção para aquele Fornecedor e Loja
+  app.get('/api/relatorios/fornecedor-compra-venda/produtos', async (req, res) => {
+    try {
+      const { fornecedor, idEmpresa, idSecao, startDate, endDate, ano, mes } = req.query;
+      const fornId = parseInt(fornecedor, 10);
+      const empId = parseInt(idEmpresa, 10);
+      const secId = parseInt(idSecao, 10);
+      if (!fornId || !empId || isNaN(secId) || !startDate || !endDate) {
+        return res.status(400).json({ error: 'Parâmetros inválidos.' });
+      }
+
+      const dateFilter = ano && mes
+        ? `YEAR(EA.DTMOVIMENTO) = ${parseInt(ano, 10)} AND MONTH(EA.DTMOVIMENTO) = ${parseInt(mes, 10)}`
+        : `DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'`;
+
+      const [comprasProd, subIds] = await Promise.all([
+        queryDB(`
+          SELECT
+            EA.IDSUBPRODUTO AS CODIGO,
+            TRIM(P.DESCRCOMPRODUTO) AS DESCRICAO,
+            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS COMPRA
+          FROM DBA.ESTOQUE_ANALITICO EA
+          JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+          JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
+          JOIN DBA.PRODUTO P ON P.IDPRODUTO = G.IDPRODUTO
+          WHERE N.IDCLIFOR = ${fornId}
+            AND EA.IDEMPRESA = ${empId}
+            AND COALESCE(P.IDSECAO, 0) = ${secId}
+            AND OP.TIPOMOVIMENTO = 'C'
+            AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+            AND ${dateFilter}
+          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO)
+          WITH UR
+        `),
+        getSubprodutosFornecedor(fornId)
+      ]);
+
+      const mapa = {};
+      const ensureProd = (cod, desc) => {
+        if (!mapa[cod]) {
+          mapa[cod] = { codigo: Number(cod), descricao: desc, compra: 0, venda: 0, lucro: 0, qtdVenda: 0 };
+        }
+        return mapa[cod];
+      };
+
+      for (const c of comprasProd) {
+        ensureProd(c.CODIGO, c.DESCRICAO).compra += Number(c.COMPRA || 0);
+      }
+
+      for (let i = 0; i < subIds.length; i += 400) {
+        const chunk = subIds.slice(i, i + 400).join(',');
+        const vRows = await queryDB(`
+          SELECT
+            EA.IDSUBPRODUTO AS CODIGO,
+            TRIM(P.DESCRCOMPRODUTO) AS DESCRICAO,
+            SUM(ABS(COALESCE(EA.QTDPRODUTO, 0))) AS QTD_VENDA,
+            SUM(COALESCE(EA.VALTOTLIQUIDO, 0)) AS VENDA,
+            SUM(COALESCE(EA.VALLUCRO, 0)) AS LUCRO
+          FROM DBA.ESTOQUE_ANALITICO EA
+          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+          JOIN DBA.PRODUTO_GRADE G ON G.IDSUBPRODUTO = EA.IDSUBPRODUTO
+          JOIN DBA.PRODUTO P ON P.IDPRODUTO = G.IDPRODUTO
+          WHERE EA.IDSUBPRODUTO IN (${chunk})
+            AND EA.IDEMPRESA = ${empId}
+            AND COALESCE(P.IDSECAO, 0) = ${secId}
+            AND OP.TIPOMOVIMENTO = 'V'
+            AND ${dateFilter}
+          GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO)
+          WITH UR
+        `);
+        for (const v of vRows) {
+          const item = ensureProd(v.CODIGO, v.DESCRICAO);
+          item.qtdVenda += Number(v.QTD_VENDA || 0);
+          item.venda += Number(v.VENDA || 0);
+          item.lucro += Number(v.LUCRO || 0);
+        }
+      }
+
+      const produtos = Object.values(mapa)
+        .map(p => {
+          const cmv = Math.max(0, p.venda - p.lucro);
+          const cmvPct = p.venda > 0 ? (cmv / p.venda) * 100 : 0;
+          const margemPct = p.venda > 0 ? (p.lucro / p.venda) * 100 : 0;
+          return {
+            codigo: p.codigo,
+            descricao: p.descricao,
+            qtdVenda: Number(p.qtdVenda.toFixed(2)),
+            compra: Number(p.compra.toFixed(2)),
+            venda: Number(p.venda.toFixed(2)),
+            cmv: Number(cmv.toFixed(2)),
+            cmvPct: Number(cmvPct.toFixed(2)),
+            lucro: Number(p.lucro.toFixed(2)),
+            margemPct: Number(margemPct.toFixed(2))
+          };
+        })
+        .sort((a, b) => b.venda - a.venda || b.compra - a.compra);
+
+      res.json({ produtos });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 }
 
 startServer().catch((err) => {

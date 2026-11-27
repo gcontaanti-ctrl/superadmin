@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Search, Printer, FileSpreadsheet, Loader2, Plus, X, Building2, Calendar, TrendingUp, ShoppingCart, DollarSign, Percent,
-  ChevronRight, ChevronDown, Layers, Package
+  ChevronRight, ChevronDown, Layers, Package, Trophy, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,6 +71,17 @@ interface RelatorioResponse {
   mensal: LinhaMetrica[];
 }
 
+interface RankingFornecedorItem {
+  posicao: number;
+  id: number;
+  nome: string;
+  cnpj: string;
+  qtdNotas: number;
+  ultimaCompra: string;
+  compra: number;
+  participacaoPct: number;
+}
+
 interface Props {
   selectedStore?: string;
   startDate?: string;
@@ -99,6 +110,11 @@ export function FornecedorCompraVendaModule({
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<RelatorioResponse | null>(null);
   const [viewMode, setViewMode] = useState<"resumo" | "mensal">("resumo");
+  const [abaPrincipal, setAbaPrincipal] = useState<"relatorio" | "ranking">("relatorio");
+
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [rankingData, setRankingData] = useState<{ totalGeral: number; ranking: RankingFornecedorItem[] } | null>(null);
+  const [rankingBusca, setRankingBusca] = useState("");
 
   // Nível 2 (Seções por Loja) e Nível 3 (Produtos por Seção)
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -138,8 +154,8 @@ export function FornecedorCompraVendaModule({
     setSelecionados(prev => prev.filter(s => s.id !== id));
   };
 
-  const gerarRelatorio = async () => {
-    if (selecionados.length === 0) {
+  const gerarRelatorioComLista = async (listaForns: FornecedorOption[]) => {
+    if (listaForns.length === 0) {
       toast.error("Selecione ao menos 1 fornecedor / marca para consultar.");
       return;
     }
@@ -149,7 +165,7 @@ export function FornecedorCompraVendaModule({
     }
     setLoading(true);
     try {
-      const ids = selecionados.map(s => s.id).join(",");
+      const ids = listaForns.map(s => s.id).join(",");
       const res = await fetch(
         `/api/relatorios/fornecedor-compra-venda?fornecedores=${ids}&startDate=${startDate}&endDate=${endDate}&idEmpresa=${idEmpresa}`
       );
@@ -166,6 +182,31 @@ export function FornecedorCompraVendaModule({
     } finally {
       setLoading(false);
     }
+  };
+
+  const gerarRelatorio = () => gerarRelatorioComLista(selecionados);
+
+  const carregarRanking = async () => {
+    setRankingLoading(true);
+    try {
+      const qs = new URLSearchParams({ startDate, endDate, idEmpresa });
+      const res = await fetch(`/api/fornecedores/ranking-ativos?${qs.toString()}`);
+      const json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || "Erro ao carregar ranking");
+      setRankingData({ totalGeral: json.totalGeral || 0, ranking: json.ranking || [] });
+    } catch (err: any) {
+      toast.error(err.message || "Falha ao carregar ranking de fornecedores");
+    } finally {
+      setRankingLoading(false);
+    }
+  };
+
+  const analisarFornecedorDoRanking = (item: RankingFornecedorItem) => {
+    const opt: FornecedorOption = { id: item.id, nome: item.nome, cnpj: item.cnpj };
+    const novaLista = selecionados.some(s => s.id === item.id) ? selecionados : [...selecionados, opt];
+    setSelecionados(novaLista);
+    setAbaPrincipal("relatorio");
+    gerarRelatorioComLista(novaLista);
   };
 
   const toggleRowSecoes = async (r: LinhaMetrica) => {
@@ -412,11 +453,155 @@ export function FornecedorCompraVendaModule({
               ))
             )}
           </div>
+          {/* Abas Principais do Módulo */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/10">
+            <Button
+              size="sm"
+              variant={abaPrincipal === "relatorio" ? "default" : "outline"}
+              onClick={() => setAbaPrincipal("relatorio")}
+              className="text-xs rounded-xl gap-1.5"
+            >
+              <ShoppingCart className="size-3.5" />
+              Compra × Venda (Detalhado)
+            </Button>
+            <Button
+              size="sm"
+              variant={abaPrincipal === "ranking" ? "default" : "outline"}
+              onClick={() => {
+                setAbaPrincipal("ranking");
+                carregarRanking();
+              }}
+              className="text-xs rounded-xl gap-1.5"
+            >
+              <Trophy className="size-3.5 text-amber-400" />
+              Ranking Fornecedores Ativos {rankingData ? `(${rankingData.ranking.length})` : ""}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
+      {abaPrincipal === "ranking" ? (
+        <Card className="glass border-white/10 rounded-2xl overflow-hidden no-print">
+          <CardContent className="p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <Trophy className="size-4 text-amber-400" />
+                  Ranking de Maiores Fornecedores Ativos ({startDate} até {endDate})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Ordenados pelo maior volume líquido de compras no período. Clique em qualquer fornecedor para abrir o Compra × Venda dele.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={rankingBusca}
+                  onChange={(e) => setRankingBusca(e.target.value)}
+                  placeholder="Filtrar fornecedor..."
+                  className="h-8 px-3 rounded-xl bg-black/30 border border-white/15 text-xs text-white placeholder-slate-500"
+                />
+                <Button size="sm" onClick={carregarRanking} disabled={rankingLoading} className="h-8 text-xs rounded-xl">
+                  {rankingLoading ? <Loader2 className="size-3.5 animate-spin" /> : "Atualizar"}
+                </Button>
+              </div>
+            </div>
+
+            {rankingLoading && !rankingData ? (
+              <div className="py-10 flex items-center justify-center gap-2 text-xs text-slate-300">
+                <Loader2 className="size-5 animate-spin text-amber-400" />
+                Calculando ranking direto do DB2...
+              </div>
+            ) : (
+              <>
+                {/* Cards Mobile */}
+                <div className="md:hidden space-y-2">
+                  {(rankingData?.ranking || [])
+                    .filter(r => !rankingBusca.trim() || `${r.id} ${r.nome}`.toUpperCase().includes(rankingBusca.trim().toUpperCase()))
+                    .map(r => (
+                      <div key={`mob-rk-${r.id}`} className="rounded-xl bg-black/30 border border-white/10 p-3 space-y-1.5 text-xs">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-bold text-white leading-tight">
+                            <span className="inline-block px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] mr-1.5">
+                              #{r.posicao}
+                            </span>
+                            <span className="font-mono text-cyan-300 mr-1">{r.id}</span>
+                            {r.nome}
+                          </div>
+                          <span className="font-mono font-bold text-emerald-400 shrink-0">{fmtBRL(r.compra)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400">
+                          <span>{r.qtdNotas} notas • Últ.: {r.ultimaCompra}</span>
+                          <span>{r.participacaoPct.toFixed(2)}%</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => analisarFornecedorDoRanking(r)}
+                          className="w-full h-7 text-[11px] rounded-lg bg-cyan-600/80 hover:bg-cyan-500 !text-white gap-1"
+                        >
+                          Analisar Compra × Venda <ArrowRight className="size-3" />
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Tabela Desktop */}
+                <div className="hidden md:block overflow-x-auto rounded-xl border border-white/10">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="bg-white/5 border-b border-white/10 text-slate-300">
+                        <th className="py-2.5 px-3 text-center w-14">Rank</th>
+                        <th className="py-2.5 px-3">Código / Fornecedor</th>
+                        <th className="py-2.5 px-3 text-right">Notas</th>
+                        <th className="py-2.5 px-3 text-center">Última Compra</th>
+                        <th className="py-2.5 px-3 text-right">Total Comprado</th>
+                        <th className="py-2.5 px-3 text-right">% Part.</th>
+                        <th className="py-2.5 px-3 text-center">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {(rankingData?.ranking || [])
+                        .filter(r => !rankingBusca.trim() || `${r.id} ${r.nome}`.toUpperCase().includes(rankingBusca.trim().toUpperCase()))
+                        .map(r => (
+                          <tr key={`desk-rk-${r.id}`} className="hover:bg-white/5">
+                            <td className="py-2 px-3 text-center font-mono font-bold">
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] ${
+                                r.posicao <= 3 ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300"
+                              }`}>
+                                #{r.posicao}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 font-medium text-white">
+                              <span className="font-mono text-cyan-300 mr-1.5">{r.id}</span>
+                              {r.nome}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-300">{r.qtdNotas}</td>
+                            <td className="py-2 px-3 text-center font-mono text-slate-300">{r.ultimaCompra}</td>
+                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-400">{fmtBRL(r.compra)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-amber-300">{r.participacaoPct.toFixed(2)}%</td>
+                            <td className="py-2 px-3 text-center">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => analisarFornecedorDoRanking(r)}
+                                className="h-7 px-2.5 text-[11px] rounded-lg gap-1 hover:bg-cyan-500/20 hover:border-cyan-400"
+                              >
+                                Abrir <ArrowRight className="size-3" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Área Imprimível do Relatório */}
-      {dados && (
+      {abaPrincipal === "relatorio" && dados && (
         <div id="fornecedor-print-area" className="space-y-4">
           {/* Cabeçalho visível na impressão */}
           <div className="hidden print:block border-b border-slate-300 pb-3 mb-4">

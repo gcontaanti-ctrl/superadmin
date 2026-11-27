@@ -10973,6 +10973,70 @@ async function startServer() {
     }
   });
 
+  // Ranking de fornecedores ativos recentemente (maiores compradores no período)
+  app.get('/api/fornecedores/ranking-ativos', async (req, res) => {
+    try {
+      const { startDate, endDate, idEmpresa = 'todas' } = req.query;
+      const fim = String(endDate || new Date().toISOString().slice(0, 10)).slice(0, 10);
+      const iniDefault = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+      const ini = String(startDate || iniDefault).slice(0, 10);
+      const isFilteredLoja = idEmpresa && idEmpresa !== 'todas';
+      const empIdFilter = isFilteredLoja ? parseInt(idEmpresa, 10) : null;
+      const whereLoja = isFilteredLoja ? ` AND EA.IDEMPRESA = ${empIdFilter}` : '';
+
+      const rows = await queryDB(`
+        SELECT
+          N.IDCLIFOR AS ID,
+          TRIM(CF.NOME) AS NOME,
+          TRIM(COALESCE(CF.CNPJCPF, '')) AS CNPJ,
+          COUNT(DISTINCT N.IDPLANILHA) AS QTD_NOTAS,
+          MAX(DATE(EA.DTMOVIMENTO)) AS ULTIMA_COMPRA,
+          SUM(CASE
+            WHEN OP.TIPOMOVIMENTO = 'C' THEN COALESCE(EA.VALTOTLIQUIDO, 0)
+            WHEN (OP.TIPOMOVIMENTO = 'O' AND OP.IDOPERACAO <> 1035) OR OP.IDOPERACAO IN (1030, 1031, 1181) THEN -COALESCE(EA.VALTOTLIQUIDO, 0)
+            ELSE 0
+          END) AS COMPRA
+        FROM DBA.ESTOQUE_ANALITICO EA
+        JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
+        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
+        JOIN DBA.CLIENTE_FORNECEDOR CF ON CF.IDCLIFOR = N.IDCLIFOR
+        WHERE COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          AND (OP.TIPOMOVIMENTO IN ('C', 'O') OR OP.IDOPERACAO IN (1030, 1031, 1181))
+          AND OP.IDOPERACAO <> 1035
+          AND DATE(EA.DTMOVIMENTO) BETWEEN '${ini}' AND '${fim}'
+          ${whereLoja}
+        GROUP BY N.IDCLIFOR, TRIM(CF.NOME), TRIM(COALESCE(CF.CNPJCPF, ''))
+        HAVING SUM(CASE
+            WHEN OP.TIPOMOVIMENTO = 'C' THEN COALESCE(EA.VALTOTLIQUIDO, 0)
+            WHEN (OP.TIPOMOVIMENTO = 'O' AND OP.IDOPERACAO <> 1035) OR OP.IDOPERACAO IN (1030, 1031, 1181) THEN -COALESCE(EA.VALTOTLIQUIDO, 0)
+            ELSE 0
+          END) > 0
+        ORDER BY COMPRA DESC
+        FETCH FIRST 200 ROWS ONLY
+        WITH UR
+      `);
+
+      const totalGeral = rows.reduce((acc, r) => acc + Number(r.COMPRA || 0), 0);
+      const ranking = rows.map((r, idx) => {
+        const compra = Number(r.COMPRA || 0);
+        return {
+          posicao: idx + 1,
+          id: Number(r.ID),
+          nome: String(r.NOME || '').trim(),
+          cnpj: String(r.CNPJ || '').trim(),
+          qtdNotas: Number(r.QTD_NOTAS || 0),
+          ultimaCompra: String(r.ULTIMA_COMPRA || '').slice(0, 10),
+          compra: Number(compra.toFixed(2)),
+          participacaoPct: totalGeral > 0 ? Number(((compra / totalGeral) * 100).toFixed(2)) : 0
+        };
+      });
+
+      res.json({ startDate: ini, endDate: fim, totalGeral: Number(totalGeral.toFixed(2)), ranking });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Busca rápida de fornecedores (por código ou nome) para o relatório Compra x Venda
   app.get('/api/fornecedores/busca', async (req, res) => {
     try {

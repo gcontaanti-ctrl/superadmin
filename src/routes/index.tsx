@@ -306,12 +306,15 @@ function Dashboard() {
             onClick={() => setIsMobileMenuOpen(false)}
           />
           {/* Drawer com efeito 3D tipo leque */}
-          <div className="fixed inset-y-2 left-2 w-60 max-w-[80vw] rounded-3xl bg-white/95 dark:bg-[#0f1d35]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 shadow-2xl p-2 flex flex-col z-50 overflow-hidden animate-horus-leque">
-            <div className="flex justify-end mb-2 px-2 pt-2">
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white rounded-full">
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
+          <div className="fixed inset-y-2 left-2 w-60 max-w-[80vw] rounded-3xl bg-white/95 dark:bg-[#0f1d35]/95 backdrop-blur-xl border border-slate-200 dark:border-white/15 shadow-2xl p-2 pt-3 flex flex-col z-50 overflow-hidden animate-horus-leque">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute top-2 right-2 z-10 h-7 w-7 text-slate-400 hover:text-white rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </Button>
             <Sidebar 
               currentUser={currentUser}
               onLogout={logout}
@@ -319,7 +322,7 @@ function Dashboard() {
               setActiveTab={setActiveTab} 
               selectedStore={selectedStore} 
               setSelectedStore={setSelectedStore} 
-              className="flex-1 w-full p-2 bg-transparent border-none rounded-none shadow-none mt-0 min-h-0"
+              className="flex-1 w-full px-1.5 pb-1.5 bg-transparent border-none rounded-none shadow-none mt-0 min-h-0"
               onItemClick={() => setIsMobileMenuOpen(false)}
             />
           </div>

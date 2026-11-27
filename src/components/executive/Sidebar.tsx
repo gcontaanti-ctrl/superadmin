@@ -96,7 +96,7 @@ export function Sidebar({
   const groups = Array.from(new Set(filteredNav.map((i) => i.group)));
 
   return (
-    <aside className={cn("w-full h-full flex flex-col gap-1 overflow-hidden", className)}>
+    <aside className={cn("w-full flex flex-col gap-1 min-h-0 overflow-hidden", className)}>
       <button
         type="button"
         onClick={() => {
@@ -125,7 +125,7 @@ export function Sidebar({
         />
       </div>
 
-      <nav className="mt-0.5 flex flex-col gap-1.5 overflow-y-auto no-scrollbar flex-1 pb-2 px-0.5">
+      <nav className="mt-0.5 flex flex-col gap-1.5 overflow-y-auto overscroll-contain touch-pan-y flex-1 min-h-0 pb-2 px-0.5">
         {groups.map((groupName) => (
           <div key={groupName} className="flex flex-col gap-0.5">
             <div className="px-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-tight">

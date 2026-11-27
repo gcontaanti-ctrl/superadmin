@@ -142,6 +142,7 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
   const [statusFiltro, setStatusFiltro] = useState<"todos" | "F" | "T">("todos");
   const [selectedDay, setSelectedDay] = useState<string>(hojeIso);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("TODAS");
+  const [buscaDia, setBuscaDia] = useState<string>("");
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   const [expandedTitulos, setExpandedTitulos] = useState<Record<string, boolean>>({});
@@ -263,9 +264,16 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
   }, [itensDiaSelecionado]);
 
   const itensFiltradosDia = useMemo(() => {
-    if (categoriaFiltro === "TODAS") return itensDiaSelecionado;
-    return itensDiaSelecionado.filter(i => i.categoria === categoriaFiltro);
-  }, [itensDiaSelecionado, categoriaFiltro]);
+    const q = buscaDia.trim().toUpperCase();
+    return itensDiaSelecionado.filter(i => {
+      if (categoriaFiltro !== "TODAS" && i.categoria !== categoriaFiltro) return false;
+      if (q) {
+        const hay = `${i.FAVORECIDO} ${i.NUMNOTA || ""} ${i.NUMERO_TITULO} ${i.OBSERVACAO}`.toUpperCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [itensDiaSelecionado, categoriaFiltro, buscaDia]);
 
   const totalDiaSelecionado = useMemo(() => {
     return itensDiaSelecionado.reduce((acc, i) => acc + (i.VALOR_EFETIVO || i.VALOR || 0), 0);
@@ -327,39 +335,33 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
         }
       `}</style>
 
-      {/* Cabeçalho e Filtros */}
+      {/* Cabeçalho e Filtros Compactos */}
       <Card className="glass-strong border-white/10 rounded-2xl no-print">
-        <CardContent className="p-4 sm:p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <CalendarIcon className="size-5 text-cyan-400" />
+        <CardContent className="p-3 sm:p-3.5 space-y-2.5">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <CalendarIcon className="size-4 text-cyan-400" />
                 Calendário de Pagamentos
               </h2>
-              <p className="text-xs text-slate-400">
-                Clique em qualquer dia do mês para ver os pagamentos agendados separados por fornecedor, água, luz, salários e tributos.
-              </p>
-            </div>
 
-            <div className="flex items-center gap-1.5 self-start sm:self-auto">
-              <Button size="sm" variant="outline" onClick={() => mudarMes(-1)} className="h-8 px-2.5 rounded-xl">
-                <ChevronLeft className="size-4" />
-              </Button>
-              <div className="min-w-[140px] text-center text-xs sm:text-sm font-bold text-white px-2">
-                {MESES_PT[(mesAtual || 1) - 1]} {anoAtual}
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" onClick={() => mudarMes(-1)} className="h-7 px-2 rounded-lg">
+                  <ChevronLeft className="size-3.5" />
+                </Button>
+                <div className="min-w-[115px] text-center text-xs font-bold text-white px-1">
+                  {MESES_PT[(mesAtual || 1) - 1]} {anoAtual}
+                </div>
+                <Button size="sm" variant="outline" onClick={() => mudarMes(1)} className="h-7 px-2 rounded-lg">
+                  <ChevronRight className="size-3.5" />
+                </Button>
+                <Button size="sm" variant="outline" onClick={irParaHoje} className="h-7 px-2.5 rounded-lg text-[11px] ml-0.5">
+                  Hoje
+                </Button>
               </div>
-              <Button size="sm" variant="outline" onClick={() => mudarMes(1)} className="h-8 px-2.5 rounded-xl">
-                <ChevronRight className="size-4" />
-              </Button>
-              <Button size="sm" variant="outline" onClick={irParaHoje} className="h-8 px-3 rounded-xl text-xs ml-1">
-                Hoje
-              </Button>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-400 uppercase mb-1 block">Mês / Ano</label>
+            <div className="grid grid-cols-3 gap-2 flex-1 lg:max-w-xl">
               <input
                 type="month"
                 value={mesAno}
@@ -369,16 +371,12 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
                     setSelectedDay(`${e.target.value}-01`);
                   }
                 }}
-                className="w-full h-9 px-3 rounded-xl bg-black/30 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
+                className="w-full h-8 px-2.5 rounded-xl bg-black/30 border border-white/15 text-[11px] text-white focus:outline-none focus:border-cyan-400"
               />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-semibold text-slate-400 uppercase mb-1 block">Loja</label>
               <select
                 value={idEmpresa}
                 onChange={(e) => setIdEmpresa(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl bg-black/30 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
+                className="w-full h-8 px-2.5 rounded-xl bg-black/30 border border-white/15 text-[11px] text-white focus:outline-none focus:border-cyan-400"
               >
                 <option value="todas" className="bg-slate-900">Todas as Lojas</option>
                 {lojasOrdenadas.map((l: any) => {
@@ -391,14 +389,10 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
                   );
                 })}
               </select>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-semibold text-slate-400 uppercase mb-1 block">Situação</label>
               <select
                 value={statusFiltro}
                 onChange={(e) => setStatusFiltro(e.target.value as "todos" | "F" | "T")}
-                className="w-full h-9 px-3 rounded-xl bg-black/30 border border-white/15 text-xs text-white focus:outline-none focus:border-cyan-400"
+                className="w-full h-8 px-2.5 rounded-xl bg-black/30 border border-white/15 text-[11px] text-white focus:outline-none focus:border-cyan-400"
               >
                 <option value="todos" className="bg-slate-900">Todos (Agendados + Pagos)</option>
                 <option value="F" className="bg-slate-900">Somente Agendados (Em Aberto)</option>
@@ -409,59 +403,60 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
         </CardContent>
       </Card>
 
-      {/* KPIs do Mês */}
-      {dados && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 no-print">
-          <Card className="glass border-white/10 rounded-2xl">
-            <CardContent className="p-3 sm:p-3.5">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                <Wallet className="size-3.5 text-cyan-400 shrink-0" /> Total do Mês
-              </div>
-              <div className="text-sm sm:text-lg font-bold text-white mt-1 truncate">{fmtBRL(dados.resumo.totalGeral)}</div>
-              <div className="text-[10px] text-slate-400">{dados.resumo.qtdTotal} títulos</div>
-            </CardContent>
-          </Card>
+      {/* Área Principal: Coluna Esquerda (4 KPIs Compactos + Calendário) | Coluna Direita (Contas a Pagar do Dia lá em cima) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+        <div className="lg:col-span-6 space-y-3 no-print">
+          {/* 4 KPIs Compactos cabendo exatamente acima do Calendário */}
+          {dados && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <Card className="glass border-white/10 rounded-xl">
+                <CardContent className="p-2.5">
+                  <div className="text-[9.5px] text-slate-400 uppercase font-semibold flex items-center gap-1 truncate">
+                    <Wallet className="size-3 text-cyan-400 shrink-0" /> Total Mês
+                  </div>
+                  <div className="text-xs sm:text-[13px] font-bold text-white mt-0.5 truncate">{fmtBRL(dados.resumo.totalGeral)}</div>
+                  <div className="text-[9px] text-slate-400">{dados.resumo.qtdTotal} tít.</div>
+                </CardContent>
+              </Card>
 
-          <Card className="glass border-white/10 rounded-2xl">
-            <CardContent className="p-3 sm:p-3.5">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                <Clock className="size-3.5 text-amber-400 shrink-0" /> Em Aberto / Agendado
-              </div>
-              <div className="text-sm sm:text-lg font-bold text-amber-400 mt-1 truncate">{fmtBRL(dados.resumo.totalAberto)}</div>
-              <div className="text-[10px] text-slate-400">{dados.resumo.qtdAbertas} a vencer/pagar</div>
-            </CardContent>
-          </Card>
+              <Card className="glass border-white/10 rounded-xl">
+                <CardContent className="p-2.5">
+                  <div className="text-[9.5px] text-slate-400 uppercase font-semibold flex items-center gap-1 truncate">
+                    <Clock className="size-3 text-amber-400 shrink-0" /> Em Aberto
+                  </div>
+                  <div className="text-xs sm:text-[13px] font-bold text-amber-400 mt-0.5 truncate">{fmtBRL(dados.resumo.totalAberto)}</div>
+                  <div className="text-[9px] text-slate-400">{dados.resumo.qtdAbertas} a pagar</div>
+                </CardContent>
+              </Card>
 
-          <Card className="glass border-white/10 rounded-2xl">
-            <CardContent className="p-3 sm:p-3.5">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" /> Já Pago
-              </div>
-              <div className="text-sm sm:text-lg font-bold text-emerald-400 mt-1 truncate">{fmtBRL(dados.resumo.totalPago)}</div>
-              <div className="text-[10px] text-slate-400">{dados.resumo.qtdPagas} liquidados</div>
-            </CardContent>
-          </Card>
+              <Card className="glass border-white/10 rounded-xl">
+                <CardContent className="p-2.5">
+                  <div className="text-[9.5px] text-slate-400 uppercase font-semibold flex items-center gap-1 truncate">
+                    <CheckCircle2 className="size-3 text-emerald-400 shrink-0" /> Já Pago
+                  </div>
+                  <div className="text-xs sm:text-[13px] font-bold text-emerald-400 mt-0.5 truncate">{fmtBRL(dados.resumo.totalPago)}</div>
+                  <div className="text-[9px] text-slate-400">{dados.resumo.qtdPagas} pagos</div>
+                </CardContent>
+              </Card>
 
-          <Card className="glass border-white/10 rounded-2xl">
-            <CardContent className="p-3 sm:p-3.5">
-              <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                <CalendarIcon className="size-3.5 text-rose-400 shrink-0" /> Dia Mais Pesado
-              </div>
-              <div className="text-sm sm:text-lg font-bold text-white mt-1 truncate">
-                {maiorDia ? fmtBRL(maiorDia.total) : "R$ 0,00"}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                {maiorDia ? `Dia ${String(maiorDia.dia).padStart(2, "0")}/${String(mesAtual).padStart(2, "0")} (${maiorDia.qtd} títulos)` : "Sem títulos"}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <Card className="glass border-white/10 rounded-xl">
+                <CardContent className="p-2.5">
+                  <div className="text-[9.5px] text-slate-400 uppercase font-semibold flex items-center gap-1 truncate">
+                    <CalendarIcon className="size-3 text-rose-400 shrink-0" /> Maior Dia
+                  </div>
+                  <div className="text-xs sm:text-[13px] font-bold text-white mt-0.5 truncate">
+                    {maiorDia ? fmtBRL(maiorDia.total) : "R$ 0,00"}
+                  </div>
+                  <div className="text-[9px] text-slate-400">
+                    {maiorDia ? `Dia ${String(maiorDia.dia).padStart(2, "0")}/${String(mesAtual).padStart(2, "0")} (${maiorDia.qtd})` : "—"}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-      {/* Área Principal: Calendário (esquerda) + Detalhes do Dia (direita no PC / Modal no Celular) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        {/* Grade do Calendário */}
-        <Card className="lg:col-span-6 glass border-white/10 rounded-2xl overflow-hidden no-print">
+          {/* Grade do Calendário */}
+          <Card className="glass border-white/10 rounded-2xl overflow-hidden">
           <CardContent className="p-2.5 sm:p-4">
             {loading && !dados ? (
               <div className="py-12 flex items-center justify-center gap-2 text-slate-300 text-xs">
@@ -568,6 +563,7 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
             )}
           </CardContent>
         </Card>
+        </div>
 
         {/* Painel do Dia Selecionado (Sempre visível ao lado no PC; no Celular abre como gaveta sobreposta) */}
         <div
@@ -661,8 +657,22 @@ export function CalendarioPagamentosModule({ selectedStore = "todas", lojas = []
                   </div>
                 </div>
 
-                {/* Lista em Cards (no PC com scroll interno ao lado do calendário; no Celular dentro da gaveta) */}
-                <div className="space-y-2 lg:max-h-[420px] lg:overflow-y-auto lg:pr-1 print:hidden">
+                {/* Barra de busca rápida no dia */}
+                <div className="flex items-center justify-between gap-2 no-print">
+                  <input
+                    type="text"
+                    value={buscaDia}
+                    onChange={(e) => setBuscaDia(e.target.value)}
+                    placeholder="Filtrar fornecedor, NF ou título neste dia..."
+                    className="w-full h-8 px-3 rounded-xl bg-black/30 border border-white/15 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400"
+                  />
+                  <span className="text-[11px] text-slate-400 shrink-0 font-mono">
+                    {itensFiltradosDia.length} itens
+                  </span>
+                </div>
+
+                {/* Lista em Cards (no PC com scroll interno amplo ao lado do calendário; no Celular dentro da gaveta) */}
+                <div className="space-y-2 lg:max-h-[520px] lg:overflow-y-auto lg:pr-1 print:hidden">
                   {itensFiltradosDia.map((t, idx) => {
                     const isPago = t.STATUS_BAIXADA === "T";
                     const tKey = `${t.LOJA}-${t.NUMERO_TITULO}-${t.PARCELA}-${idx}`;

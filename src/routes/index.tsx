@@ -35,6 +35,8 @@ import { DreDespesasModule } from "@/components/executive/DreDespesasModule";
 import { AtacarejoModule } from "@/components/executive/AtacarejoModule";
 import { CentralRelatoriosModule } from "@/components/executive/CentralRelatoriosModule";
 import { FornecedorCompraVendaModule } from "@/components/executive/FornecedorCompraVendaModule";
+import { CalendarioPagamentosModule } from "@/components/executive/CalendarioPagamentosModule";
+import { AvariasModule } from "@/components/executive/AvariasModule";
 import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
 import { ThemeToggle } from "@/components/executive/ThemeToggle";
 import { useTheme } from "@/context/ThemeContext";
@@ -740,8 +742,22 @@ function Dashboard() {
           />
         )}
 
+        {activeTab === "calendario-pagamentos" && (
+          <CalendarioPagamentosModule
+            selectedStore={selectedStore}
+            lojas={dbLojas}
+          />
+        )}
+
+        {activeTab === "avarias" && (
+          <AvariasModule
+            selectedStore={selectedStore}
+            lojas={dbLojas}
+          />
+        )}
+
         {/* Other Tabs */}
-        {activeTab !== "visao-geral" && activeTab !== "atacarejo" && activeTab !== "vendas-bandeira" && activeTab !== "contas-pagar" && activeTab !== "dre-despesas" && activeTab !== "gestao-usuarios" && activeTab !== "pedidos-compradores" && activeTab !== "central-relatorios" && activeTab !== "compra-venda-fornecedor" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
+        {activeTab !== "visao-geral" && activeTab !== "atacarejo" && activeTab !== "vendas-bandeira" && activeTab !== "contas-pagar" && activeTab !== "calendario-pagamentos" && activeTab !== "avarias" && activeTab !== "dre-despesas" && activeTab !== "gestao-usuarios" && activeTab !== "pedidos-compradores" && activeTab !== "central-relatorios" && activeTab !== "compra-venda-fornecedor" && activeTab !== "sugestoes-compras" && activeTab !== "painel-gerente" && activeTab !== "metas-vendas" && activeTab !== "estoque" && activeTab !== "rastreamento" && activeTab !== "financeiro" && activeTab !== "comercial" && activeTab !== "campanhas" && activeTab !== "compras" && activeTab !== "configuracoes" && activeTab !== "gerencial" && activeTab !== "promocoes" && activeTab !== "validade-critica" && activeTab !== "comparar-xml" && activeTab !== "cybertech-admin" && activeTab !== "contabilidade" && activeTab !== "auditor-fiscal" && activeTab !== "rupturas" && activeTab !== "entradas" && activeTab !== "ai-report" && activeTab !== "smartcatalog" && (
           <div className="glass-strong rounded-2xl p-10 text-center flex flex-col justify-center items-center gap-3 min-h-[300px]">
             <Shield className="w-12 h-12 text-slate-400 animate-pulse" />
             <h3 className="font-serif text-lg font-bold text-slate-200">Aba em Desenvolvimento</h3>

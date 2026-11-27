@@ -2,7 +2,7 @@ import {
   LayoutDashboard, TrendingUp, Package, ShoppingCart, ShoppingBag, Users, Wallet, 
   Building2, Settings, Search, BarChart3, Tag, AlertTriangle, FileCheck, 
   Trophy, ShieldAlert, Scale, Eye, Target, Smartphone, FileSpreadsheet,
-  ShieldCheck, LogOut, CreditCard, ClipboardList, Printer
+  ShieldCheck, LogOut, CreditCard, ClipboardList, Printer, CalendarDays, AlertOctagon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -22,6 +22,7 @@ export const nav = [
   { icon: Trophy, label: "Campanhas", id: "campanhas", group: "Vendas & Comercial" },
 
   { icon: Wallet, label: "Contas a Pagar", id: "contas-pagar", group: "Financeiro & Fiscal" },
+  { icon: CalendarDays, label: "Calendário Pagamentos", id: "calendario-pagamentos", group: "Financeiro & Fiscal" },
   { icon: FileSpreadsheet, label: "DRE & Despesas", id: "dre-despesas", group: "Financeiro & Fiscal" },
   { icon: FileCheck, label: "Entradas (NF)", id: "entradas", group: "Financeiro & Fiscal" },
   { icon: Scale, label: "Auditor Fiscal", id: "auditor-fiscal", group: "Financeiro & Fiscal" },
@@ -31,6 +32,7 @@ export const nav = [
   { icon: ShoppingCart, label: "Setor de Compras", id: "compras", group: "Compras & Estoque" },
   { icon: Package, label: "Estoque", id: "estoque", group: "Compras & Estoque" },
   { icon: AlertTriangle, label: "Validade Crítica", id: "validade-critica", group: "Compras & Estoque" },
+  { icon: AlertOctagon, label: "Avarias & Perdas", id: "avarias", group: "Compras & Estoque" },
   { icon: ShieldAlert, label: "Prevenção Ruptura", id: "rupturas", group: "Compras & Estoque" },
   { icon: Search, label: "Rastreamento", id: "rastreamento", group: "Compras & Estoque" },
 

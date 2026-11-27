@@ -1,42 +1,42 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, lazy, Suspense, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Sidebar } from "@/components/executive/Sidebar";
 import { KpiCards } from "@/components/executive/KpiCards";
-import { PaymentMethodsCard } from "@/components/executive/PaymentMethodsCard";
-import { VendasPorBandeiraModule } from "@/components/executive/VendasPorBandeiraModule";
-import { DepartmentMarginPanel } from "@/components/executive/DepartmentMarginPanel";
-import { StoreRanking } from "@/components/executive/StoreRanking";
-import { CategoryBreakdown } from "@/components/executive/CategoryBreakdown";
-import { ProductTracking } from "@/components/executive/ProductTracking";
-import { FinancialModule } from "@/components/executive/FinancialModule";
-import { CommercialModule } from "@/components/executive/CommercialModule";
-import { PurchasesModule } from "@/components/executive/PurchasesModule";
-import { DatabaseSettings } from "@/components/executive/DatabaseSettings";
-import { Estoque } from "@/components/executive/Estoque";
-import { AccountingModule } from "@/components/executive/AccountingModule";
-import { AuditorFiscalModule } from "@/components/executive/AuditorFiscalModule";
-import { GerencialModule } from "@/components/executive/GerencialModule";
-import { PromocoesModule } from "@/components/executive/PromocoesModule";
-import { SalesCampaignsModule } from "@/components/executive/SalesCampaignsModule";
-import { ValidadeCritica } from "@/components/executive/ValidadeCritica";
-import { XmlCompareModule } from "@/components/executive/XmlCompareModule";
-import { CybertechAdminModule } from "@/components/executive/CybertechAdminModule";
-import { RupturasModule } from "@/components/executive/RupturasModule";
-import { EntradasModule } from "@/components/executive/EntradasModule";
-import { AiReportModule } from "@/components/executive/AiReportModule";
-import { SmartCatalogAuditor } from "@/components/executive/SmartCatalogAuditor";
-import { MetasGerenciaisModule } from "@/components/executive/MetasGerenciaisModule";
-import { SugestoesComprasModule } from "@/components/executive/SugestoesComprasModule";
-import { PainelGerenteMobileModule } from "@/components/executive/PainelGerenteMobileModule";
-import { PedidosCompradoresModule } from "@/components/executive/PedidosCompradoresModule";
-import { UserManagementModule } from "@/components/executive/UserManagementModule";
-import { ContasPagarModule } from "@/components/executive/ContasPagarModule";
-import { DreDespesasModule } from "@/components/executive/DreDespesasModule";
-import { AtacarejoModule } from "@/components/executive/AtacarejoModule";
-import { CentralRelatoriosModule } from "@/components/executive/CentralRelatoriosModule";
-import { FornecedorCompraVendaModule } from "@/components/executive/FornecedorCompraVendaModule";
-import { CalendarioPagamentosModule } from "@/components/executive/CalendarioPagamentosModule";
-import { AvariasModule } from "@/components/executive/AvariasModule";
+const PaymentMethodsCard = lazy(() => import("@/components/executive/PaymentMethodsCard").then(m => ({ default: m.PaymentMethodsCard })));
+const VendasPorBandeiraModule = lazy(() => import("@/components/executive/VendasPorBandeiraModule").then(m => ({ default: m.VendasPorBandeiraModule })));
+const DepartmentMarginPanel = lazy(() => import("@/components/executive/DepartmentMarginPanel").then(m => ({ default: m.DepartmentMarginPanel })));
+const StoreRanking = lazy(() => import("@/components/executive/StoreRanking").then(m => ({ default: m.StoreRanking })));
+const CategoryBreakdown = lazy(() => import("@/components/executive/CategoryBreakdown").then(m => ({ default: m.CategoryBreakdown })));
+const ProductTracking = lazy(() => import("@/components/executive/ProductTracking").then(m => ({ default: m.ProductTracking })));
+const FinancialModule = lazy(() => import("@/components/executive/FinancialModule").then(m => ({ default: m.FinancialModule })));
+const CommercialModule = lazy(() => import("@/components/executive/CommercialModule").then(m => ({ default: m.CommercialModule })));
+const PurchasesModule = lazy(() => import("@/components/executive/PurchasesModule").then(m => ({ default: m.PurchasesModule })));
+const DatabaseSettings = lazy(() => import("@/components/executive/DatabaseSettings").then(m => ({ default: m.DatabaseSettings })));
+const Estoque = lazy(() => import("@/components/executive/Estoque").then(m => ({ default: m.Estoque })));
+const AccountingModule = lazy(() => import("@/components/executive/AccountingModule").then(m => ({ default: m.AccountingModule })));
+const AuditorFiscalModule = lazy(() => import("@/components/executive/AuditorFiscalModule").then(m => ({ default: m.AuditorFiscalModule })));
+const GerencialModule = lazy(() => import("@/components/executive/GerencialModule").then(m => ({ default: m.GerencialModule })));
+const PromocoesModule = lazy(() => import("@/components/executive/PromocoesModule").then(m => ({ default: m.PromocoesModule })));
+const SalesCampaignsModule = lazy(() => import("@/components/executive/SalesCampaignsModule").then(m => ({ default: m.SalesCampaignsModule })));
+const ValidadeCritica = lazy(() => import("@/components/executive/ValidadeCritica").then(m => ({ default: m.ValidadeCritica })));
+const XmlCompareModule = lazy(() => import("@/components/executive/XmlCompareModule").then(m => ({ default: m.XmlCompareModule })));
+const CybertechAdminModule = lazy(() => import("@/components/executive/CybertechAdminModule").then(m => ({ default: m.CybertechAdminModule })));
+const RupturasModule = lazy(() => import("@/components/executive/RupturasModule").then(m => ({ default: m.RupturasModule })));
+const EntradasModule = lazy(() => import("@/components/executive/EntradasModule").then(m => ({ default: m.EntradasModule })));
+const AiReportModule = lazy(() => import("@/components/executive/AiReportModule").then(m => ({ default: m.AiReportModule })));
+const SmartCatalogAuditor = lazy(() => import("@/components/executive/SmartCatalogAuditor").then(m => ({ default: m.SmartCatalogAuditor })));
+const MetasGerenciaisModule = lazy(() => import("@/components/executive/MetasGerenciaisModule").then(m => ({ default: m.MetasGerenciaisModule })));
+const SugestoesComprasModule = lazy(() => import("@/components/executive/SugestoesComprasModule").then(m => ({ default: m.SugestoesComprasModule })));
+const PainelGerenteMobileModule = lazy(() => import("@/components/executive/PainelGerenteMobileModule").then(m => ({ default: m.PainelGerenteMobileModule })));
+const PedidosCompradoresModule = lazy(() => import("@/components/executive/PedidosCompradoresModule").then(m => ({ default: m.PedidosCompradoresModule })));
+const UserManagementModule = lazy(() => import("@/components/executive/UserManagementModule").then(m => ({ default: m.UserManagementModule })));
+const ContasPagarModule = lazy(() => import("@/components/executive/ContasPagarModule").then(m => ({ default: m.ContasPagarModule })));
+const DreDespesasModule = lazy(() => import("@/components/executive/DreDespesasModule").then(m => ({ default: m.DreDespesasModule })));
+const AtacarejoModule = lazy(() => import("@/components/executive/AtacarejoModule").then(m => ({ default: m.AtacarejoModule })));
+const CentralRelatoriosModule = lazy(() => import("@/components/executive/CentralRelatoriosModule").then(m => ({ default: m.CentralRelatoriosModule })));
+const FornecedorCompraVendaModule = lazy(() => import("@/components/executive/FornecedorCompraVendaModule").then(m => ({ default: m.FornecedorCompraVendaModule })));
+const CalendarioPagamentosModule = lazy(() => import("@/components/executive/CalendarioPagamentosModule").then(m => ({ default: m.CalendarioPagamentosModule })));
+const AvariasModule = lazy(() => import("@/components/executive/AvariasModule").then(m => ({ default: m.AvariasModule })));
 import { WhatsNewModal, SYSTEM_VERSION } from "@/components/executive/WhatsNewModal";
 import { ThemeToggle } from "@/components/executive/ThemeToggle";
 import { useTheme } from "@/context/ThemeContext";
@@ -516,6 +516,12 @@ function Dashboard() {
         )}
 
         {/* Tab Contents */}
+        <Suspense fallback={
+          <div className="glass-strong rounded-2xl p-10 flex items-center justify-center gap-2 text-xs text-slate-300 min-h-[220px]">
+            <Loader2 className="size-5 animate-spin text-cyan-400" />
+            Carregando módulo...
+          </div>
+        }>
         {activeTab === "visao-geral" && (
           <div className="flex flex-col gap-4">
             {/* 1. Topo Executivo: KPIs Principais */}
@@ -769,6 +775,7 @@ function Dashboard() {
             </p>
           </div>
         )}
+        </Suspense>
       </main>
 
       {/* Mobile Bottom Navigation Bar (Fixo para toque com polegar) */}

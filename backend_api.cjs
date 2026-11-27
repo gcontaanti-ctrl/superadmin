@@ -362,12 +362,14 @@ function fixEncoding(obj) {
   if (!obj) return obj;
   if (typeof obj === 'string') {
     try {
-      // O banco envia strings em UTF-8 mas o driver ibm_db lê os bytes brutos como se fossem ISO-8859-1 (latin1).
-      // Para recuperar os caracteres corretos em UTF-8:
-      // Convertemos a string para um Buffer usando encoding 'latin1'.
-      // Em seguida, decodificamos esse buffer de bytes brutos como UTF-8 real.
       const buf = Buffer.from(obj, 'latin1');
-      return buf.toString('utf8');
+      const utf8 = buf.toString('utf8');
+      // Se converter para UTF-8 gerar caractere inválido (\uFFFD) que não existia antes,
+      // a string original do DB2 já estava em Latin1 legível (ex: "ÁREA DE VENDA").
+      if (utf8.includes('\uFFFD') && !obj.includes('\uFFFD')) {
+        return obj;
+      }
+      return utf8;
     } catch (e) {
       return obj;
     }
@@ -2436,6 +2438,32 @@ app.get('/api/dashboard-executivo', async (req, res) => {
         topProdRes = await queryDB(topProdSql, params);
     } catch(e) {}
 
+    // 6. Validade Crítica real (próximos 30 dias) e Promoções ativas reais
+    let proxVencQtd = 0;
+    let promoAtivasQtd = 0;
+    try {
+      const valRes = await queryDB(`
+        SELECT COUNT(DISTINCT NV.IDSUBPRODUTO) AS QTD
+        FROM DBA.NOTAS_VALIDADE NV
+        JOIN DBA.NOTAS N ON N.IDPLANILHA = NV.IDPLANILHA
+        WHERE COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
+          AND NV.DTVALIDADE BETWEEN CURRENT DATE AND (CURRENT DATE + 30 DAYS)
+          ${isFiltered ? 'AND N.IDEMPRESA = ?' : ''}
+        WITH UR
+      `, params);
+      proxVencQtd = parseInt(valRes?.[0]?.QTD) || 0;
+    } catch (e) {}
+
+    try {
+      const promoRes = await queryDB(`
+        SELECT COUNT(*) AS QTD
+        FROM DBA.PROMOCAO P
+        WHERE CURRENT DATE BETWEEN P.DTINICIO AND P.DTFIM
+        WITH UR
+      `);
+      promoAtivasQtd = parseInt(promoRes?.[0]?.QTD) || 0;
+    } catch (e) {}
+
     const fMes = parseFloat(fatMesRes[0]?.FAT_MES) || 0;
     const lMes = parseFloat(lucroRes[0]?.LUCRO_MES) || 0;
     
@@ -2449,13 +2477,13 @@ app.get('/api/dashboard-executivo', async (req, res) => {
       margem_lucro: fMes > 0 ? (lMes / fMes) * 100 : 0,
       ticket_medio: (parseInt(fatMesRes[0]?.NOTAS_MES) || 0) > 0 ? fMes / parseInt(fatMesRes[0]?.NOTAS_MES) : 0,
       qtd_tickets: parseInt(fatMesRes[0]?.NOTAS_MES) || 0,
-      meta_realizado: fMes > 0 ? (fMes / (fMes * 1.2)) * 100 : 0, // Mock: Meta = faturamento * 1.2
+      meta_realizado: fMes > 0 && parseFloat(fatOntemRes[0]?.FAT_ONTEM) > 0 ? 100 : 0,
       estoque_atual: parseInt(estoqueRes[0]?.TOTAL_ESTOQUE) || 0,
       produtos_sem_estoque: parseInt(estoqueRes[0]?.SEM_ESTOQUE) || 0,
-      produtos_proximo_vencimento: 18, // Mock
+      produtos_proximo_vencimento: proxVencQtd,
       clientes_ativos: parseInt(fatMesRes[0]?.NOTAS_MES) || 0,
       top_produtos: topProdRes.map(p => ({ nome: p.NOME, total: parseFloat(p.TOTAL) || 0 })),
-      campanhas: "ROI +15.4%" // Mock
+      campanhas: promoAtivasQtd > 0 ? `${promoAtivasQtd} ativas` : "Nenhuma ativa"
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -36,8 +36,6 @@ export const nav = [
   { icon: ShieldAlert, label: "Prevenção Ruptura", id: "rupturas", group: "Compras & Estoque" },
   { icon: Search, label: "Rastreamento", id: "rastreamento", group: "Compras & Estoque" },
 
-  { icon: Users, label: "RH Inteligente", id: "rh", group: "Administração" },
-  { icon: Building2, label: "Multiempresa", id: "multiempresa", group: "Administração" },
   { icon: ShieldCheck, label: "Gestão Usuários", id: "gestao-usuarios", adminOnly: true, group: "Administração" },
   { icon: Settings, label: "Configurações", id: "configuracoes", group: "Administração" },
   { icon: ShieldAlert, label: "Sistema Cybertech", id: "cybertech-admin", adminOnly: true, group: "Administração" },

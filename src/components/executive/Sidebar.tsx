@@ -96,7 +96,7 @@ export function Sidebar({
   const groups = Array.from(new Set(filteredNav.map((i) => i.group)));
 
   return (
-    <aside className={cn("w-full h-full flex flex-col gap-2 overflow-hidden", className)}>
+    <aside className={cn("w-full h-full flex flex-col gap-1 overflow-hidden", className)}>
       <button
         type="button"
         onClick={() => {
@@ -104,31 +104,31 @@ export function Sidebar({
           if (onItemClick) onItemClick();
         }}
         title="Voltar ao Início (Visão Geral)"
-        className="flex items-center justify-center px-2 py-2 cursor-pointer hover:opacity-85 transition-opacity shrink-0"
+        className="flex items-center justify-center px-2 py-0.5 -mt-1 cursor-pointer hover:opacity-85 transition-opacity shrink-0"
       >
         <img
           src="/cybertech_eagle_hd.png"
           alt="CYBERTECH HORUS"
-          className="h-20 w-auto max-w-full object-contain drop-shadow-sm"
+          className="h-10 w-auto max-w-full object-contain drop-shadow-sm"
         />
       </button>
 
       {/* Busca Rápida de Tela */}
       <div className="relative px-0.5 shrink-0">
-        <Search className="size-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           value={menuSearch}
           onChange={(e) => setMenuSearch(e.target.value)}
           placeholder="Buscar módulo..."
-          className="w-full bg-black/35 border border-white/10 rounded-full pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400/50"
+          className="w-full bg-black/35 border border-white/10 rounded-full pl-8 pr-3 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-400/50"
         />
       </div>
 
-      <nav className="mt-1 flex flex-col gap-2.5 overflow-y-auto no-scrollbar flex-1 pb-3 px-0.5">
+      <nav className="mt-0.5 flex flex-col gap-1.5 overflow-y-auto no-scrollbar flex-1 pb-2 px-0.5">
         {groups.map((groupName) => (
           <div key={groupName} className="flex flex-col gap-0.5">
-            <div className="px-2.5 text-[9.5px] font-bold uppercase tracking-wider text-slate-500">
+            <div className="px-2.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-tight">
               {groupName}
             </div>
             {filteredNav
@@ -143,7 +143,7 @@ export function Sidebar({
                       if (onItemClick) onItemClick();
                     }}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-full px-3 py-1.5 text-xs transition-all text-left w-full cursor-pointer",
+                      "group flex items-center gap-2 rounded-full px-2.5 py-1 text-[11.5px] transition-all text-left w-full cursor-pointer",
                       isActive
                         ? "bg-gradient-to-r from-[#0088ff] to-[#0055ff] text-white font-semibold shadow-md shadow-blue-500/25 border border-cyan-300/30"
                         : "text-slate-300 hover:text-white hover:bg-white/[0.06] border border-transparent"
@@ -157,7 +157,7 @@ export function Sidebar({
           </div>
         ))}
         {filteredNav.length === 0 && (
-          <div className="text-center py-6 text-xs text-slate-500">
+          <div className="text-center py-4 text-xs text-slate-500">
             Nenhum módulo encontrado.
           </div>
         )}
@@ -165,7 +165,7 @@ export function Sidebar({
 
       {/* User Info & Logout footer */}
       {currentUser && (
-        <div className="pt-3 mt-auto border-t border-white/10 flex items-center justify-between gap-2">
+        <div className="pt-2 mt-auto border-t border-white/10 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2 overflow-hidden">
             <div className={`size-7 rounded-lg grid place-items-center text-xs font-bold shrink-0 ${isSuperAdmin ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-white/10 text-slate-300'}`}>
               {currentUser.nome?.charAt(0) || "U"}

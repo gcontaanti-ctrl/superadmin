@@ -281,7 +281,7 @@ export function FornecedorCompraVendaModule({
               </p>
             </div>
             {dados && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={exportarCSV} variant="outline" size="sm" className="gap-1.5 text-xs">
                   <FileSpreadsheet className="size-3.5 text-emerald-400" />
                   Exportar Excel (CSV)
@@ -429,52 +429,52 @@ export function FornecedorCompraVendaModule({
           </div>
 
           {/* KPIs Totais */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
             <Card className="glass border-white/10 rounded-2xl">
-              <CardContent className="p-3.5">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                  <ShoppingCart className="size-3.5 text-blue-400" /> Total Compra
+              <CardContent className="p-3 sm:p-3.5">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
+                  <ShoppingCart className="size-3.5 text-blue-400 shrink-0" /> Total Compra
                 </div>
-                <div className="text-lg font-bold text-white mt-1">{fmtBRL(dados.totaisGeral.compra)}</div>
+                <div className="text-sm sm:text-lg font-bold text-white mt-1 truncate">{fmtBRL(dados.totaisGeral.compra)}</div>
               </CardContent>
             </Card>
             <Card className="glass border-white/10 rounded-2xl">
-              <CardContent className="p-3.5">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                  <DollarSign className="size-3.5 text-cyan-400" /> Total Venda
+              <CardContent className="p-3 sm:p-3.5">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
+                  <DollarSign className="size-3.5 text-cyan-400 shrink-0" /> Total Venda
                 </div>
-                <div className="text-lg font-bold text-white mt-1">{fmtBRL(dados.totaisGeral.venda)}</div>
+                <div className="text-sm sm:text-lg font-bold text-white mt-1 truncate">{fmtBRL(dados.totaisGeral.venda)}</div>
               </CardContent>
             </Card>
             <Card className="glass border-white/10 rounded-2xl">
-              <CardContent className="p-3.5">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                  <Percent className="size-3.5 text-amber-400" /> CMV (% s/ Venda)
+              <CardContent className="p-3 sm:p-3.5">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
+                  <Percent className="size-3.5 text-amber-400 shrink-0" /> CMV (% s/ Venda)
                 </div>
-                <div className="text-lg font-bold text-white mt-1">
-                  {fmtBRL(dados.totaisGeral.cmv)} <span className="text-xs text-amber-400">({dados.totaisGeral.cmvPct.toFixed(2)}%)</span>
+                <div className="text-sm sm:text-lg font-bold text-white mt-1">
+                  {fmtBRL(dados.totaisGeral.cmv)} <span className="text-[11px] sm:text-xs text-amber-400 block sm:inline">({dados.totaisGeral.cmvPct.toFixed(2)}%)</span>
                 </div>
               </CardContent>
             </Card>
             <Card className="glass border-white/10 rounded-2xl">
-              <CardContent className="p-3.5">
-                <div className="text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
-                  <TrendingUp className="size-3.5 text-emerald-400" /> Lucro (Margem %)
+              <CardContent className="p-3 sm:p-3.5">
+                <div className="text-[10px] sm:text-[11px] text-slate-400 uppercase font-semibold flex items-center gap-1">
+                  <TrendingUp className="size-3.5 text-emerald-400 shrink-0" /> Lucro (Margem %)
                 </div>
-                <div className="text-lg font-bold text-emerald-400 mt-1">
-                  {fmtBRL(dados.totaisGeral.lucro)} <span className="text-xs">({dados.totaisGeral.margemPct.toFixed(2)}%)</span>
+                <div className="text-sm sm:text-lg font-bold text-emerald-400 mt-1">
+                  {fmtBRL(dados.totaisGeral.lucro)} <span className="text-[11px] sm:text-xs block sm:inline">({dados.totaisGeral.margemPct.toFixed(2)}%)</span>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Alternador Resumo por Loja vs Detalhe Mês a Mês */}
-          <div className="flex items-center gap-2 no-print">
+          <div className="flex flex-wrap items-center gap-2 no-print">
             <Button
               size="sm"
               variant={viewMode === "resumo" ? "default" : "outline"}
               onClick={() => setViewMode("resumo")}
-              className="text-xs rounded-xl"
+              className="text-xs rounded-xl flex-1 sm:flex-none"
             >
               Consolidado por Fornecedor e Loja
             </Button>
@@ -482,14 +482,144 @@ export function FornecedorCompraVendaModule({
               size="sm"
               variant={viewMode === "mensal" ? "default" : "outline"}
               onClick={() => setViewMode("mensal")}
-              className="text-xs rounded-xl"
+              className="text-xs rounded-xl flex-1 sm:flex-none"
             >
-              Detalhamento Mês a Mês por Loja ({dados.mensal.length})
+              Detalhamento Mês a Mês ({dados.mensal.length})
             </Button>
           </div>
 
-          {/* Tabela */}
-          <Card className="glass border-white/10 rounded-2xl overflow-hidden">
+          {/* Cards Responsivos para Celular (Níveis 1, 2 e 3 sem rolagem lateral) */}
+          <div className="md:hidden space-y-2.5 no-print">
+            {(viewMode === "resumo" ? dados.resumoPorLoja : dados.mensal).map((r, i) => {
+              const rowKey = viewMode === "mensal" ? `${r.fornId}|${r.ano}|${r.mes}|${r.idEmpresa}` : `${r.fornId}|${r.idEmpresa}`;
+              const isOpen = !!expandedRows[rowKey];
+              const secoes = secoesCache[rowKey] || [];
+              const isLoadingSec = !!loadingSecoes[rowKey];
+
+              return (
+                <Card key={`mob-${rowKey}-${i}`} className={`glass border-white/10 rounded-2xl overflow-hidden ${isOpen ? "ring-1 ring-cyan-500/40" : ""}`}>
+                  <CardContent className="p-3.5 space-y-2.5">
+                    <button
+                      type="button"
+                      onClick={() => toggleRowSecoes(r)}
+                      className="w-full text-left flex items-start justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                          {isOpen ? <ChevronDown className="size-4 text-cyan-400 shrink-0" /> : <ChevronRight className="size-4 text-slate-400 shrink-0" />}
+                          <span className="truncate">{r.fornNome}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 pl-5 mt-0.5">
+                          {viewMode === "mensal" && <span className="text-cyan-300 font-semibold mr-1.5">{r.mesLabel} •</span>}
+                          {r.idEmpresa} - {r.lojaNome}
+                        </div>
+                      </div>
+                      <span className="shrink-0 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-bold">
+                        {r.margemPct.toFixed(2)}%
+                      </span>
+                    </button>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-white/10">
+                      <div>
+                        <span className="text-slate-400 block">Compra</span>
+                        <span className="font-mono font-semibold text-slate-200">{fmtBRL(r.compra)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 block">Venda</span>
+                        <span className="font-mono font-bold text-white">{fmtBRL(r.venda)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block">CMV ({r.cmvPct.toFixed(2)}%)</span>
+                        <span className="font-mono text-amber-300">{fmtBRL(r.cmv)}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-slate-400 block">Lucro</span>
+                        <span className="font-mono font-semibold text-emerald-400">{fmtBRL(r.lucro)}</span>
+                      </div>
+                    </div>
+
+                    {/* NÍVEL 2 MOBILE: SEÇÕES */}
+                    {isOpen && (
+                      <div className="pt-2 border-t border-cyan-500/30 space-y-2">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                          <Layers className="size-3.5" />
+                          Seções {isLoadingSec && <Loader2 className="size-3.5 animate-spin ml-1" />}
+                        </div>
+                        {!isLoadingSec && secoes.length === 0 && (
+                          <div className="text-[11px] text-slate-400">Nenhuma seção movimentada neste filtro.</div>
+                        )}
+                        {secoes.map(sec => {
+                          const secKey = `${rowKey}|sec-${sec.idSecao}`;
+                          const isSecOpen = !!expandedSecoes[secKey];
+                          const prods = produtosCache[secKey] || [];
+                          const isLoadingProd = !!loadingProdutos[secKey];
+
+                          return (
+                            <div key={`mob-${secKey}`} className="rounded-xl bg-slate-950/60 border border-white/10 p-2.5 space-y-2">
+                              <button
+                                type="button"
+                                onClick={() => toggleSecaoProdutos(r, sec)}
+                                className="w-full text-left flex items-center justify-between gap-2"
+                              >
+                                <span className="text-[11px] font-semibold text-slate-100 flex items-center gap-1 min-w-0">
+                                  {isSecOpen ? <ChevronDown className="size-3.5 text-blue-400 shrink-0" /> : <ChevronRight className="size-3.5 text-slate-400 shrink-0" />}
+                                  <span className="truncate">{sec.idSecao} - {sec.secao}</span>
+                                </span>
+                                <span className="text-[10px] font-bold text-emerald-400 shrink-0">{sec.margemPct.toFixed(2)}%</span>
+                              </button>
+                              <div className="grid grid-cols-2 gap-1.5 text-[10px] pl-4">
+                                <div><span className="text-slate-400">Compra:</span> <span className="font-mono text-slate-200">{fmtBRL(sec.compra)}</span></div>
+                                <div className="text-right"><span className="text-slate-400">Venda:</span> <span className="font-mono font-semibold text-white">{fmtBRL(sec.venda)}</span></div>
+                                <div><span className="text-slate-400">CMV:</span> <span className="font-mono text-amber-300">{fmtBRL(sec.cmv)} ({sec.cmvPct.toFixed(1)}%)</span></div>
+                                <div className="text-right"><span className="text-slate-400">Lucro:</span> <span className="font-mono text-emerald-400">{fmtBRL(sec.lucro)}</span></div>
+                              </div>
+
+                              {/* NÍVEL 3 MOBILE: PRODUTOS */}
+                              {isSecOpen && (
+                                <div className="pt-2 border-t border-blue-500/30 space-y-1.5 pl-2">
+                                  <div className="text-[10px] font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1">
+                                    <Package className="size-3" />
+                                    Produtos {isLoadingProd && <Loader2 className="size-3 animate-spin ml-1" />}
+                                  </div>
+                                  {!isLoadingProd && prods.map(pr => (
+                                    <div key={`mob-pr-${pr.codigo}`} className="rounded-lg bg-black/40 border border-white/5 p-2 space-y-1 text-[10px]">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span className="font-medium text-slate-200 leading-tight">
+                                          <span className="font-mono text-cyan-300 mr-1">{pr.codigo}</span>
+                                          {pr.descricao}
+                                        </span>
+                                        <span className="shrink-0 font-mono whitespace-nowrap text-slate-200">
+                                          {pr.unidade === "KG"
+                                            ? pr.qtdVenda.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+                                            : pr.qtdVenda.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}
+                                          <span className={`ml-1 px-1 rounded text-[9px] font-bold ${
+                                            pr.unidade === "KG" ? "bg-amber-500/20 text-amber-300" : "bg-cyan-500/20 text-cyan-300"
+                                          }`}>{pr.unidade || "UN"}</span>
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-1 text-[10px] pt-0.5">
+                                        <div><span className="text-slate-400">Compra:</span> <span className="font-mono">{fmtBRL(pr.compra)}</span></div>
+                                        <div className="text-right"><span className="text-slate-400">Venda:</span> <span className="font-mono font-semibold text-white">{fmtBRL(pr.venda)}</span></div>
+                                        <div><span className="text-slate-400">CMV:</span> <span className="font-mono text-amber-300">{fmtBRL(pr.cmv)} ({pr.cmvPct.toFixed(1)}%)</span></div>
+                                        <div className="text-right"><span className="text-slate-400">Lucro:</span> <span className="font-mono text-emerald-400">{fmtBRL(pr.lucro)} ({pr.margemPct.toFixed(1)}%)</span></div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Tabela Desktop / Impressão */}
+          <Card className="hidden md:block print:block glass border-white/10 rounded-2xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead>

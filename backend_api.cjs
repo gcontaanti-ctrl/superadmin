@@ -10951,7 +10951,7 @@ async function startServer() {
         WITH UR
       `);
 
-      // 2. Produtos vinculados a cada fornecedor
+      // 2. Produtos comprados do fornecedor dentro do período selecionado
       const prodsPorForn = await queryDB(`
         SELECT DISTINCT N.IDCLIFOR AS FORN_ID, EA.IDSUBPRODUTO
         FROM DBA.ESTOQUE_ANALITICO EA
@@ -10960,26 +10960,10 @@ async function startServer() {
         WHERE N.IDCLIFOR IN (${fornListSql})
           AND OP.TIPOMOVIMENTO = 'C'
           AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
-          AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
-        UNION
-        SELECT DISTINCT PF.IDCLIFOR AS FORN_ID, G.IDSUBPRODUTO
-        FROM DBA.PRODUTO_FORNECEDOR PF
-        JOIN DBA.PRODUTO_GRADE G ON G.IDPRODUTO = PF.IDPRODUTO
-        WHERE PF.IDCLIFOR IN (${fornListSql})
+          AND DATE(EA.DTMOVIMENTO) BETWEEN '${String(startDate).slice(0, 10)}' AND '${String(endDate).slice(0, 10)}'
+          ${whereLoja}
         WITH UR
-      `).catch(async () => {
-        return await queryDB(`
-          SELECT DISTINCT N.IDCLIFOR AS FORN_ID, EA.IDSUBPRODUTO
-          FROM DBA.ESTOQUE_ANALITICO EA
-          JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
-          JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
-          WHERE N.IDCLIFOR IN (${fornListSql})
-            AND OP.TIPOMOVIMENTO = 'C'
-            AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
-            AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
-          WITH UR
-        `);
-      });
+      `);
 
       const vendasList = [];
       for (const fId of fornIds) {
@@ -11125,8 +11109,8 @@ async function startServer() {
     }
   });
 
-  // Helper compartilhado: produtos vinculados a um fornecedor
-  async function getSubprodutosFornecedor(fornId) {
+  // Helper compartilhado: produtos comprados de um fornecedor no período selecionado
+  async function getSubprodutosFornecedor(fornId, dateFilter) {
     const rows = await queryDB(`
       SELECT DISTINCT EA.IDSUBPRODUTO
       FROM DBA.ESTOQUE_ANALITICO EA
@@ -11135,26 +11119,9 @@ async function startServer() {
       WHERE N.IDCLIFOR = ${Number(fornId)}
         AND OP.TIPOMOVIMENTO = 'C'
         AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
-        AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
-      UNION
-      SELECT DISTINCT G.IDSUBPRODUTO
-      FROM DBA.PRODUTO_FORNECEDOR PF
-      JOIN DBA.PRODUTO_GRADE G ON G.IDPRODUTO = PF.IDPRODUTO
-      WHERE PF.IDCLIFOR = ${Number(fornId)}
+        AND ${dateFilter}
       WITH UR
-    `).catch(async () => {
-      return await queryDB(`
-        SELECT DISTINCT EA.IDSUBPRODUTO
-        FROM DBA.ESTOQUE_ANALITICO EA
-        JOIN DBA.NOTAS N ON N.IDPLANILHA = EA.IDPLANILHA
-        JOIN DBA.OPERACAO_INTERNA OP ON OP.IDOPERACAO = EA.IDOPERACAO
-        WHERE N.IDCLIFOR = ${Number(fornId)}
-          AND OP.TIPOMOVIMENTO = 'C'
-          AND COALESCE(N.FLAGNOTACANCEL, 'F') = 'F'
-          AND EA.DTMOVIMENTO >= (CURRENT DATE - 730 DAYS)
-        WITH UR
-      `);
-    });
+    `);
     return [...new Set(rows.map(r => Number(r.IDSUBPRODUTO)).filter(n => !isNaN(n) && n > 0))];
   }
 
@@ -11197,7 +11164,7 @@ async function startServer() {
           GROUP BY COALESCE(P.IDSECAO, 0), COALESCE(TRIM(SC.DESCRSECAO), 'SEM SECAO')
           WITH UR
         `),
-        getSubprodutosFornecedor(fornId)
+        getSubprodutosFornecedor(fornId, dateFilter)
       ]);
 
       const mapa = {};
@@ -11304,7 +11271,7 @@ async function startServer() {
           GROUP BY EA.IDSUBPRODUTO, TRIM(P.DESCRCOMPRODUTO), COALESCE(NULLIF(TRIM(P.EMBALAGEMSAIDA), ''), 'UN')
           WITH UR
         `),
-        getSubprodutosFornecedor(fornId)
+        getSubprodutosFornecedor(fornId, dateFilter)
       ]);
 
       const mapa = {};
